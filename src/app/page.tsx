@@ -56,7 +56,25 @@ export default async function DashboardPage() {
     redirect('/auth/login');
   }
 
-  const { stats, recentSops } = await getDashboardData(session.user.organizationId);
+  let stats = {
+    sops: 0,
+    agents: 0,
+    mudaReports: 0,
+    council: 0,
+    departments: 0,
+    users: 0,
+    totalSavings: 0,
+  };
+  let recentSops: Awaited<ReturnType<typeof getDashboardData>>['recentSops'] = [];
+
+  try {
+    const data = await getDashboardData(session.user.organizationId);
+    stats = data.stats;
+    recentSops = data.recentSops;
+  } catch (error) {
+    console.error('Dashboard data fetch error:', error);
+    // Continue with empty/default data
+  }
 
   return (
     <DashboardClient
