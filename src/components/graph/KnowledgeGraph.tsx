@@ -93,30 +93,74 @@ export default function KnowledgeGraph3D() {
                 const nodes: GraphNode[] = [];
                 const links: GraphLink[] = [];
 
-                data.elements?.forEach((el: any) => {
-                    if (el.data.source && el.data.target) {
-                        links.push({
-                            source: el.data.source,
-                            target: el.data.target,
-                            label: el.data.label,
-                            color: 'rgba(255,255,255,0.2)',
-                        });
-                    } else {
-                        const type = el.data.type as GraphNode['type'];
-                        nodes.push({
-                            id: el.data.id,
-                            label: el.data.label,
-                            type,
-                            color: NODE_COLORS[type] || '#666',
-                            val: NODE_SIZES[type] || 5,
-                            url: getNodeUrl(el.data.id, type),
-                        });
-                    }
-                });
+                if (data.elements && data.elements.length > 0) {
+                    data.elements?.forEach((el: any) => {
+                        if (el.data.source && el.data.target) {
+                            links.push({
+                                source: el.data.source,
+                                target: el.data.target,
+                                label: el.data.label,
+                                color: 'rgba(255,255,255,0.2)',
+                            });
+                        } else {
+                            const type = el.data.type as GraphNode['type'];
+                            nodes.push({
+                                id: el.data.id,
+                                label: el.data.label,
+                                type,
+                                color: NODE_COLORS[type] || '#666',
+                                val: NODE_SIZES[type] || 5,
+                                url: getNodeUrl(el.data.id, type),
+                            });
+                        }
+                    });
+                } else {
+                    // Fallback sample data when DB is empty
+                    const sampleNodes: GraphNode[] = [
+                        { id: 'dept-1', label: 'Sprzedaż', type: 'department', color: NODE_COLORS.department, val: NODE_SIZES.department },
+                        { id: 'dept-2', label: 'Marketing', type: 'department', color: NODE_COLORS.department, val: NODE_SIZES.department },
+                        { id: 'dept-3', label: 'Operacje', type: 'department', color: NODE_COLORS.department, val: NODE_SIZES.department },
+                        { id: 'sop-1', label: 'Onboarding Klienta', type: 'sop', color: NODE_COLORS.sop, val: NODE_SIZES.sop, url: '/sops' },
+                        { id: 'sop-2', label: 'Lead Scoring', type: 'sop', color: NODE_COLORS.sop, val: NODE_SIZES.sop, url: '/sops' },
+                        { id: 'sop-3', label: 'Follow-up Automatyczny', type: 'sop', color: NODE_COLORS.sop, val: NODE_SIZES.sop, url: '/sops' },
+                        { id: 'agent-1', label: 'Sales AI', type: 'agent', color: NODE_COLORS.agent, val: NODE_SIZES.agent, url: '/agents' },
+                        { id: 'agent-2', label: 'Marketing AI', type: 'agent', color: NODE_COLORS.agent, val: NODE_SIZES.agent, url: '/agents' },
+                        { id: 'process-1', label: 'Generowanie Leadów', type: 'process', color: NODE_COLORS.process, val: NODE_SIZES.process, url: '/value-chain' },
+                        { id: 'process-2', label: 'Konwersja', type: 'process', color: NODE_COLORS.process, val: NODE_SIZES.process, url: '/value-chain' },
+                        { id: 'onto-1', label: 'Klient MSP', type: 'ontology', color: NODE_COLORS.ontology, val: NODE_SIZES.ontology, url: '/ontology' },
+                        { id: 'onto-2', label: 'Audyt AI', type: 'ontology', color: NODE_COLORS.ontology, val: NODE_SIZES.ontology, url: '/ontology' },
+                    ];
+                    const sampleLinks: GraphLink[] = [
+                        { source: 'sop-1', target: 'dept-1', label: 'należy do' },
+                        { source: 'sop-2', target: 'dept-1', label: 'należy do' },
+                        { source: 'sop-3', target: 'dept-2', label: 'należy do' },
+                        { source: 'agent-1', target: 'sop-1', label: 'wykonuje' },
+                        { source: 'agent-1', target: 'sop-2', label: 'wykonuje' },
+                        { source: 'agent-2', target: 'sop-3', label: 'wykonuje' },
+                        { source: 'process-1', target: 'dept-2', label: 'w dziale' },
+                        { source: 'process-2', target: 'dept-1', label: 'w dziale' },
+                        { source: 'onto-1', target: 'sop-1', label: 'dotyczy' },
+                        { source: 'onto-2', target: 'process-1', label: 'dotyczy' },
+                    ];
+                    nodes.push(...sampleNodes);
+                    links.push(...sampleLinks.map(l => ({ ...l, color: 'rgba(255,255,255,0.2)' })));
+                }
 
                 setGraphData({ nodes, links });
             } catch (err) {
                 console.error('Failed to load graph data', err);
+                // Set minimal fallback on error
+                setGraphData({
+                    nodes: [
+                        { id: 'demo-1', label: 'Demo: Dodaj SOPs', type: 'sop', color: NODE_COLORS.sop, val: 8, url: '/sops/new' },
+                        { id: 'demo-2', label: 'Demo: Dodaj Agentów', type: 'agent', color: NODE_COLORS.agent, val: 8, url: '/agents' },
+                        { id: 'demo-3', label: 'Demo: Value Chain', type: 'process', color: NODE_COLORS.process, val: 8, url: '/value-chain' },
+                    ],
+                    links: [
+                        { source: 'demo-1', target: 'demo-2', color: 'rgba(255,255,255,0.2)' },
+                        { source: 'demo-2', target: 'demo-3', color: 'rgba(255,255,255,0.2)' },
+                    ],
+                });
             } finally {
                 setLoading(false);
             }
