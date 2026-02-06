@@ -1,251 +1,391 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { Node, Edge } from 'reactflow';
 import {
     GitBranch,
     Plus,
-    ArrowRight,
     Layers,
-    Clock,
-    DollarSign,
-    Bot
+    Bot,
+    FileText,
+    ArrowRightLeft,
+    LayoutGrid,
+    Map,
+    GitCompare,
+    Save,
+    Download,
+    Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { ValueChainWhiteboard } from '@/components/value-chain/whiteboard';
+import { ComparisonView } from '@/components/value-chain/comparison-view';
+import { ValueChainTable } from '@/components/value-chain/ValueChainTable';
+import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
-// Sample value chain data
-const sampleValueChain = {
-    name: 'Main Business Process',
-    stages: [
-        {
-            id: 'stage-1',
-            name: 'Lead Generation',
-            category: 'primary',
-            processes: [
-                { name: 'Marketing Campaigns', automated: 0.4, timeMinutes: 120 },
-                { name: 'Website Inquiries', automated: 0.8, timeMinutes: 30 },
-                { name: 'Referral Program', automated: 0.2, timeMinutes: 60 },
-            ],
-        },
-        {
-            id: 'stage-2',
-            name: 'Sales Process',
-            category: 'primary',
-            processes: [
-                { name: 'Initial Contact', automated: 0.6, timeMinutes: 45 },
-                { name: 'Needs Analysis', automated: 0.3, timeMinutes: 90 },
-                { name: 'Proposal Creation', automated: 0.7, timeMinutes: 180 },
-                { name: 'Negotiation', automated: 0.1, timeMinutes: 120 },
-            ],
-        },
-        {
-            id: 'stage-3',
-            name: 'Order Fulfillment',
-            category: 'primary',
-            processes: [
-                { name: 'Order Processing', automated: 0.9, timeMinutes: 20 },
-                { name: 'Production/Sourcing', automated: 0.5, timeMinutes: 240 },
-                { name: 'Quality Check', automated: 0.4, timeMinutes: 60 },
-            ],
-        },
-        {
-            id: 'stage-4',
-            name: 'Delivery',
-            category: 'primary',
-            processes: [
-                { name: 'Logistics', automated: 0.7, timeMinutes: 30 },
-                { name: 'Installation', automated: 0.2, timeMinutes: 180 },
-                { name: 'Training', automated: 0.3, timeMinutes: 120 },
-            ],
-        },
-        {
-            id: 'stage-5',
-            name: 'After-Sales',
-            category: 'support',
-            processes: [
-                { name: 'Customer Support', automated: 0.6, timeMinutes: 45 },
-                { name: 'Maintenance', automated: 0.4, timeMinutes: 90 },
-                { name: 'Feedback Collection', automated: 0.8, timeMinutes: 15 },
-            ],
-        },
-    ],
+// Stats from sample data
+const stats = {
+    stages: 5,
+    processes: 17,
+    automation: 52,
+    agents: 3,
 };
 
-export default function ValueChainPage() {
-    const [selectedStage, setSelectedStage] = useState<string | null>(null);
+interface WorkflowSnapshot {
+    id: string;
+    name: string;
+    nodes: Node[];
+    edges: Edge[];
+    createdAt: Date;
+}
 
-    const totalProcesses = sampleValueChain.stages.reduce((acc, s) => acc + s.processes.length, 0);
-    const avgAutomation = sampleValueChain.stages.reduce((acc, s) =>
-        acc + s.processes.reduce((a, p) => a + p.automated, 0) / s.processes.length, 0
-    ) / sampleValueChain.stages.length;
-    const totalTime = sampleValueChain.stages.reduce((acc, s) =>
-        acc + s.processes.reduce((a, p) => a + p.timeMinutes, 0), 0
-    );
+export default function ValueChainPage() {
+    const [view, setView] = useState<'whiteboard' | 'list' | 'compare'>('whiteboard');
+
+    // Workflow snapshots for comparison
+    const [snapshots, setSnapshots] = useState<WorkflowSnapshot[]>([]);
+    const [currentNodes, setCurrentNodes] = useState<Node[]>([]);
+    const [currentEdges, setCurrentEdges] = useState<Edge[]>([]);
+
+    // Comparison state
+    const [workflowA, setWorkflowA] = useState<WorkflowSnapshot | null>(null);
+    const [workflowB, setWorkflowB] = useState<WorkflowSnapshot | null>(null);
+    const [selectingSlot, setSelectingSlot] = useState<'A' | 'B' | null>(null);
+
+    // Save dialog
+    const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+    const [snapshotName, setSnapshotName] = useState('');
+
+    const handleSave = useCallback((nodes: Node[], edges: Edge[]) => {
+        setCurrentNodes(nodes);
+        setCurrentEdges(edges);
+        console.log('Workflow updated:', { nodes: nodes.length, edges: edges.length });
+    }, []);
+
+    const handleSaveSnapshot = () => {
+        if (!snapshotName.trim()) {
+            toast.error('Podaj nazwę snapshota');
+            return;
+        }
+
+        const newSnapshot: WorkflowSnapshot = {
+            id: `snapshot-${Date.now()}`,
+            name: snapshotName.trim(),
+            nodes: currentNodes,
+            edges: currentEdges,
+            createdAt: new Date(),
+        };
+
+        setSnapshots(prev => [...prev, newSnapshot]);
+        setSaveDialogOpen(false);
+        setSnapshotName('');
+        toast.success(`Snapshot "${newSnapshot.name}" zapisany`);
+    };
+
+    const handleDeleteSnapshot = (id: string) => {
+        setSnapshots(prev => prev.filter(s => s.id !== id));
+        if (workflowA?.id === id) setWorkflowA(null);
+        if (workflowB?.id === id) setWorkflowB(null);
+        toast.success('Snapshot usunięty');
+    };
+
+    const handleSelectWorkflow = (slot: 'A' | 'B') => {
+        setSelectingSlot(slot);
+    };
+
+    const handleWorkflowSelected = (snapshot: WorkflowSnapshot) => {
+        if (selectingSlot === 'A') {
+            setWorkflowA(snapshot);
+        } else if (selectingSlot === 'B') {
+            setWorkflowB(snapshot);
+        }
+        setSelectingSlot(null);
+    };
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex items-center justify-between"
+            >
                 <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-cyan-500/20 p-2">
+                    <div className="rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 p-3 border border-cyan-500/20">
                         <GitBranch className="h-6 w-6 text-cyan-400" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Value Chain</h1>
-                        <p className="text-sm text-muted-foreground">Process flow visualization</p>
+                        <p className="text-sm text-muted-foreground">Interactive process whiteboard</p>
                     </div>
                 </div>
-                <Button className="bg-cyan-600 hover:bg-cyan-700">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Map
-                </Button>
-            </div>
+                <div className="flex items-center gap-2">
+                    {/* View Toggle */}
+                    <div className="flex items-center rounded-lg border border-border bg-card/50 p-1">
+                        <button
+                            onClick={() => setView('whiteboard')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'whiteboard'
+                                ? 'bg-cyan-500/20 text-cyan-400'
+                                : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <Map className="h-4 w-4" />
+                            Whiteboard
+                        </button>
+                        <button
+                            onClick={() => setView('compare')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'compare'
+                                ? 'bg-cyan-500/20 text-cyan-400'
+                                : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <GitCompare className="h-4 w-4" />
+                            Porównaj
+                        </button>
+                        <button
+                            onClick={() => setView('list')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'list'
+                                ? 'bg-cyan-500/20 text-cyan-400'
+                                : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <LayoutGrid className="h-4 w-4" />
+                            Lista
+                        </button>
+                    </div>
+
+                    {/* Save Snapshot Button */}
+                    {view === 'whiteboard' && currentNodes.length > 0 && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setSaveDialogOpen(true)}
+                            className="gap-2"
+                        >
+                            <Save className="h-4 w-4" />
+                            Zapisz Snapshot
+                        </Button>
+                    )}
+
+                    <Button className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nowa Mapa
+                    </Button>
+                </div>
+            </motion.div>
 
             {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <div className="rounded-lg border border-border bg-card/50 p-4">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="grid gap-4 md:grid-cols-4"
+            >
+                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-cyan-500/30 transition-colors">
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Layers className="h-4 w-4" />
-                        <span className="text-sm">Stages</span>
+                        <span className="text-sm">Etapy</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-foreground">{sampleValueChain.stages.length}</p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">{stats.stages}</p>
                 </div>
-                <div className="rounded-lg border border-border bg-card/50 p-4">
+                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-blue-500/30 transition-colors">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                        <GitBranch className="h-4 w-4" />
-                        <span className="text-sm">Processes</span>
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm">Procesy</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-foreground">{totalProcesses}</p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">{stats.processes}</p>
                 </div>
-                <div className="rounded-lg border border-border bg-card/50 p-4">
+                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-purple-500/30 transition-colors">
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Bot className="h-4 w-4" />
-                        <span className="text-sm">Avg Automation</span>
+                        <span className="text-sm">Agenci AI</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-cyan-400">
-                        {Math.round(avgAutomation * 100)}%
-                    </p>
+                    <p className="mt-2 text-2xl font-bold text-purple-400">{stats.agents}</p>
                 </div>
-                <div className="rounded-lg border border-border bg-card/50 p-4">
+                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-emerald-500/30 transition-colors">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        <span className="text-sm">Total Time</span>
+                        <ArrowRightLeft className="h-4 w-4" />
+                        <span className="text-sm">Automatyzacja</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-foreground">
-                        {Math.round(totalTime / 60)}h
-                    </p>
+                    <p className="mt-2 text-2xl font-bold text-emerald-400">{stats.automation}%</p>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Value Chain Visualization */}
-            <div className="rounded-xl border border-border bg-card/50 p-6">
-                <h2 className="mb-6 text-lg font-semibold text-foreground">{sampleValueChain.name}</h2>
+            {/* Content */}
+            {view === 'whiteboard' && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                    <ValueChainWhiteboard onSave={handleSave} />
+                </motion.div>
+            )}
 
-                {/* Stages Flow */}
-                <div className="flex items-stretch gap-2 overflow-x-auto pb-4">
-                    {sampleValueChain.stages.map((stage, index) => (
-                        <div key={stage.id} className="flex items-center">
-                            <button
-                                onClick={() => setSelectedStage(selectedStage === stage.id ? null : stage.id)}
-                                className={`min-w-48 rounded-lg border p-4 transition-all hover:border-cyan-500/50 ${selectedStage === stage.id
-                                    ? 'border-cyan-500 bg-cyan-500/10'
-                                    : 'border-border bg-muted/50'
-                                    } ${stage.category === 'support' ? 'border-dashed' : ''}`}
-                            >
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-foreground">{stage.name}</span>
-                                    <Badge
-                                        variant="outline"
-                                        className={stage.category === 'primary'
-                                            ? 'border-cyan-500/30 text-cyan-400'
-                                            : 'border-neutral-600 text-neutral-400'
-                                        }
-                                    >
-                                        {stage.category}
-                                    </Badge>
-                                </div>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                    <span>{stage.processes.length} processes</span>
-                                </div>
-                                <div className="mt-2 h-2 rounded-full bg-muted">
+            {view === 'compare' && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-4"
+                >
+                    {/* Snapshots List */}
+                    {snapshots.length > 0 && (
+                        <div className="rounded-xl border border-border bg-card/50 p-4">
+                            <h3 className="font-medium mb-3 flex items-center gap-2">
+                                <Download className="h-4 w-4" />
+                                Zapisane Snapshoty ({snapshots.length})
+                            </h3>
+                            <div className="grid gap-2 md:grid-cols-3">
+                                {snapshots.map(snapshot => (
                                     <div
-                                        className="h-2 rounded-full bg-cyan-500"
-                                        style={{
-                                            width: `${(stage.processes.reduce((a, p) => a + p.automated, 0) / stage.processes.length) * 100}%`
-                                        }}
-                                    />
-                                </div>
-                            </button>
-                            {index < sampleValueChain.stages.length - 1 && (
-                                <ArrowRight className="mx-2 h-5 w-5 text-neutral-600 flex-shrink-0" />
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Selected Stage Details */}
-            {selectedStage && (
-                <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
-                    <div className="border-b border-border bg-card px-4 py-3">
-                        <h3 className="font-medium text-foreground">
-                            {sampleValueChain.stages.find(s => s.id === selectedStage)?.name} - Processes
-                        </h3>
-                    </div>
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-border">
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
-                                    Process
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
-                                    Automation Level
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
-                                    Time (avg)
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
-                                    Status
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sampleValueChain.stages
-                                .find(s => s.id === selectedStage)
-                                ?.processes.map((process) => (
-                                    <tr key={process.name} className="border-b border-border last:border-0">
-                                        <td className="px-4 py-3 font-medium text-foreground">{process.name}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-2 w-24 rounded-full bg-muted">
-                                                    <div
-                                                        className="h-2 rounded-full bg-cyan-500"
-                                                        style={{ width: `${process.automated * 100}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-sm text-muted-foreground">
-                                                    {Math.round(process.automated * 100)}%
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
-                                            {process.timeMinutes} min
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {process.automated >= 0.7 ? (
-                                                <Badge className="bg-green-500/20 text-green-400">Optimized</Badge>
-                                            ) : process.automated >= 0.4 ? (
-                                                <Badge className="bg-yellow-500/20 text-yellow-400">Partial</Badge>
-                                            ) : (
-                                                <Badge className="bg-red-500/20 text-red-400">Manual</Badge>
-                                            )}
-                                        </td>
-                                    </tr>
+                                        key={snapshot.id}
+                                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${selectingSlot
+                                            ? 'cursor-pointer hover:border-cyan-500/50 hover:bg-cyan-500/5'
+                                            : 'border-border'
+                                            } ${workflowA?.id === snapshot.id || workflowB?.id === snapshot.id
+                                                ? 'border-emerald-500/50 bg-emerald-500/5'
+                                                : ''
+                                            }`}
+                                        onClick={() => selectingSlot && handleWorkflowSelected(snapshot)}
+                                    >
+                                        <div>
+                                            <p className="font-medium text-sm">{snapshot.name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {snapshot.nodes.length} nodes • {new Date(snapshot.createdAt).toLocaleDateString('pl-PL')}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteSnapshot(snapshot.id);
+                                            }}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 ))}
-                        </tbody>
-                    </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Comparison View */}
+                    <ComparisonView
+                        workflowA={workflowA}
+                        workflowB={workflowB}
+                        onSelectWorkflow={handleSelectWorkflow}
+                        onClose={() => setView('whiteboard')}
+                    />
+
+                    {snapshots.length === 0 && (
+                        <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
+                            <GitCompare className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                            <h3 className="font-medium text-lg mb-2">Brak zapisanych snapshotów</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Wróć do Whiteboard, wprowadź zmiany i kliknij "Zapisz Snapshot" aby móc porównać wersje.
+                            </p>
+                            <Button onClick={() => setView('whiteboard')}>
+                                <Map className="h-4 w-4 mr-2" />
+                                Przejdź do Whiteboard
+                            </Button>
+                        </div>
+                    )}
+                </motion.div>
+            )}
+
+            {view === 'list' && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="rounded-xl border border-border bg-card/50 p-6"
+                >
+                    <ValueChainTable />
+                </motion.div>
+            )}
+
+            {/* Legend */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center justify-center gap-6 text-sm text-muted-foreground"
+            >
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-blue-500" />
+                    <span>Proces</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-emerald-500" />
+                    <span>SOP</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-purple-500" />
+                    <span>Agent</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-amber-500" />
+                    <span>Decyzja</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm border-2 border-cyan-500 bg-transparent" />
+                    <span>Handoff</span>
+                </div>
+            </motion.div>
+
+            {/* Save Snapshot Dialog */}
+            <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Zapisz Snapshot</DialogTitle>
+                        <DialogDescription>
+                            Nadaj nazwę tej wersji workflow aby móc później ją porównać z innymi.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Nazwa</Label>
+                            <Input
+                                id="name"
+                                placeholder="np. Wersja z AI, Optymalizacja kosztów..."
+                                value={snapshotName}
+                                onChange={(e) => setSnapshotName(e.target.value)}
+                            />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            Zapisujesz {currentNodes.length} elementów i {currentEdges.length} połączeń.
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+                            Anuluj
+                        </Button>
+                        <Button onClick={handleSaveSnapshot}>
+                            <Save className="h-4 w-4 mr-2" />
+                            Zapisz
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Selecting Workflow Info */}
+            {selectingSlot && (
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg">
+                    Wybierz snapshot dla Workflow {selectingSlot}
                 </div>
             )}
         </div>
     );
 }
+

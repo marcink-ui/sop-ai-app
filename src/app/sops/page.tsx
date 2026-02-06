@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
     FileText,
     Plus,
@@ -12,7 +13,10 @@ import {
     Edit,
     Eye,
     ArrowUpDown,
-    Play
+    Play,
+    Loader2,
+    Database,
+    HardDrive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,8 +37,24 @@ import {
 import { sopDb } from '@/lib/db';
 import type { SOP } from '@/lib/types';
 
+// Combined SOP type (can come from API or localStorage)
+interface DisplaySOP {
+    id: string;
+    title: string;
+    code?: string;
+    department: string;
+    role?: string;
+    status: string;
+    version: string;
+    date: string;
+    source: 'prisma' | 'local';
+}
+
 export default function SOPsPage() {
-    const [sops, setSops] = useState<SOP[]>([]);
+    const router = useRouter();
+    const [sops, setSops] = useState<DisplaySOP[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [dataSource, setDataSource] = useState<'prisma' | 'local' | 'mixed'>('local');
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [sortField, setSortField] = useState<'date' | 'name'>('date');
@@ -44,14 +64,79 @@ export default function SOPsPage() {
         loadSops();
     }, []);
 
-    const loadSops = () => {
-        const allSops = sopDb.getAll();
-        setSops(allSops);
+    const loadSops = async () => {
+        setIsLoading(true);
+        const displaySops: DisplaySOP[] = [];
+
+        // Try to fetch from Prisma API first
+        try {
+            const response = await fetch('/api/sops');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.sops && data.sops.length > 0) {
+                    data.sops.forEach((sop: Record<string, unknown>) => {
+                        displaySops.push({
+                            id: sop.id as string,
+                            title: sop.title as string,
+                            code: sop.code as string,
+                            department: (sop.department as Record<string, unknown>)?.name as string || 'N/A',
+                            role: sop.owner as string,
+                            status: String(sop.status || 'DRAFT').toLowerCase(),
+                            version: `v${sop.version || 1}`,
+                            date: new Date(sop.updatedAt as string).toLocaleDateString(),
+                            source: 'prisma',
+                        });
+                    });
+                    setDataSource('prisma');
+                }
+            }
+        } catch (error) {
+            console.log('API not available, falling back to localStorage');
+        }
+
+        // Also load from localStorage for backward compatibility
+        const localSops = sopDb.getAll();
+        if (localSops.length > 0) {
+            localSops.forEach((sop: SOP) => {
+                // Skip if already loaded from Prisma (by checking title/code match)
+                const alreadyExists = displaySops.some(
+                    (ds) => ds.title === sop.meta.process_name
+                );
+                if (!alreadyExists) {
+                    displaySops.push({
+                        id: sop.id,
+                        title: sop.meta.process_name,
+                        department: sop.meta.department,
+                        role: sop.meta.role,
+                        status: sop.status,
+                        version: sop.meta.version,
+                        date: sop.meta.updated_date || sop.meta.created_date,
+                        source: 'local',
+                    });
+                }
+            });
+            if (displaySops.some(s => s.source === 'prisma') && displaySops.some(s => s.source === 'local')) {
+                setDataSource('mixed');
+            } else if (displaySops.every(s => s.source === 'local')) {
+                setDataSource('local');
+            }
+        }
+
+        setSops(displaySops);
+        setIsLoading(false);
     };
 
-    const deleteSop = (id: string) => {
-        if (confirm('Are you sure you want to delete this SOP?')) {
-            sopDb.delete(id);
+    const deleteSop = async (id: string, source: 'prisma' | 'local') => {
+        if (confirm('Czy na pewno chcesz usunąć ten SOP?')) {
+            if (source === 'prisma') {
+                try {
+                    await fetch(`/api/sops/${id}`, { method: 'DELETE' });
+                } catch {
+                    console.error('Failed to delete from API');
+                }
+            } else {
+                sopDb.delete(id);
+            }
             loadSops();
         }
     };
@@ -59,20 +144,20 @@ export default function SOPsPage() {
     const filteredSops = sops
         .filter((sop) => {
             const matchesSearch =
-                sop.meta.process_name.toLowerCase().includes(search.toLowerCase()) ||
-                sop.meta.department.toLowerCase().includes(search.toLowerCase());
+                sop.title.toLowerCase().includes(search.toLowerCase()) ||
+                sop.department.toLowerCase().includes(search.toLowerCase());
             const matchesStatus = statusFilter === 'all' || sop.status === statusFilter;
             return matchesSearch && matchesStatus;
         })
         .sort((a, b) => {
             if (sortField === 'date') {
-                const dateA = new Date(a.meta.created_date).getTime();
-                const dateB = new Date(b.meta.created_date).getTime();
+                const dateA = new Date(a.date).getTime();
+                const dateB = new Date(b.date).getTime();
                 return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
             } else {
                 return sortOrder === 'asc'
-                    ? a.meta.process_name.localeCompare(b.meta.process_name)
-                    : b.meta.process_name.localeCompare(a.meta.process_name);
+                    ? a.title.localeCompare(b.title)
+                    : b.title.localeCompare(a.title);
             }
         });
 
@@ -190,16 +275,30 @@ export default function SOPsPage() {
                                     className="border-b border-border transition-colors hover:bg-muted/30 last:border-0"
                                 >
                                     <td className="px-4 py-4">
-                                        <span className="font-medium text-foreground">{sop.meta.process_name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-foreground">{sop.title}</span>
+                                            {sop.source === 'local' && (
+                                                <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-400">
+                                                    <HardDrive className="mr-1 h-3 w-3" />
+                                                    Local
+                                                </Badge>
+                                            )}
+                                            {sop.source === 'prisma' && (
+                                                <Badge variant="outline" className="text-xs border-green-500/30 text-green-400">
+                                                    <Database className="mr-1 h-3 w-3" />
+                                                    DB
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </td>
-                                    <td className="px-4 py-4 text-muted-foreground">{sop.meta.department}</td>
-                                    <td className="px-4 py-4 text-muted-foreground">{sop.meta.role}</td>
+                                    <td className="px-4 py-4 text-muted-foreground">{sop.department}</td>
+                                    <td className="px-4 py-4 text-muted-foreground">{sop.role || '-'}</td>
                                     <td className="px-4 py-4">
                                         <StatusBadge status={sop.status} />
                                     </td>
-                                    <td className="px-4 py-4 text-muted-foreground">{sop.meta.version}</td>
+                                    <td className="px-4 py-4 text-muted-foreground">{sop.version}</td>
                                     <td className="px-4 py-4 text-muted-foreground">
-                                        {new Date(sop.meta.created_date).toLocaleDateString('pl-PL')}
+                                        {sop.date}
                                     </td>
                                     <td className="px-4 py-4 text-right">
                                         <DropdownMenu>
@@ -209,24 +308,33 @@ export default function SOPsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="bg-popover border-border">
-                                                <DropdownMenuItem className="text-popover-foreground">
+                                                <DropdownMenuItem
+                                                    className="text-popover-foreground cursor-pointer"
+                                                    onClick={() => router.push(`/sops/${sop.id}`)}
+                                                >
                                                     <Eye className="mr-2 h-4 w-4" />
                                                     View
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-popover-foreground">
+                                                <DropdownMenuItem
+                                                    className="text-popover-foreground cursor-pointer"
+                                                    onClick={() => router.push(`/sops/${sop.id}/edit`)}
+                                                >
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     Edit
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-popover-foreground">
+                                                <DropdownMenuItem
+                                                    className="text-popover-foreground cursor-pointer"
+                                                    onClick={() => router.push(`/sops/${sop.id}/pipeline`)}
+                                                >
                                                     <Play className="mr-2 h-4 w-4" />
                                                     Continue Pipeline
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     className="text-red-400"
-                                                    onClick={() => deleteSop(sop.id)}
+                                                    onClick={() => deleteSop(sop.id, sop.source)}
                                                 >
                                                     <Trash2 className="mr-2 h-4 w-4" />
-                                                    Delete
+                                                    Usuń
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>

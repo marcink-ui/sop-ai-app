@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
     Bot,
     Search,
@@ -12,7 +13,8 @@ import {
     Eye,
     ArrowUpDown,
     Code,
-    Link2
+    Link2,
+    Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,9 +29,11 @@ import { agentDb, sopDb } from '@/lib/db';
 import type { AgentSpec, SOP } from '@/lib/types';
 
 export default function AgentsPage() {
+    const router = useRouter();
     const [agents, setAgents] = useState<AgentSpec[]>([]);
     const [sops, setSops] = useState<SOP[]>([]);
     const [search, setSearch] = useState('');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     useEffect(() => {
         setAgents(agentDb.getAll());
@@ -48,11 +52,19 @@ export default function AgentsPage() {
         }
     };
 
-    const filteredAgents = agents.filter((agent) =>
-        agent.agents.some(ma =>
-            ma.name.toLowerCase().includes(search.toLowerCase())
-        ) || getSopName(agent.sop_id).toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredAgents = agents
+        .filter((agent) =>
+            agent.agents.some(ma =>
+                ma.name.toLowerCase().includes(search.toLowerCase())
+            ) || getSopName(agent.sop_id).toLowerCase().includes(search.toLowerCase())
+        )
+        .sort((a, b) => {
+            const nameA = a.agents[0]?.name || '';
+            const nameB = b.agents[0]?.name || '';
+            return sortOrder === 'asc'
+                ? nameA.localeCompare(nameB)
+                : nameB.localeCompare(nameA);
+        });
 
     return (
         <div className="space-y-6">
@@ -67,6 +79,12 @@ export default function AgentsPage() {
                         <p className="text-sm text-muted-foreground">{agents.length} agent specs</p>
                     </div>
                 </div>
+                <Link href="/agents/new">
+                    <Button className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400">
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Agent
+                    </Button>
+                </Link>
             </div>
 
             {/* Filters */}
@@ -80,6 +98,15 @@ export default function AgentsPage() {
                         className="pl-9 bg-card border-border"
                     />
                 </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-border"
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                >
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
+                    {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                </Button>
             </div>
 
             {/* Table */}
@@ -158,16 +185,22 @@ export default function AgentsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="bg-popover border-border">
-                                                <DropdownMenuItem className="text-popover-foreground">
+                                                <DropdownMenuItem
+                                                    className="text-popover-foreground cursor-pointer"
+                                                    onClick={() => router.push(`/agents/${agent.id}`)}
+                                                >
                                                     <Eye className="mr-2 h-4 w-4" />
                                                     View
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-popover-foreground">
+                                                <DropdownMenuItem
+                                                    className="text-popover-foreground cursor-pointer"
+                                                    onClick={() => router.push(`/agents/${agent.id}/prompt`)}
+                                                >
                                                     <Code className="mr-2 h-4 w-4" />
                                                     View Prompt
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="text-red-400"
+                                                    className="text-red-400 cursor-pointer"
                                                     onClick={() => deleteAgent(agent.id)}
                                                 >
                                                     <Trash2 className="mr-2 h-4 w-4" />
