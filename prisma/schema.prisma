@@ -1,0 +1,796 @@
+// VantageOS Database Schema - Multi-Tenant Architecture
+// PostgreSQL with Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// AUTHENTICATION & MULTI-TENANT
+// ============================================================================
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logo        String?
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  users              User[]
+  sops               SOP[]
+  agents             Agent[]
+  mudaReports        MUDAReport[]
+  valueChainMaps     ValueChainMap[]
+  councilRequests    CouncilRequest[]
+  ontologyEntries    OntologyEntry[]
+  roles              OrganizationalRole[]
+  departments        Department[]
+  aiModelConfigs     AIModelConfig[]
+  
+  @@index([slug])
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  hashedPassword String?
+  image          String?
+  emailVerified  DateTime?
+  role           UserRole  @default(CITIZEN_DEV)
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  accounts                 Account[]
+  sessions                 Session[]
+  createdSOPs              SOP[]            @relation("CreatedBy")
+  updatedSOPs              SOP[]            @relation("UpdatedBy")
+  createdAgents            Agent[]          @relation("AgentCreatedBy")
+  mudaReports              MUDAReport[]     @relation("MUDACreatedBy")
+  councilVotes             CouncilVote[]
+  councilRequests          CouncilRequest[] @relation("CouncilRequestCreatedBy")
+  councilRequestsAssigned  CouncilRequest[] @relation("CouncilRequestAssignee")
+  chatSessions             ChatSession[]
+  comments                 Comment[]
+  pandasSent               PandaTransaction[] @relation("PandaSent")
+  pandasReceived           PandaTransaction[] @relation("PandaReceived")
+  resources                Resource[]       @relation("ResourceAuthor")
+  newsletters              Newsletter[]     @relation("NewsletterAuthor")
+  
+  @@index([organizationId])
+  @@index([email])
+}
+
+enum UserRole {
+  SPONSOR        // Zarząd - Full access
+  PILOT          // COO - KPIs, decision dashboard
+  MANAGER        // Manager Działu - Department-scoped
+  EXPERT         // Właściciel Wiedzy - SOP expert access
+  CITIZEN_DEV    // Citizen Devs - Innovation mode, read access
+}
+
+// ============================================================================
+// AI MODEL CONFIGURATION
+// ============================================================================
+
+enum AIProvider {
+  OPENAI
+  ANTHROPIC
+  OLLAMA
+  AZURE_OPENAI
+  LOCAL_LLM
+  GOOGLE
+}
+
+enum AIArea {
+  GENERAL        // Default for all interactions
+  SOP_CREATION   // SOP generation and editing
+  CHAT           // Chat assistant
+  ANALYSIS       // MUDA/ROI/Analytics
+  CONFIDENTIAL   // Force local only, no cloud
+}
+
+model AIModelConfig {
+  id             String       @id @default(cuid())
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Provider settings
+  provider       AIProvider   @default(OPENAI)
+  modelName      String       @default("gpt-4o-mini")
+  apiEndpoint    String?      // For Ollama: http://localhost:11434
+  apiKeyRef      String?      // Reference to secret manager or env var name
+  
+  // Routing rules
+  area           AIArea       @default(GENERAL)
+  priority       Int          @default(0)           // Higher = preferred
+  forceLocal     Boolean      @default(false)       // Must use local/on-premise
+  fallbackEnabled Boolean     @default(true)        // Can fallback to cloud if local unavailable
+  
+  // Status
+  isActive       Boolean      @default(true)
+  lastHealthCheck DateTime?
+  healthStatus   String?      @default("unknown")   // "healthy", "degraded", "offline"
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  
+  @@unique([organizationId, area, priority])
+  @@index([organizationId])
+  @@index([area, isActive])
+}
+
+model Department {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  users          User[]
+  sops           SOP[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@unique([organizationId, name])
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  
+  @@unique([identifier, token])
+}
+
+// ============================================================================
+// CORE BUSINESS ENTITIES
+// ============================================================================
+
+model SOP {
+  id          String    @id @default(cuid())
+  title       String
+  code        String    // e.g., "SOP-SALES-001"
+  version     String    @default("1.0")
+  status      SOPStatus @default(DRAFT)
+  
+  // Content
+  purpose     String?   @db.Text
+  scope       String?   @db.Text
+  definitions Json?     // Key-value definitions
+  steps       Json?     // Array of procedure steps
+  kpis        Json?     // KPI definitions
+  
+  // Metadata
+  owner       String?
+  reviewer    String?
+  approvedBy  String?
+  approvedAt  DateTime?
+  
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  
+  // Audit
+  createdById String
+  createdBy   User     @relation("CreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedBy", fields: [updatedById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  versions       SOPVersion[]
+  agents         AgentSOPConnection[]
+  valueChainNodes ValueChainNode[]
+  attachments    Attachment[]
+  comments       Comment[]
+  tags           Tag[]        @relation("SOPTags")
+  
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([status])
+}
+
+enum SOPStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  DEPRECATED
+  ARCHIVED
+}
+
+model SOPVersion {
+  id        String   @id @default(cuid())
+  version   String
+  content   Json     // Full SOP content snapshot
+  changelog String?  @db.Text
+  
+  sopId     String
+  sop       SOP      @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([sopId])
+}
+
+// ============================================================================
+// AI AGENTS
+// ============================================================================
+
+model Agent {
+  id          String      @id @default(cuid())
+  name        String
+  code        String      // e.g., "AGENT-001"
+  type        AgentType   @default(ASSISTANT)
+  status      AgentStatus @default(ACTIVE)
+  
+  // Configuration
+  description   String?   @db.Text
+  masterPrompt  String?   @db.Text
+  model         String?   // e.g., "gpt-4", "claude-3"
+  temperature   Float?
+  tools         Json?     // Array of tool configurations
+  integrations  Json?     // Supported integrations (Slack, Teams, etc.)
+  
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdById String
+  createdBy   User     @relation("AgentCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  sops        AgentSOPConnection[]
+  valueChainNodes ValueChainNode[]
+  
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+enum AgentType {
+  ASSISTANT
+  SPECIALIST
+  ORCHESTRATOR
+  VALIDATOR
+}
+
+enum AgentStatus {
+  ACTIVE
+  INACTIVE
+  TESTING
+  DEPRECATED
+}
+
+model AgentSOPConnection {
+  id      String @id @default(cuid())
+  
+  agentId String
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  sopId   String
+  sop     SOP    @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  
+  role    String? // e.g., "primary", "fallback", "validator"
+  
+  @@unique([agentId, sopId])
+}
+
+// ============================================================================
+// AI CHAT HISTORIA
+// ============================================================================
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  title     String
+  context   Json?    // Przechowuje kontekst: strona, SOP, rola, etc.
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  messages  ChatMessage[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String   // "user", "assistant", "system"
+  content   String   @db.Text
+  metadata  Json?    // Dodatkowe info: tokeny, użyte narzędzia
+  
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([sessionId])
+}
+
+// ============================================================================
+// MUDA REPORTS (Waste Analysis)
+// ============================================================================
+
+model MUDAReport {
+  id          String          @id @default(cuid())
+  title       String
+  status      MUDAStatus      @default(OPEN)
+  priority    MUDAPriority    @default(MEDIUM)
+  
+  // Content
+  description     String?    @db.Text
+  currentState    String?    @db.Text
+  proposedState   String?    @db.Text
+  findings        Json?      // Array of findings
+  recommendations Json?      // Array of recommendations
+  
+  // Impact
+  estimatedSavings   Float?
+  savingsUnit        String?  // e.g., "PLN/month", "hours/week"
+  implementationCost Float?
+  
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdById String
+  createdBy   User     @relation("MUDACreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  attachments Attachment[]
+  
+  @@index([organizationId])
+  @@index([status])
+}
+
+enum MUDAStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+  ARCHIVED
+}
+
+enum MUDAPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ============================================================================
+// VALUE CHAIN
+// ============================================================================
+
+model ValueChainMap {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  layout      Json?    // React Flow viewport/layout state
+  
+  // Context fields (added Phase 38E)
+  segment     String?  // e.g., "B2B", "B2C", "Internal"
+  product     String?  // e.g., "Main Product", "Service Line A"
+  startPoint  String?  // Entry point of the value chain
+  endPoint    String?  // Exit point/outcome of the value chain
+  isTemplate  Boolean  @default(false) // Can be reused as template
+  
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  nodes ValueChainNode[]
+  edges ValueChainEdge[]
+  
+  @@index([organizationId])
+  @@index([segment])
+}
+
+model ValueChainNode {
+  id          String   @id @default(cuid())
+  type        String   // e.g., "process", "decision", "handoff"
+  label       String
+  description String?  @db.Text
+  
+  // Position (React Flow)
+  positionX   Float    @default(0)
+  positionY   Float    @default(0)
+  width       Float?
+  height      Float?
+  
+  // Styling
+  style       Json?
+  data        Json?    // Additional node data
+  
+  mapId       String
+  map         ValueChainMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  
+  // Connections to SOPs and Agents
+  sopId       String?
+  sop         SOP?     @relation(fields: [sopId], references: [id])
+  
+  agentId     String?
+  agent       Agent?   @relation(fields: [agentId], references: [id])
+  
+  // Edges
+  sourceEdges ValueChainEdge[] @relation("SourceNode")
+  targetEdges ValueChainEdge[] @relation("TargetNode")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([mapId])
+}
+
+model ValueChainEdge {
+  id          String   @id @default(cuid())
+  type        String?  // e.g., "default", "animated", "smoothstep"
+  label       String?
+  
+  mapId       String
+  map         ValueChainMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  
+  sourceId    String
+  source      ValueChainNode @relation("SourceNode", fields: [sourceId], references: [id], onDelete: Cascade)
+  
+  targetId    String
+  target      ValueChainNode @relation("TargetNode", fields: [targetId], references: [id], onDelete: Cascade)
+  
+  style       Json?
+  
+  @@unique([mapId, sourceId, targetId])
+}
+
+// ============================================================================
+// COUNCIL
+// ============================================================================
+
+model CouncilRequest {
+  id          String              @id @default(cuid())
+  title       String
+  type        CouncilRequestType
+  status      CouncilRequestStatus @default(PENDING)
+  priority    MUDAPriority        @default(MEDIUM)
+  
+  // Content
+  description String?   @db.Text
+  rationale   String?   @db.Text
+  impact      String?   @db.Text
+  
+  // Assignment (Plane-style)
+  assigneeId  String?
+  assignee    User?     @relation("CouncilRequestAssignee", fields: [assigneeId], references: [id])
+  dueDate     DateTime?
+  module      String?   // e.g., "SOPs", "Agents", "Processes", "Infrastructure"
+  labels      String[]  // Custom labels
+  
+  // Voting results
+  votingDeadline DateTime?
+  
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdById String
+  createdBy   User     @relation("CouncilRequestCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  votes       CouncilVote[]
+  
+  @@index([organizationId])
+  @@index([status])
+  @@index([assigneeId])
+}
+
+enum CouncilRequestType {
+  NEW_SOP
+  SOP_CHANGE
+  NEW_AGENT
+  PROCESS_CHANGE
+  BUDGET_REQUEST
+  OTHER
+}
+
+enum CouncilRequestStatus {
+  PENDING
+  VOTING
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+  WITHDRAWN
+}
+
+model CouncilVote {
+  id        String           @id @default(cuid())
+  decision  VoteDecision
+  comment   String?          @db.Text
+  
+  requestId String
+  request   CouncilRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([requestId, userId])
+}
+
+enum VoteDecision {
+  APPROVE
+  REJECT
+  ABSTAIN
+}
+
+// ============================================================================
+// ONTOLOGY (formerly Syllabus)
+// ============================================================================
+
+model OntologyEntry {
+  id          String   @id @default(cuid())
+  term        String
+  category    String   // e.g., "Process", "Role", "Tool", "Metric"
+  
+  // Content
+  definition  String   @db.Text
+  context     String?  @db.Text
+  examples    Json?    // Array of usage examples
+  relatedTerms String[] // Array of related term IDs
+  
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([organizationId, term])
+  @@index([organizationId])
+  @@index([category])
+}
+
+// ============================================================================
+// ORGANIZATIONAL ROLES (RACI Matrix)
+// ============================================================================
+
+model OrganizationalRole {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  
+  // RACI assignments (stored as JSON for flexibility)
+  raciMatrix  Json?    // { sopId: { R: true, A: false, C: true, I: false } }
+  
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([organizationId, name])
+}
+
+// ============================================================================
+// SHARED/UTILITY MODELS
+// ============================================================================
+
+model Attachment {
+  id          String   @id @default(cuid())
+  filename    String
+  url         String
+  mimeType    String?
+  size        Int?
+  
+  sopId       String?
+  sop         SOP?     @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  
+  mudaId      String?
+  muda        MUDAReport? @relation(fields: [mudaId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  content     String   @db.Text
+  
+  sopId       String?
+  sop         SOP?     @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([sopId])
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+  color String?
+  
+  sops  SOP[]  @relation("SOPTags")
+}
+
+// ============================================================================
+// PANDA SYSTEM - PEER RECOGNITION
+// ============================================================================
+
+enum PandaCategory {
+  TEAMWORK        // Współpraca zespołowa
+  INNOVATION      // Innowacyjność
+  QUALITY         // Jakość pracy
+  LEADERSHIP      // Przywództwo
+  CUSTOMER_FOCUS  // Orientacja na klienta
+}
+
+model PandaTransaction {
+  id          String        @id @default(cuid())
+  fromUserId  String
+  toUserId    String
+  amount      Int           @default(1)
+  category    PandaCategory
+  message     String        @db.Text
+  
+  fromUser    User          @relation("PandaSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User          @relation("PandaReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  
+  organizationId String
+  
+  createdAt   DateTime      @default(now())
+  
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// RESOURCES HUB - WIKI, COURSES, NEWSLETTER
+// ============================================================================
+
+enum ResourceCategory {
+  WIKI          // Dokumentacja, how-to
+  ONBOARDING    // Materiały dla nowych pracowników
+  POLICY        // Regulaminy, procedury
+  GUIDE         // Poradniki
+  TEMPLATE      // Szablony
+}
+
+enum ResourceStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Resource {
+  id          String           @id @default(cuid())
+  title       String
+  slug        String
+  content     String           @db.Text
+  excerpt     String?
+  category    ResourceCategory
+  status      ResourceStatus   @default(DRAFT)
+  featured    Boolean          @default(false)
+  
+  authorId    String
+  author      User             @relation("ResourceAuthor", fields: [authorId], references: [id])
+  
+  organizationId String
+  
+  viewCount   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([category])
+  @@index([status])
+}
+
+model Course {
+  id          String      @id @default(cuid())
+  title       String
+  description String      @db.Text
+  thumbnail   String?
+  duration    Int         // minutes
+  level       CourseLevel
+  externalUrl String?
+  
+  organizationId String
+  createdAt   DateTime    @default(now())
+  
+  @@index([organizationId])
+}
+
+model Newsletter {
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @db.Text
+  publishedAt DateTime?
+  isPinned    Boolean   @default(false)
+  
+  authorId    String
+  author      User      @relation("NewsletterAuthor", fields: [authorId], references: [id])
+  
+  organizationId String
+  createdAt   DateTime  @default(now())
+  
+  @@index([organizationId])
+  @@index([publishedAt])
+}

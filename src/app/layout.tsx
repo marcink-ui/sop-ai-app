@@ -5,12 +5,14 @@ import { MainLayout } from '@/components/layout';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { UserProvider } from '@/context/UserContext';
+import { AuthProvider } from '@/components/auth/AuthProvider';
+import { ChatProvider } from '@/components/ai-chat';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SOP-AI | Transform SOPs into AI Agents',
-  description: 'Automate the transformation of Standard Operating Procedures into AI Agents using the VantageOS methodology.',
+  title: 'VantageOS | AI-Powered Business Transformation',
+  description: 'Transform SOPs into AI Agents using the Lean AI methodology. VantageOS - System Operacyjny Biznesu.',
 };
 
 export default function RootLayout({
@@ -21,23 +23,26 @@ export default function RootLayout({
   return (
     <html lang="pl" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <UserProvider>
-            <MainLayout>{children}</MainLayout>
-            <Toaster
-              position="bottom-right"
-              richColors
-              closeButton
-            />
-          </UserProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <UserProvider>
+              <ChatProvider>
+                <MainLayout>{children}</MainLayout>
+                <Toaster
+                  position="bottom-right"
+                  richColors
+                  closeButton
+                />
+              </ChatProvider>
+            </UserProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
 }
-

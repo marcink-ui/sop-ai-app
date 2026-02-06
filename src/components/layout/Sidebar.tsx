@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import {
     LayoutDashboard,
@@ -14,10 +15,17 @@ import {
     Scale,
     Plus,
     Settings,
+    Settings2,
     ChevronLeft,
     ChevronRight,
     Sparkles,
     Command,
+    BookOpen,
+    BarChart3,
+    MessageSquare,
+    Network,
+    Calculator,
+    Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -27,20 +35,52 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { useChat } from '@/components/ai-chat';
 
+// Role hierarchy for access control
+const ROLE_HIERARCHY = ['EMPLOYEE', 'CITIZEN_DEV', 'MANAGER', 'PILOT', 'SPONSOR'];
+
+// Check if user has minimum required role
+const hasMinRole = (userRole: string | undefined, minRole: string): boolean => {
+    if (!userRole) return false;
+    const userIndex = ROLE_HIERARCHY.indexOf(userRole);
+    const minIndex = ROLE_HIERARCHY.indexOf(minRole);
+    return userIndex >= minIndex;
+};
+
+// Restricted items require CITIZEN_DEV+ role
 const databases = [
-    { name: 'SOPs', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20' },
-    { name: 'AI Agents', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20' },
-    { name: 'MUDA Reports', href: '/muda', icon: Search, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-500/20' },
-    { name: 'Roles Registry', href: '/roles', icon: Users, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-500/20' },
-    { name: 'Value Chain', href: '/value-chain', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20' },
-    { name: 'Council', href: '/council', icon: Scale, color: 'text-amber-600 dark:text-yellow-400', bgColor: 'bg-amber-100 dark:bg-yellow-500/20' },
+    { name: 'SOPs', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Raporty MUDA', href: '/muda', icon: Search, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Rejestr Ról', href: '/roles', icon: Users, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Ontologia', href: '/ontology', icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Łańcuch Wartości', href: '/value-chain', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Graf Wiedzy', href: '/knowledge-graph', icon: Network, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-100 dark:bg-pink-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Canvas', href: '/canvas', icon: BarChart3, color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-100 dark:bg-sky-500/20', minRole: 'MANAGER' },
+    { name: 'ROI Calculator', href: '/roi-calculator', icon: Calculator, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'MANAGER' },
+    { name: 'Zadania', href: '/tasks', icon: LayoutDashboard, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Pandy 🐼', href: '/pandas', icon: Users, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Resources', href: '/resources', icon: BookOpen, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'EMPLOYEE' },
+    { name: 'Gamification 🎮', href: '/gamification', icon: Trophy, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'EMPLOYEE' },
+    // CITIZEN_DEV+ only items
+    { name: 'Historia AI', href: '/chat-library', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'CITIZEN_DEV' },
+    { name: 'Rada', href: '/council', icon: Scale, color: 'text-amber-600 dark:text-yellow-400', bgColor: 'bg-amber-100 dark:bg-yellow-500/20', minRole: 'CITIZEN_DEV' },
 ];
 
 export function Sidebar() {
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
+    const { toggleChat, isOpen: isChatOpen } = useChat();
+    const { data: session } = useSession();
+
+    const userRole = session?.user?.role;
+
+    // Filter databases by user role
+    const visibleDatabases = databases.filter(db => hasMinRole(userRole, db.minRole));
+
+    // Check if user can see advanced features
+    const canSeeAdvanced = hasMinRole(userRole, 'CITIZEN_DEV');
 
     return (
         <TooltipProvider delayDuration={0}>
@@ -64,7 +104,7 @@ export function Sidebar() {
                                     <Sparkles className="h-5 w-5 text-white" />
                                     <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
-                                <span className="font-semibold text-neutral-900 dark:text-white tracking-tight">SOP-AI</span>
+                                <span className="font-semibold text-neutral-900 dark:text-white tracking-tight">VantageOS</span>
                             </Link>
                         )}
                         {collapsed && (
@@ -79,7 +119,7 @@ export function Sidebar() {
                         <div className="mx-3 mt-3">
                             <button className="w-full flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors border-neutral-200 bg-neutral-50 text-neutral-500 hover:text-neutral-700 hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-500 dark:hover:text-neutral-400 dark:hover:border-neutral-700">
                                 <Search className="h-4 w-4" />
-                                <span className="flex-1 text-left">Quick search...</span>
+                                <span className="flex-1 text-left">Szybkie wyszukiwanie...</span>
                                 <kbd className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
                                     <Command className="h-3 w-3" />K
                                 </kbd>
@@ -89,13 +129,23 @@ export function Sidebar() {
 
                     {/* Navigation */}
                     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-                        {/* Dashboard */}
+                        {/* Pulpit */}
                         <NavItem
                             href="/"
                             icon={LayoutDashboard}
-                            label="Dashboard"
+                            label="Pulpit"
                             active={pathname === '/'}
                             collapsed={collapsed}
+                        />
+
+                        <NavItem
+                            href="/analytics"
+                            icon={BarChart3}
+                            label="Analityka"
+                            active={pathname === '/analytics'}
+                            collapsed={collapsed}
+                            iconColor="text-violet-600 dark:text-violet-400"
+                            iconBgColor="bg-violet-100 dark:bg-violet-500/20"
                         />
 
                         <Separator className="my-4 bg-neutral-200 dark:bg-neutral-800/50" />
@@ -103,11 +153,11 @@ export function Sidebar() {
                         {/* Databases Section */}
                         {!collapsed && (
                             <span className="mb-2 block px-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-600">
-                                Databases
+                                Bazy danych
                             </span>
                         )}
 
-                        {databases.map((db) => (
+                        {visibleDatabases.map((db) => (
                             <NavItem
                                 key={db.href}
                                 href={db.href}
@@ -134,26 +184,66 @@ export function Sidebar() {
                                 )}
                             >
                                 <Plus className="h-4 w-4" />
-                                {!collapsed && <span className="ml-2">New SOP</span>}
+                                {!collapsed && <span className="ml-2">Nowy SOP</span>}
                             </Button>
                         </Link>
                     </nav>
 
                     {/* Footer */}
                     <div className="border-t border-neutral-200 dark:border-neutral-800/50 p-3 space-y-2">
-                        {/* Theme Toggle */}
-                        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between px-2")}>
-                            {!collapsed && <span className="text-sm text-neutral-500 dark:text-neutral-400">Theme</span>}
-                            <ThemeToggle />
-                        </div>
+                        {/* AI Chat Toggle */}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={toggleChat}
+                                    className={cn(
+                                        'w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium transition-all',
+                                        isChatOpen
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
+                                            : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800/50 dark:hover:text-white',
+                                        collapsed && 'justify-center px-0'
+                                    )}
+                                >
+                                    <div className={cn(
+                                        'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                                        isChatOpen
+                                            ? 'bg-blue-200 dark:bg-blue-500/30'
+                                            : 'bg-neutral-100 dark:bg-neutral-800/50'
+                                    )}>
+                                        <MessageSquare className={cn(
+                                            'h-4 w-4',
+                                            isChatOpen
+                                                ? 'text-blue-600 dark:text-blue-400'
+                                                : 'text-neutral-500 dark:text-neutral-400'
+                                        )} />
+                                    </div>
+                                    {!collapsed && <span>Czat AI</span>}
+                                    {!collapsed && isChatOpen && (
+                                        <div className="ml-auto h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                    )}
+                                </Button>
+                            </TooltipTrigger>
+                            {collapsed && (
+                                <TooltipContent side="right" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white border-neutral-200 dark:border-neutral-800">
+                                    Czat AI
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
 
-                        <NavItem
-                            href="/settings"
-                            icon={Settings}
-                            label="Settings"
-                            active={pathname === '/settings'}
-                            collapsed={collapsed}
-                        />
+                        {/* Backoffice (Admin) - CITIZEN_DEV+ only */}
+                        {canSeeAdvanced && (
+                            <NavItem
+                                href="/backoffice"
+                                icon={Settings2}
+                                label="Backoffice"
+                                active={pathname.startsWith('/backoffice')}
+                                collapsed={collapsed}
+                                iconColor="text-violet-600 dark:text-violet-400"
+                                iconBgColor="bg-violet-100 dark:bg-violet-500/20"
+                            />
+                        )}
 
                         {/* Collapse Toggle */}
                         <Button
