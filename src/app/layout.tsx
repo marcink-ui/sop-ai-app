@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Outfit, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { MainLayout } from '@/components/layout';
 import { Toaster } from '@/components/ui/sonner';
@@ -9,7 +9,21 @@ import { UserProvider } from '@/context/UserContext';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { ChatProvider } from '@/components/ai-chat';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter'
+});
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-outfit'
+});
+
+const spaceMono = Space_Mono({
+  weight: ['400', '700'],
+  subsets: ['latin'],
+  variable: '--font-space-mono'
+});
 
 export const metadata: Metadata = {
   title: 'VantageOS | AI-Powered Business Transformation',
@@ -23,7 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${outfit.variable} ${spaceMono.variable} font-sans`}>
         <AuthProvider>
           <ThemeProvider
             attribute="class"

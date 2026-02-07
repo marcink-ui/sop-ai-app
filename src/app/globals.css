@@ -528,13 +528,67 @@ body {
 
 /* =============================================================================
    THEME STYLE OVERRIDES - Linear / Notion / Hero
+   Full Design System: Typography, Spacing, Shadows, Components
    ============================================================================= */
 
-/* LINEAR THEME - Clean, minimal, professional */
+/* -----------------------------------------------------------------------------
+   LINEAR THEME - Clean, minimal, professional (Inter font, compact spacing)
+   ----------------------------------------------------------------------------- */
 [data-theme-style="linear"] {
+  /* Accent Colors */
   --accent: #5e6ad2;
   --accent-hover: #4f5bc4;
   --radius: 6px;
+
+  /* Typography - Inter, dense, professional */
+  --font-sans: var(--font-inter), -apple-system, system-ui, sans-serif;
+  --font-heading: var(--font-inter), -apple-system, sans-serif;
+  --font-mono: var(--font-space-mono), 'JetBrains Mono', 'Fira Code', monospace;
+
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-lg: 15px;
+  --text-xl: 17px;
+  --text-2xl: 20px;
+  --text-3xl: 26px;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --font-weight-normal: 450;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* Spacing - 4px base, compact */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 12px;
+  --gap-lg: 16px;
+  --gap-xl: 24px;
+
+  /* Shadows - minimal */
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  /* Layout */
+  --sidebar-width: 220px;
+  --card-padding: 16px;
+  --content-max-width: 900px;
 }
 
 /* Linear Light Mode */
@@ -571,21 +625,88 @@ html.dark[data-theme-style="linear"] {
   --sidebar: oklch(0.08 0 0);
 }
 
+/* Linear Component Styles */
 [data-theme-style="linear"] .glass-card {
   border-radius: 6px;
   border-width: 1px;
+  box-shadow: var(--shadow-sm);
 }
 
 [data-theme-style="linear"] .btn-primary {
   border-radius: 6px;
   font-weight: 500;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-4);
 }
 
-/* NOTION THEME - Warm, blocky, serif-friendly */
+[data-theme-style="linear"] h1,
+[data-theme-style="linear"] h2,
+[data-theme-style="linear"] h3 {
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* -----------------------------------------------------------------------------
+   NOTION THEME - Warm, blocky, serif-friendly (System fonts, relaxed spacing)
+   ----------------------------------------------------------------------------- */
 [data-theme-style="notion"] {
+  /* Accent Colors */
   --accent: #eb5757;
   --accent-hover: #d64545;
   --radius: 3px;
+
+  /* Typography - System fonts, larger, more readable */
+  --font-sans: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-heading: -apple-system, 'Segoe UI', Helvetica, sans-serif;
+  --font-serif: 'Lyon-Text', Georgia, 'Times New Roman', serif;
+  --font-mono: var(--font-space-mono), 'iawriter-mono', 'Nitti', monospace;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+
+  --leading-tight: 1.3;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.7;
+
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* Spacing - 4px base, relaxed */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-8: 48px;
+  --space-10: 64px;
+
+  --gap-xs: 6px;
+  --gap-sm: 12px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+  --gap-xl: 32px;
+
+  --notion-indent: 27px;
+
+  /* Shadows - block-style, warm */
+  --shadow-xs: rgba(15, 15, 15, 0.02) 0 0 0 1px;
+  --shadow-sm: rgba(15, 15, 15, 0.03) 0 0 0 1px, rgba(15, 15, 15, 0.05) 0 2px 4px;
+  --shadow-md: rgba(15, 15, 15, 0.05) 0 0 0 1px, rgba(15, 15, 15, 0.1) 0 4px 12px;
+  --shadow-lg: rgba(15, 15, 15, 0.05) 0 0 0 1px, rgba(15, 15, 15, 0.15) 0 8px 24px;
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --card-padding: 20px;
+  --content-max-width: 720px;
 }
 
 /* Notion Light Mode */
@@ -613,29 +734,107 @@ html.dark[data-theme-style="notion"] {
   --bg-secondary: #252525;
   --bg-card: rgba(37, 37, 37, 0.95);
   --border-glass: rgba(255, 255, 255, 0.1);
+  --text-primary: #e6e6e6;
+  --text-secondary: #9b9b9b;
+  --text-muted: #6b6b6b;
   --background: oklch(0.14 0 0);
   --foreground: oklch(0.96 0 0);
   --card: oklch(0.18 0 0);
+  --sidebar: oklch(0.12 0 0);
 }
 
+/* Notion Component Styles */
 [data-theme-style="notion"] .glass-card {
   border-radius: 3px;
   backdrop-filter: none;
-  box-shadow: rgba(15, 15, 15, 0.05) 0px 0px 0px 1px,
-    rgba(15, 15, 15, 0.1) 0px 3px 6px;
+  box-shadow: var(--shadow-md);
 }
 
 [data-theme-style="notion"] .btn-primary {
   border-radius: 3px;
   font-weight: 500;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-4);
   text-transform: none;
 }
 
-/* HERO THEME - Vibrant, gradients, glow effects */
+[data-theme-style="notion"] h1 {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+[data-theme-style="notion"] h2 {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+}
+
+[data-theme-style="notion"] h3 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+/* -----------------------------------------------------------------------------
+   HERO THEME - Vibrant, gradients, glow effects (Outfit font, spacious)
+   ----------------------------------------------------------------------------- */
 [data-theme-style="hero"] {
+  /* Accent Colors */
   --accent: #8b5cf6;
   --accent-hover: #7c3aed;
   --radius: 12px;
+
+  /* Typography - Outfit, modern, dramatic */
+  --font-sans: var(--font-outfit), 'Inter', -apple-system, sans-serif;
+  --font-heading: var(--font-outfit), 'Inter', sans-serif;
+  --font-mono: var(--font-space-mono), 'JetBrains Mono', monospace;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+  --text-4xl: 48px;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+
+  --tracking-tight: -0.03em;
+  --tracking-normal: 0;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing - 8px base, spacious */
+  --space-1: 6px;
+  --space-2: 12px;
+  --space-3: 18px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 40px;
+  --space-8: 56px;
+  --space-10: 72px;
+
+  --gap-xs: 8px;
+  --gap-sm: 16px;
+  --gap-md: 24px;
+  --gap-lg: 32px;
+  --gap-xl: 48px;
+
+  /* Shadows - glow effects */
+  --shadow-xs: 0 1px 4px rgba(139, 92, 246, 0.05);
+  --shadow-sm: 0 2px 8px rgba(139, 92, 246, 0.1);
+  --shadow-md: 0 4px 20px rgba(139, 92, 246, 0.15);
+  --shadow-lg: 0 8px 40px rgba(139, 92, 246, 0.25);
+  --shadow-glow: 0 0 60px rgba(139, 92, 246, 0.3);
+
+  /* Layout */
+  --sidebar-width: 260px;
+  --card-padding: 24px;
+  --content-max-width: 1000px;
 }
 
 /* Hero Light Mode */
@@ -672,17 +871,21 @@ html.dark[data-theme-style="hero"] {
   --sidebar: oklch(0.1 0.02 280);
 }
 
+/* Hero Component Styles */
 [data-theme-style="hero"] .glass-card {
   border-radius: 16px;
   backdrop-filter: blur(20px);
   border: 1px solid rgba(139, 92, 246, 0.2);
-  box-shadow: 0 0 40px rgba(139, 92, 246, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 [data-theme-style="hero"] .btn-primary {
   border-radius: 12px;
   background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
   box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-2) var(--space-5);
 }
 
 [data-theme-style="hero"] .btn-primary:hover {
@@ -690,9 +893,68 @@ html.dark[data-theme-style="hero"] {
   transform: translateY(-2px);
 }
 
+[data-theme-style="hero"] h1 {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.1;
+}
+
+[data-theme-style="hero"] h2 {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+[data-theme-style="hero"] h3 {
+  font-size: var(--text-xl);
+  font-weight: var(--font-weight-medium);
+}
+
 /* Hero gradient backgrounds */
 [data-theme-style="hero"] .gradient-text {
   background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 50%, #10b981 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+[data-theme-style="hero"] .gradient-bg {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%);
+}
+
+/* =============================================================================
+   GLOBAL THEME UTILITIES - Apply design tokens to base elements
+   ============================================================================= */
+
+/* Apply font-family from theme */
+body {
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: var(--text-base, 14px);
+  line-height: var(--leading-normal, 1.5);
+  font-weight: var(--font-weight-normal, 450);
+}
+
+/* Headings use theme font */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading, var(--font-sans));
+  line-height: var(--leading-tight, 1.25);
+}
+
+/* Code blocks use mono font */
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.9em;
+}
+
+/* Cards use card padding */
+.card,
+[class*="glass-card"] {
+  padding: var(--card-padding, 16px);
 }
