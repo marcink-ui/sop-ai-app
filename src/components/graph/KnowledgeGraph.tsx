@@ -50,11 +50,11 @@ interface GraphData {
 // Obsidian-like color scheme
 const NODE_COLORS: Record<string, string> = {
     sop: '#f59e0b',
-    agent: '#8b5cf6',
+    agent: '#6366f1', // indigo (was violet)
     department: '#3b82f6',
     process: '#10b981',
-    user: '#6366f1',
-    ontology: '#ec4899', // Pink - słownik firmowy
+    user: '#8b5cf6',
+    ontology: '#ec4899', // pink - słownik firmowy
 };
 
 const NODE_SIZES: Record<string, number> = {
@@ -261,7 +261,7 @@ export default function KnowledgeGraph3D() {
                     <span>SOP (procedura)</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
-                    <Bot className="h-3 w-3 text-purple-500" />
+                    <Bot className="h-3 w-3 text-indigo-500" />
                     <span>Agent AI</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
@@ -276,8 +276,14 @@ export default function KnowledgeGraph3D() {
                     <div className="h-3 w-3 rounded-full bg-pink-500" />
                     <span>Ontologia</span>
                 </div>
-                <div className="mt-3 pt-2 border-t border-slate-700 text-slate-500 text-[10px]">
-                    Kliknij element aby otworzyć
+                <div className="mt-3 pt-2 border-t border-slate-700 text-slate-500 text-[10px] space-y-1">
+                    <div>Kliknij element aby otworzyć</div>
+                    <div className="flex items-center gap-1">
+                        <kbd className="px-1 py-0.5 bg-slate-800 rounded text-[9px]">↑↓←→</kbd>
+                        <span>Pan</span>
+                        <kbd className="px-1 py-0.5 bg-slate-800 rounded text-[9px] ml-1">+/-</kbd>
+                        <span>Zoom</span>
+                    </div>
                 </div>
             </div>
 

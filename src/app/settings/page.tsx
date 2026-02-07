@@ -10,6 +10,7 @@ import {
     Globe,
     Key,
     Plug,
+    Palette,
     ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,13 @@ const settingsTabs = [
         description: 'Dane osobowe i kontekst AI',
         icon: User,
         href: '/settings/profile'
+    },
+    {
+        id: 'style',
+        label: 'Styl interfejsu',
+        description: 'Linear / Notion / Hero',
+        icon: Palette,
+        href: '/settings/style'
     },
     {
         id: 'language',

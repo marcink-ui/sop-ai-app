@@ -4,6 +4,7 @@ import './globals.css';
 import { MainLayout } from '@/components/layout';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ThemeStyleProvider } from '@/components/theme/ThemeStyleProvider';
 import { UserProvider } from '@/context/UserContext';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { ChatProvider } from '@/components/ai-chat';
@@ -30,16 +31,18 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <UserProvider>
-              <ChatProvider>
-                <MainLayout>{children}</MainLayout>
-                <Toaster
-                  position="bottom-right"
-                  richColors
-                  closeButton
-                />
-              </ChatProvider>
-            </UserProvider>
+            <ThemeStyleProvider>
+              <UserProvider>
+                <ChatProvider>
+                  <MainLayout>{children}</MainLayout>
+                  <Toaster
+                    position="bottom-right"
+                    richColors
+                    closeButton
+                  />
+                </ChatProvider>
+              </UserProvider>
+            </ThemeStyleProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>
