@@ -16,7 +16,11 @@ import {
     Play,
     Loader2,
     Database,
-    HardDrive
+    HardDrive,
+    Building2,
+    User,
+    Calendar,
+    GitBranch
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +40,7 @@ import {
 } from '@/components/ui/select';
 import { sopDb } from '@/lib/db';
 import type { SOP } from '@/lib/types';
+import { DetailSheet, type DetailField } from '@/components/ui/detail-sheet';
 
 // Combined SOP type (can come from API or localStorage)
 interface DisplaySOP {
@@ -59,6 +64,13 @@ export default function SOPsPage() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [sortField, setSortField] = useState<'date' | 'name'>('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [selectedSop, setSelectedSop] = useState<DisplaySOP | null>(null);
+    const [sheetOpen, setSheetOpen] = useState(false);
+
+    const openSheet = (sop: DisplaySOP) => {
+        setSelectedSop(sop);
+        setSheetOpen(true);
+    };
 
     useEffect(() => {
         loadSops();
@@ -272,7 +284,8 @@ export default function SOPsPage() {
                             filteredSops.map((sop) => (
                                 <tr
                                     key={sop.id}
-                                    className="border-b border-border transition-colors hover:bg-muted/30 last:border-0"
+                                    className="border-b border-border transition-colors hover:bg-muted/50 last:border-0 cursor-pointer"
+                                    onClick={() => openSheet(sop)}
                                 >
                                     <td className="px-4 py-4">
                                         <div className="flex items-center gap-2">
@@ -345,6 +358,64 @@ export default function SOPsPage() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Detail Sheet */}
+            <DetailSheet
+                open={sheetOpen}
+                onClose={() => setSheetOpen(false)}
+                title={selectedSop?.title || ''}
+                subtitle={selectedSop?.code || selectedSop?.id}
+                icon={<FileText className="h-5 w-5 text-white" />}
+                iconColor="bg-blue-500"
+                fields={selectedSop ? [
+                    {
+                        label: 'Dział',
+                        value: selectedSop.department,
+                        icon: Building2,
+                        type: 'text',
+                        editable: true,
+                    },
+                    {
+                        label: 'Rola',
+                        value: selectedSop.role || 'Nie przypisano',
+                        icon: User,
+                        type: 'text',
+                        editable: true,
+                    },
+                    {
+                        label: 'Status',
+                        value: selectedSop.status,
+                        icon: GitBranch,
+                        type: 'badge',
+                    },
+                    {
+                        label: 'Wersja',
+                        value: selectedSop.version,
+                        icon: GitBranch,
+                        type: 'text',
+                    },
+                    {
+                        label: 'Data modyfikacji',
+                        value: selectedSop.date,
+                        icon: Calendar,
+                        type: 'date',
+                    },
+                    {
+                        label: 'Źródło danych',
+                        value: selectedSop.source === 'prisma' ? 'Baza danych' : 'Lokalne',
+                        icon: Database,
+                        type: 'badge',
+                    },
+                ] as DetailField[] : []}
+                onEdit={() => {
+                    setSheetOpen(false);
+                    router.push(`/sops/${selectedSop?.id}/edit`);
+                }}
+                onViewFull={() => {
+                    setSheetOpen(false);
+                    router.push(`/sops/${selectedSop?.id}`);
+                }}
+            />
         </div>
     );
 }

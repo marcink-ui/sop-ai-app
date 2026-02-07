@@ -30,6 +30,14 @@ import {
     Library,
     Newspaper,
     Code2,
+    Wrench,
+    ClipboardList,
+    Home,
+    Briefcase,
+    User,
+    GraduationCap,
+    History,
+    Lightbulb,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -61,60 +69,62 @@ interface NavItemData {
     minRole: string;
 }
 
-// Category definitions with items
+// NEW SIDEBAR STRUCTURE per user requirements
 const SIDEBAR_CATEGORIES = {
-    databases: {
-        label: 'Bazy Danych',
-        icon: FolderOpen,
+    mojaPraca: {
+        label: 'Moja Praca',
+        icon: Home,
         defaultOpen: true,
         items: [
-            { name: 'SOPs', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Analityka', href: '/analytics', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Pandy 🐼', href: '/pandas', icon: Trophy, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Historia AI', href: '/chat-library', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Mój kontekst', href: '/my-context', icon: User, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'EMPLOYEE' },
+        ] as NavItemData[],
+    },
+    procesSOP: {
+        label: 'Proces SOP',
+        icon: FileText,
+        defaultOpen: true,
+        items: [
+            { name: 'SOP', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'EMPLOYEE' },
             { name: 'Raporty MUDA', href: '/muda', icon: Search, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Rejestr Ról', href: '/roles', icon: Users, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Ontologia', href: '/ontology', icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'EMPLOYEE' },
-        ] as NavItemData[],
-    },
-    visualizations: {
-        label: 'Wizualizacje',
-        icon: Network,
-        defaultOpen: true,
-        items: [
-            { name: 'Łańcuch Wartości', href: '/value-chain', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'EMPLOYEE' },
             { name: 'Graf Wiedzy', href: '/knowledge-graph', icon: Network, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-100 dark:bg-pink-500/20', minRole: 'EMPLOYEE' },
-            { name: 'AI Canvas', href: '/canvas', icon: BarChart3, color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-100 dark:bg-sky-500/20', minRole: 'MANAGER' },
+            { name: 'Słownik', href: '/ontology', icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'EMPLOYEE' },
         ] as NavItemData[],
     },
-    tools: {
-        label: 'Narzędzia',
-        icon: Calculator,
-        defaultOpen: true,
-        items: [
-            { name: 'Kalkulator ROI', href: '/roi-calculator', icon: Calculator, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'MANAGER' },
-            { name: 'Zadania', href: '/tasks', icon: LayoutDashboard, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Pandy 🐼', href: '/pandas', icon: Users, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Gamification 🎮', href: '/gamification', icon: Trophy, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'EMPLOYEE' },
-        ] as NavItemData[],
-    },
-    resources: {
+    zasoby: {
         label: 'Zasoby',
-        icon: Library,
-        defaultOpen: true,
-        items: [
-            { name: 'Resources', href: '/resources', icon: BookOpen, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Wiki', href: '/resources/wiki', icon: Library, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Newsletter', href: '/resources/newsletter', icon: Newspaper, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-500/20', minRole: 'EMPLOYEE' },
-            { name: 'System Prompts', href: '/resources/prompts', icon: Code2, color: 'text-slate-600 dark:text-slate-400', bgColor: 'bg-slate-100 dark:bg-slate-500/20', minRole: 'CITIZEN_DEV' },
-        ] as NavItemData[],
-    },
-    management: {
-        label: 'Zarządzanie',
-        icon: Settings2,
+        icon: FolderOpen,
         defaultOpen: false,
         items: [
-            { name: 'Historia AI', href: '/chat-library', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Wiki', href: '/resources/wiki', icon: Library, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Newsletter', href: '/resources/newsletter', icon: Newspaper, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Prompty Systemowe', href: '/resources/prompts', icon: Code2, color: 'text-slate-600 dark:text-slate-400', bgColor: 'bg-slate-100 dark:bg-slate-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Kursy', href: '/courses', icon: GraduationCap, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Kaizen 💡', href: '/kaizen', icon: Lightbulb, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EMPLOYEE' },
+        ] as NavItemData[],
+    },
+    zarzadzanie: {
+        label: 'Zarządzanie',
+        icon: Briefcase,
+        defaultOpen: false,
+        items: [
             { name: 'Rada', href: '/council', icon: Scale, color: 'text-amber-600 dark:text-yellow-400', bgColor: 'bg-amber-100 dark:bg-yellow-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Kalkulator ROI', href: '/roi-calculator', icon: Calculator, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Rejestr Ról', href: '/roles', icon: Users, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Łańcuch Wartości', href: '/value-chain', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Historia Czat AI', href: '/chat-history-admin', icon: History, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Backoffice', href: '/backoffice', icon: Settings2, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
+        ] as NavItemData[],
+    },
+    metaAdmin: {
+        label: 'Meta Admin',
+        icon: Wrench,
+        defaultOpen: false,
+        items: [
+            { name: 'Panel Właściciela', href: '/meta-admin', icon: Wrench, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-500/20', minRole: 'SPONSOR' },
         ] as NavItemData[],
     },
 };
@@ -128,11 +138,11 @@ export function Sidebar() {
 
     // State for category expansion
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-        databases: true,
-        visualizations: true,
-        tools: true,
-        resources: true,
-        management: false,
+        mojaPraca: true,
+        procesSOP: true,
+        zasoby: false,
+        zarzadzanie: false,
+        metaAdmin: false,
     });
 
     const toggleCategory = (key: string) => {
@@ -184,7 +194,7 @@ export function Sidebar() {
 
                     {/* Navigation */}
                     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-                        {/* Dashboard */}
+                        {/* Pulpit - top level, always visible */}
                         <NavItem
                             href="/"
                             icon={LayoutDashboard}
@@ -192,14 +202,16 @@ export function Sidebar() {
                             active={pathname === '/'}
                             collapsed={collapsed}
                         />
+
+                        {/* Moje Zadania - top level, directly under Pulpit */}
                         <NavItem
-                            href="/analytics"
-                            icon={BarChart3}
-                            label="Analityka"
-                            active={pathname === '/analytics'}
+                            href="/tasks"
+                            icon={ClipboardList}
+                            label="Moje Zadania"
+                            active={pathname === '/tasks' || pathname.startsWith('/tasks/')}
                             collapsed={collapsed}
-                            iconColor="text-violet-600 dark:text-violet-400"
-                            iconBgColor="bg-violet-100 dark:bg-violet-500/20"
+                            iconColor="text-rose-600 dark:text-rose-400"
+                            iconBgColor="bg-rose-100 dark:bg-rose-500/20"
                         />
 
                         <Separator className="my-3 bg-neutral-200 dark:bg-neutral-800/50" />
@@ -209,24 +221,43 @@ export function Sidebar() {
                             const visibleItems = category.items.filter(item => hasMinRole(userRole, item.minRole));
                             if (visibleItems.length === 0) return null;
 
+                            // Collapsed mode: flat icon list
+                            if (collapsed) {
+                                return (
+                                    <div key={key} className="space-y-0.5">
+                                        {visibleItems.map((item) => (
+                                            <NavItem
+                                                key={item.href}
+                                                href={item.href}
+                                                icon={item.icon}
+                                                label={item.name}
+                                                active={pathname === item.href || pathname.startsWith(item.href + '/')}
+                                                collapsed={collapsed}
+                                                iconColor={item.color}
+                                                iconBgColor={item.bgColor}
+                                            />
+                                        ))}
+                                    </div>
+                                );
+                            }
+
+                            // Expanded mode: collapsible sections
                             return (
                                 <Collapsible
                                     key={key}
-                                    open={!collapsed && openCategories[key]}
-                                    onOpenChange={() => !collapsed && toggleCategory(key)}
+                                    open={openCategories[key]}
+                                    onOpenChange={() => toggleCategory(key)}
                                 >
-                                    {!collapsed ? (
-                                        <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-400 transition-colors">
-                                            <span className="flex items-center gap-2">
-                                                <category.icon className="h-3 w-3" />
-                                                {category.label}
-                                            </span>
-                                            <ChevronDown className={cn(
-                                                "h-3 w-3 transition-transform duration-200",
-                                                openCategories[key] ? "" : "-rotate-90"
-                                            )} />
-                                        </CollapsibleTrigger>
-                                    ) : null}
+                                    <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-400 transition-colors">
+                                        <span className="flex items-center gap-2">
+                                            <category.icon className="h-3 w-3" />
+                                            {category.label}
+                                        </span>
+                                        <ChevronDown className={cn(
+                                            "h-3 w-3 transition-transform duration-200",
+                                            openCategories[key] ? "" : "-rotate-90"
+                                        )} />
+                                    </CollapsibleTrigger>
 
                                     <CollapsibleContent className="space-y-0.5">
                                         {visibleItems.map((item) => (

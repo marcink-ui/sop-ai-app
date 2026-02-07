@@ -16,11 +16,13 @@ import {
     Save,
     Download,
     Trash2,
+    PanelLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ValueChainWhiteboard } from '@/components/value-chain/whiteboard';
 import { ComparisonView } from '@/components/value-chain/comparison-view';
 import { ValueChainTable } from '@/components/value-chain/ValueChainTable';
+import { ValueChainLibrary } from '@/components/value-chain/ValueChainLibrary';
 import { toast } from 'sonner';
 import {
     Dialog,
@@ -51,8 +53,8 @@ interface WorkflowSnapshot {
 
 export default function ValueChainPage() {
     const [view, setView] = useState<'whiteboard' | 'list' | 'compare'>('whiteboard');
-
-    // Workflow snapshots for comparison
+    const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
+    const [libraryOpen, setLibraryOpen] = useState(true);
     const [snapshots, setSnapshots] = useState<WorkflowSnapshot[]>([]);
     const [currentNodes, setCurrentNodes] = useState<Node[]>([]);
     const [currentEdges, setCurrentEdges] = useState<Edge[]>([]);
@@ -227,8 +229,46 @@ export default function ValueChainPage() {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
+                    className="flex gap-4"
                 >
-                    <ValueChainWhiteboard onSave={handleSave} />
+                    {/* Library Panel */}
+                    {libraryOpen && (
+                        <div className="w-64 flex-shrink-0 rounded-lg border border-border bg-card/50 overflow-hidden">
+                            <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
+                                <span className="text-sm font-medium">Biblioteka</span>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => setLibraryOpen(false)}
+                                >
+                                    <PanelLeft className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                            <ValueChainLibrary
+                                selectedId={selectedChainId}
+                                onSelect={setSelectedChainId}
+                            />
+                        </div>
+                    )}
+
+                    {/* Whiteboard */}
+                    <div className="flex-1 min-w-0">
+                        {!libraryOpen && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="mb-2"
+                                onClick={() => setLibraryOpen(true)}
+                            >
+                                <PanelLeft className="h-4 w-4 mr-2" />
+                                Biblioteka
+                            </Button>
+                        )}
+                        <ValueChainWhiteboard
+                            onSave={handleSave}
+                        />
+                    </div>
                 </motion.div>
             )}
 

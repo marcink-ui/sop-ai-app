@@ -6,7 +6,9 @@ import { PandaGiveCard } from '@/components/panda/PandaGiveCard';
 import { PandaFeed } from '@/components/panda/PandaFeed';
 import { PandaLeaderboard } from '@/components/panda/PandaLeaderboard';
 import { PandaStats } from '@/components/panda/PandaStats';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trophy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 interface User {
     id: string;
@@ -105,14 +107,22 @@ export default function PandasPage() {
     return (
         <div className="container mx-auto py-8 px-4 max-w-6xl space-y-8">
             {/* Header */}
-            <div className="flex items-center gap-3">
-                <span className="text-4xl">🐼</span>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Panda System</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Doceniaj kolegów i buduj kulturę wzajemnego uznania
-                    </p>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <span className="text-4xl">🐼</span>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Panda System</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Doceniaj kolegów i buduj kulturę wzajemnego uznania
+                        </p>
+                    </div>
                 </div>
+                <Link href="/gamification">
+                    <Button variant="outline" size="sm" className="gap-2">
+                        <Trophy className="h-4 w-4" />
+                        Gamification 🎮
+                    </Button>
+                </Link>
             </div>
 
             {/* Stats */}
