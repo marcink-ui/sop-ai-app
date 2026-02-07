@@ -34,6 +34,14 @@ model Organization {
   departments        Department[]
   aiModelConfigs     AIModelConfig[]
   
+  // ZenOS Transformation
+  transformationPhases TransformationPhase[]
+  workshopTypes        WorkshopType[]
+  eventTypes          EventType[]
+  
+  // Kaizen System
+  kaizenSuggestions   KaizenSuggestion[]
+  
   @@index([slug])
 }
 
@@ -71,6 +79,10 @@ model User {
   pandasReceived           PandaTransaction[] @relation("PandaReceived")
   resources                Resource[]       @relation("ResourceAuthor")
   newsletters              Newsletter[]     @relation("NewsletterAuthor")
+  
+  // Kaizen Suggestions
+  suggestionsSubmitted     KaizenSuggestion[] @relation("SuggestionsSubmitted")
+  suggestionsReviewed      KaizenSuggestion[] @relation("SuggestionsReviewed")
   
   @@index([organizationId])
   @@index([email])
@@ -146,6 +158,7 @@ model Department {
   
   users          User[]
   sops           SOP[]
+  agents         Agent[]      @relation("AgentDepartment")
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -294,11 +307,25 @@ model Agent {
   updatedAt   DateTime @updatedAt
   
   // Relations
-  sops        AgentSOPConnection[]
+  sops            AgentSOPConnection[]
   valueChainNodes ValueChainNode[]
+  tags            AgentTag[]
+  
+  // Department support
+  departmentId    String?
+  department      Department? @relation("AgentDepartment", fields: [departmentId], references: [id])
+  
+  // Category support
+  categoryId      String?
+  category        Category?   @relation("AgentCategory", fields: [categoryId], references: [id])
+  
+  // Lean AI Extensions
+  knowledgeBase   AgentKnowledgeDocument[]
+  versions        AgentVersion[]
   
   @@unique([organizationId, code])
   @@index([organizationId])
+  @@index([categoryId])
 }
 
 enum AgentType {
@@ -434,6 +461,12 @@ model ValueChainMap {
   endPoint    String?  // Exit point/outcome of the value chain
   isTemplate  Boolean  @default(false) // Can be reused as template
   
+  // Aggregated ROI (calculated from nodes)
+  totalTimeIntensity     Float?
+  totalCapitalIntensity  Float?
+  averageComplexity      Float?
+  automationScore        Float?   // % automation potential
+  
   // Multi-tenant
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -464,6 +497,21 @@ model ValueChainNode {
   // Styling
   style       Json?
   data        Json?    // Additional node data
+  
+  // ROI Metrics (0-10 scale)
+  timeIntensity       Float?    @default(5)  // Czasochłonność
+  capitalIntensity    Float?    @default(5)  // Kapitałochłonność  
+  complexity          Float?    @default(5)  // Złożoność
+  automationPotential Float?    @default(5)  // Potencjał automatyzacji
+  
+  // Additional ROI data
+  estimatedHours      Float?              // Szacowane godziny/tydzień
+  estimatedCostPLN    Float?              // Szacowany koszt PLN/miesiąc
+  currentFTE          Float?              // Aktualne FTE
+  
+  // AI Analysis
+  aiAnalysisResult    Json?               // Wynik analizy AI
+  lastAnalyzedAt      DateTime?           // Data ostatniej analizy
   
   mapId       String
   map         ValueChainMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
@@ -674,11 +722,90 @@ model Comment {
 }
 
 model Tag {
-  id    String @id @default(cuid())
-  name  String @unique
-  color String?
+  id          String @id @default(cuid())
+  name        String @unique
+  color       String?
+  description String? @db.Text
+  icon        String? // Lucide icon name
   
-  sops  SOP[]  @relation("SOPTags")
+  // Relations - Many-to-Many with various entities
+  sops        SOP[]      @relation("SOPTags")
+  agents      AgentTag[]
+  workshops   WorkshopTag[]
+  phases      TransformationPhaseTag[]
+}
+
+// Many-to-Many: Agent <-> Tag
+model AgentTag {
+  id       String @id @default(cuid())
+  agentId  String
+  tagId    String
+  agent    Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([agentId, tagId])
+  @@index([agentId])
+  @@index([tagId])
+}
+
+// Many-to-Many: WorkshopType <-> Tag
+model WorkshopTag {
+  id           String       @id @default(cuid())
+  workshopId   String
+  tagId        String
+  workshop     WorkshopType @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([workshopId, tagId])
+  @@index([workshopId])
+  @@index([tagId])
+}
+
+// Many-to-Many: TransformationPhase <-> Tag
+model TransformationPhaseTag {
+  id       String             @id @default(cuid())
+  phaseId  String
+  tagId    String
+  phase    TransformationPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  tag      Tag                 @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([phaseId, tagId])
+  @@index([phaseId])
+  @@index([tagId])
+}
+
+// ============================================================================
+// CATEGORY SYSTEM - FOR ORGANIZING ENTITIES
+// ============================================================================
+
+model Category {
+  id          String @id @default(cuid())
+  name        String
+  slug        String
+  description String? @db.Text
+  color       String?
+  icon        String? // Lucide icon name
+  order       Int     @default(0)
+  
+  // Polymorphic parent (optional hierarchy)
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  
+  // Multi-tenant
+  organizationId String
+  
+  // Relations to categorized entities
+  agents            Agent[]              @relation("AgentCategory")
+  workshopTypes     WorkshopType[]       @relation("WorkshopCategory")
+  eventTypes        EventType[]          @relation("EventCategory")
+  transformationPhases TransformationPhase[] @relation("PhaseCategory")
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([parentId])
 }
 
 // ============================================================================
@@ -711,6 +838,66 @@ model PandaTransaction {
   @@index([fromUserId])
   @@index([toUserId])
   @@index([organizationId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// KAIZEN SUGGESTION SYSTEM
+// ============================================================================
+
+enum SuggestionCategory {
+  APPLICATION      // Usprawnienia aplikacji -> Meta-admin review
+  COMPANY_PROCESS  // Usprawnienia procesów firmowych -> Citizen Dev+ analysis
+}
+
+enum SuggestionStatus {
+  PENDING          // Oczekuje na review
+  IN_REVIEW        // W trakcie analizy
+  APPROVED         // Zaakceptowane do wdrożenia
+  IMPLEMENTED      // Wdrożone (bonus Pandas)
+  REJECTED         // Odrzucone
+  ARCHIVED         // Zarchiwizowane
+}
+
+model KaizenSuggestion {
+  id              String             @id @default(cuid())
+  title           String             @db.VarChar(255)
+  description     String             @db.Text
+  category        SuggestionCategory
+  status          SuggestionStatus   @default(PENDING)
+  priority        Int                @default(3)  // 1-5, 1 = highest
+  
+  // Panda rewards tracking
+  submissionReward  Int              @default(10)   // Nagroda za zgłoszenie
+  implementReward   Int?                            // Bonus za wdrożenie (null = nie wdrożone)
+  
+  // Timestamps
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  reviewedAt      DateTime?
+  implementedAt   DateTime?
+  
+  // Feedback
+  reviewNote      String?            @db.Text       // Notatka reviewera
+  
+  // Relations
+  submitterId     String
+  submitter       User               @relation("SuggestionsSubmitted", fields: [submitterId], references: [id], onDelete: Cascade)
+  
+  reviewerId      String?
+  reviewer        User?              @relation("SuggestionsReviewed", fields: [reviewerId], references: [id])
+  
+  organizationId  String
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Optional: linked task/ticket after approval
+  linkedTaskId    String?
+  
+  @@index([submitterId])
+  @@index([reviewerId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([category])
   @@index([createdAt])
 }
 
@@ -793,4 +980,200 @@ model Newsletter {
   
   @@index([organizationId])
   @@index([publishedAt])
+}
+
+// ============================================================================
+// ZENOS - TRANSFORMATION MODULE (from Lean AI)
+// ============================================================================
+
+model WorkshopType {
+  id          String   @id @default(cuid())
+  slug        String   // "sprint-ai", "sop-ai", "ai-manager-canvas"
+  name        String   // "Sprint AI", "SOP AI"
+  description String?  @db.Text
+  duration    Int?     // Duration in hours
+  icon        String?  // Lucide icon name
+  color       String?  // Hex color for UI
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Category
+  categoryId  String?
+  category    Category? @relation("WorkshopCategory", fields: [categoryId], references: [id])
+  
+  // Relations
+  tasks       TransformationTask[]
+  tags        WorkshopTag[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([categoryId])
+}
+
+model EventType {
+  id          String   @id @default(cuid())
+  slug        String   // "konsultacje", "warsztaty", "szkolenie"
+  name        String   // "Konsultacje", "Warsztaty"
+  description String?  @db.Text
+  isAsync     Boolean  @default(false)  // Praca asynchroniczna vs synchroniczna
+  icon        String?  // Lucide icon name
+  color       String?  // Hex color for UI
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Category
+  categoryId  String?
+  category    Category? @relation("EventCategory", fields: [categoryId], references: [id])
+  
+  // Relations
+  tasks       TransformationTask[]
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([categoryId])
+}
+
+model TransformationPhase {
+  id          String   @id @default(cuid())
+  name        String   // "Pre-Work", "Faza 0", "Faza 1"
+  slug        String   // "pre-work", "faza-0", "faza-1"
+  order       Int      // Kolejność faz
+  description String?  @db.Text
+  isPrework   Boolean  @default(false)  // Flaga dla pre-work
+  icon        String?  // Lucide icon name
+  color       String?  // Hex color for UI
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Category
+  categoryId  String?
+  category    Category? @relation("PhaseCategory", fields: [categoryId], references: [id])
+  
+  // Relations
+  tasks       TransformationTask[]
+  tags        TransformationPhaseTag[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([order])
+  @@index([categoryId])
+}
+
+enum TransformationTaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+  SKIPPED
+}
+
+model TransformationTask {
+  id          String   @id @default(cuid())
+  name        String   // Nazwa zadania
+  description String?  @db.Text  // DoD (Definition of Done)
+  order       Int      // Kolejność w fazie
+  
+  // Relationships to lookup tables
+  phaseId     String
+  phase       TransformationPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  
+  workshopTypeId String?
+  workshopType   WorkshopType? @relation(fields: [workshopTypeId], references: [id])
+  
+  eventTypeId String?
+  eventType   EventType? @relation(fields: [eventTypeId], references: [id])
+  
+  // Task metadata
+  assignedRoles   String[]  // Role zaangażowane w zadanie
+  estimatedHours  Float?    // Szacowany czas realizacji
+  
+  // Status tracking
+  status      TransformationTaskStatus @default(TODO)
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String?   @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([phaseId])
+  @@index([status])
+}
+
+// ============================================================================
+// AGENT EXTENSIONS (from Lean AI)
+// ============================================================================
+
+enum KnowledgeDocumentType {
+  PDF
+  URL
+  TEXT
+  VIDEO
+  DOCUMENT
+  SPREADSHEET
+}
+
+model AgentKnowledgeDocument {
+  id          String   @id @default(cuid())
+  name        String
+  type        KnowledgeDocumentType @default(TEXT)
+  
+  // Content (one of these should be filled)
+  content     String?  @db.Text  // For TEXT type
+  url         String?            // For URL, VIDEO types
+  fileUrl     String?            // For uploaded files (PDF, DOCUMENT)
+  
+  // Metadata
+  description String?  @db.Text
+  mimeType    String?
+  fileSize    Int?     // Size in bytes
+  
+  // Access control (maps to DB_Firma_Levels concept)
+  accessLevel String   @default("PUBLIC")  // "PUBLIC", "PARTNER", "MANAGEMENT", "SECRET"
+  
+  // Relation to Agent
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([agentId])
+  @@index([type])
+  @@index([accessLevel])
+}
+
+model AgentVersion {
+  id          String   @id @default(cuid())
+  version     String   // "1.0", "1.1", "2.0"
+  changelog   String?  @db.Text
+  
+  // Snapshot of agent configuration at this version
+  masterPrompt  String?   @db.Text
+  model         String?
+  temperature   Float?
+  tools         Json?
+  
+  // Status
+  isActive    Boolean  @default(false)  // Currently active version
+  
+  // Relation to Agent
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([agentId])
+  @@index([isActive])
 }
