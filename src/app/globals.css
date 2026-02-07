@@ -530,20 +530,43 @@ body {
    THEME STYLE OVERRIDES - Linear / Notion / Hero
    ============================================================================= */
 
-/* LINEAR THEME - Clean, minimal, dark-first */
+/* LINEAR THEME - Clean, minimal, professional */
 [data-theme-style="linear"] {
   --accent: #5e6ad2;
   --accent-hover: #4f5bc4;
   --radius: 6px;
 }
 
+/* Linear Light Mode */
+[data-theme-style="linear"]:not(.dark) body,
+html[data-theme-style="linear"]:not(.dark) {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --border-glass: rgba(0, 0, 0, 0.08);
+  --text-primary: #1a1a1f;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(1 0 0);
+  --sidebar: oklch(0.99 0 0);
+  --border: oklch(0.9 0 0);
+}
+
+/* Linear Dark Mode */
 [data-theme-style="linear"].dark,
-[data-theme-style="linear"] .dark {
+[data-theme-style="linear"] .dark,
+html.dark[data-theme-style="linear"] {
   --bg-primary: #000000;
   --bg-secondary: #1a1a1f;
   --bg-card: rgba(26, 26, 31, 0.9);
   --border-glass: rgba(255, 255, 255, 0.08);
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
   --background: oklch(0.08 0 0);
+  --foreground: oklch(0.96 0 0);
   --card: oklch(0.12 0 0);
   --sidebar: oklch(0.08 0 0);
 }
@@ -565,7 +588,9 @@ body {
   --radius: 3px;
 }
 
-[data-theme-style="notion"]:not(.dark) {
+/* Notion Light Mode */
+[data-theme-style="notion"]:not(.dark) body,
+html[data-theme-style="notion"]:not(.dark) {
   --bg-primary: #ffffff;
   --bg-secondary: #f7f6f3;
   --bg-card: rgba(255, 255, 255, 1);
@@ -574,19 +599,22 @@ body {
   --text-secondary: #787774;
   --text-muted: #9b9a97;
   --background: oklch(0.99 0.002 95);
-  --card: oklch(1 0 0);
   --foreground: oklch(0.25 0.02 85);
+  --card: oklch(1 0 0);
   --border: oklch(0.92 0.01 90);
   --sidebar: oklch(0.97 0.005 95);
 }
 
+/* Notion Dark Mode */
 [data-theme-style="notion"].dark,
-[data-theme-style="notion"] .dark {
+[data-theme-style="notion"] .dark,
+html.dark[data-theme-style="notion"] {
   --bg-primary: #191919;
   --bg-secondary: #252525;
   --bg-card: rgba(37, 37, 37, 0.95);
   --border-glass: rgba(255, 255, 255, 0.1);
   --background: oklch(0.14 0 0);
+  --foreground: oklch(0.96 0 0);
   --card: oklch(0.18 0 0);
 }
 
@@ -610,12 +638,38 @@ body {
   --radius: 12px;
 }
 
+/* Hero Light Mode */
+[data-theme-style="hero"]:not(.dark) body,
+html[data-theme-style="hero"]:not(.dark) {
+  --bg-primary: #fafafa;
+  --bg-secondary: #f3f0ff;
+  --bg-card: rgba(243, 240, 255, 0.8);
+  --border-glass: rgba(124, 58, 237, 0.12);
+  --text-primary: #1a1a2e;
+  --text-secondary: #4c4c6d;
+  --text-muted: #8080a0;
+  --background: oklch(0.98 0.01 280);
+  --foreground: oklch(0.18 0.02 280);
+  --card: oklch(0.97 0.015 280);
+  --sidebar: oklch(0.98 0.01 280);
+  --border: oklch(0.92 0.02 280);
+}
+
+/* Hero Dark Mode */
 [data-theme-style="hero"].dark,
-[data-theme-style="hero"] .dark {
+[data-theme-style="hero"] .dark,
+html.dark[data-theme-style="hero"] {
   --bg-primary: #0a0a0f;
   --bg-secondary: #12121a;
   --bg-card: rgba(30, 30, 45, 0.7);
   --border-glass: rgba(139, 92, 246, 0.15);
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0c0;
+  --text-muted: #6060a0;
+  --background: oklch(0.1 0.02 280);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.14 0.02 280);
+  --sidebar: oklch(0.1 0.02 280);
 }
 
 [data-theme-style="hero"] .glass-card {
