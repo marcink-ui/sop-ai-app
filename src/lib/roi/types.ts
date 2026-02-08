@@ -41,6 +41,14 @@ export interface Operation {
     efficiencyGain: number; // 0-1
     implementationDifficulty: number; // 1-10
 
+    // Automation & AI
+    automationPercent: number; // 0-100 - % of task automated
+    humanInLoopPercent: number; // 0-100 - % human oversight required
+
+    // Token/API Costs
+    tokenCostsEnabled: boolean;
+    tokenCosts: TokenCostConfig;
+
     // LOC (Lost Opportunity Cost)
     locEnabled: boolean;
     locActions: LOCAction[];
@@ -49,6 +57,14 @@ export interface Operation {
     // Hiring
     hiringEnabled: boolean;
     hiring: HiringData;
+}
+
+export interface TokenCostConfig {
+    monthlyApiCalls: number;
+    avgTokensPerCall: number;
+    inputPricePerMToken: number;  // per million input tokens
+    outputPricePerMToken: number; // per million output tokens
+    modelName: string; // e.g., 'GPT-4o', 'Claude 3.5'
 }
 
 export interface TransformationBreakdown {

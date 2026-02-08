@@ -11,6 +11,8 @@ import {
     Key,
     Plug,
     Palette,
+    Eye,
+    Coins,
     ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,6 +52,20 @@ const settingsTabs = [
         description: 'Tokeny dostępu do usług AI',
         icon: Key,
         href: '/settings/api-keys'
+    },
+    {
+        id: 'eye-tracking',
+        label: 'Eye Tracking',
+        description: 'Śledzenie wzroku dla badań UX',
+        icon: Eye,
+        href: '/settings/eye-tracking'
+    },
+    {
+        id: 'ai-costs',
+        label: 'AI Costs & Usage',
+        description: 'Monitoring kosztów i tokenów AI',
+        icon: Coins,
+        href: '/settings/ai-costs'
     }
 ];
 

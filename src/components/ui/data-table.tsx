@@ -36,6 +36,7 @@ import {
     Download,
     Check,
     Loader2,
+    Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -345,6 +346,7 @@ export function DataTable<T extends { id: string }>({
         direction: null,
     });
     const [filters, setFilters] = React.useState<FilterState>({});
+    const [globalFilter, setGlobalFilter] = React.useState('');
     const [visibleColumns, setVisibleColumns] = React.useState<Set<string>>(
         new Set(columns.map((c) => c.id))
     );
@@ -397,11 +399,23 @@ export function DataTable<T extends { id: string }>({
         });
     }, []);
 
-    // Process data: filter + sort
+    // Process data: global filter + column filters + sort
     const processedData = React.useMemo(() => {
         let result = [...data];
 
-        // Apply filters
+        // Apply global filter (search across all columns)
+        if (globalFilter.trim()) {
+            const searchTerm = globalFilter.toLowerCase().trim();
+            result = result.filter((row) => {
+                return columns.some((column) => {
+                    const value = getValue(row, column);
+                    if (value == null) return false;
+                    return String(value).toLowerCase().includes(searchTerm);
+                });
+            });
+        }
+
+        // Apply column-specific filters
         Object.entries(filters).forEach(([columnId, filterValue]) => {
             if (!filterValue) return;
             const column = columns.find((c) => c.id === columnId);
@@ -441,7 +455,7 @@ export function DataTable<T extends { id: string }>({
         }
 
         return result;
-    }, [data, filters, sortState, columns, getValue]);
+    }, [data, globalFilter, filters, sortState, columns, getValue]);
 
     // Export to CSV
     const exportToCSV = React.useCallback(() => {
@@ -480,8 +494,30 @@ export function DataTable<T extends { id: string }>({
     return (
         <div className={cn('space-y-4', className)}>
             {/* Toolbar */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 flex-1">
+                    {/* Global Search */}
+                    {filterable && (
+                        <div className="relative max-w-sm flex-1">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Szukaj we wszystkich kolumnach..."
+                                value={globalFilter}
+                                onChange={(e) => setGlobalFilter(e.target.value)}
+                                className="pl-8 h-9"
+                            />
+                            {globalFilter && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                                    onClick={() => setGlobalFilter('')}
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                        </div>
+                    )}
                     {activeFiltersCount > 0 && (
                         <Badge variant="secondary">
                             {activeFiltersCount} filtr

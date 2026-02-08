@@ -93,7 +93,7 @@ export function CustomFormulaWidget({
             id={`formula-widget-${formulaId}`}
             title={title}
             icon={<Calculator className="h-3.5 w-3.5" />}
-            size="md"
+            size="half"
             removable={!!onRemove}
             onRemove={onRemove}
             headerActions={

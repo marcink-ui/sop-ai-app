@@ -23,6 +23,7 @@ import {
     Key,
     Plug,
     Globe,
+    Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -222,294 +223,324 @@ export function HeaderBar({ onOpenChat }: HeaderBarProps) {
 
     return (
         <TooltipProvider>
-            <div className="flex items-center gap-1 sm:gap-2">
-                {/* Navigation Buttons */}
-                <div className="flex items-center gap-0.5">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={goBack}
-                                disabled={!canGoBack}
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                            >
-                                <ArrowLeft className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Wstecz (Alt+←)</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={goForward}
-                                disabled={!canGoForward}
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                            >
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Dalej (Alt+→)</TooltipContent>
-                    </Tooltip>
+            <div className="flex items-center justify-between w-full gap-4">
+                {/* Left Group: Navigation + Breadcrumbs */}
+                <div className="flex items-center gap-1 sm:gap-2">
+                    {/* Navigation Buttons */}
+                    <div className="flex items-center gap-0.5">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={goBack}
+                                    disabled={!canGoBack}
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Wstecz (Alt+←)</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={goForward}
+                                    disabled={!canGoForward}
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                >
+                                    <ArrowRight className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Dalej (Alt+→)</TooltipContent>
+                        </Tooltip>
+                    </div>
+
+                    {/* Breadcrumbs */}
+                    <Breadcrumb className="hidden md:flex ml-2" />
                 </div>
 
-                {/* Breadcrumbs */}
-                <Breadcrumb className="hidden md:flex ml-2" />
-                {/* Info Tooltip */}
-                <HoverCard openDelay={100} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                        >
-                            <Info className="h-4 w-4" />
-                        </Button>
-                    </HoverCardTrigger>
-                    <HoverCardContent align="end" className="w-96">
-                        <div className="space-y-3">
-                            <div>
-                                <h4 className="font-semibold text-base">{currentPage.title}</h4>
-                                <p className="text-sm text-muted-foreground">
-                                    {currentPage.description}
-                                </p>
-                            </div>
+                {/* Center Group: Search Bar Trigger */}
+                <div className="flex-1 flex justify-center max-w-xl mx-4">
+                    <button
+                        onClick={() => {
+                            // Trigger Command Palette by dispatching ⌘K event
+                            const event = new KeyboardEvent('keydown', {
+                                key: 'k',
+                                metaKey: true,
+                                ctrlKey: false,
+                                bubbles: true,
+                            });
+                            document.dispatchEvent(event);
+                        }}
+                        className="w-full max-w-md flex items-center gap-3 px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500 dark:text-neutral-400 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-white dark:hover:bg-neutral-800 transition-all group"
+                    >
+                        <Search className="h-4 w-4" />
+                        <span className="text-sm flex-1 text-left">Szukaj...</span>
+                        <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 bg-neutral-100 dark:bg-neutral-700 rounded group-hover:bg-neutral-200 dark:group-hover:bg-neutral-600 transition-colors">
+                            ⌘K
+                        </kbd>
+                    </button>
+                </div>
 
-                            {currentPage.howToUse && currentPage.howToUse.length > 0 && (
-                                <div className="pt-2 border-t">
-                                    <p className="text-xs font-medium text-muted-foreground mb-2">Jak używać:</p>
-                                    <ul className="space-y-1">
-                                        {currentPage.howToUse.map((step, i) => (
-                                            <li key={i} className="flex items-start gap-2 text-sm">
-                                                <span className="text-primary font-medium">{i + 1}.</span>
-                                                <span>{step}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                {/* Right Group: Actions */}
+                <div className="flex items-center gap-1 sm:gap-2">
+                    {/* Info Tooltip */}
+                    <HoverCard openDelay={100} closeDelay={100}>
+                        <HoverCardTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                            >
+                                <Info className="h-4 w-4" />
+                            </Button>
+                        </HoverCardTrigger>
+                        <HoverCardContent align="end" className="w-96">
+                            <div className="space-y-3">
+                                <div>
+                                    <h4 className="font-semibold text-base">{currentPage.title}</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        {currentPage.description}
+                                    </p>
                                 </div>
-                            )}
 
-                            {currentPage.tips && (
-                                <div className="flex items-start gap-2 pt-2 border-t text-xs text-muted-foreground bg-muted/50 rounded-md p-2 -mx-1">
-                                    <span className="text-amber-500">💡</span>
-                                    <span>{currentPage.tips}</span>
-                                </div>
-                            )}
-                        </div>
-                    </HoverCardContent>
-                </HoverCard>
+                                {currentPage.howToUse && currentPage.howToUse.length > 0 && (
+                                    <div className="pt-2 border-t">
+                                        <p className="text-xs font-medium text-muted-foreground mb-2">Jak używać:</p>
+                                        <ul className="space-y-1">
+                                            {currentPage.howToUse.map((step, i) => (
+                                                <li key={i} className="flex items-start gap-2 text-sm">
+                                                    <span className="text-primary font-medium">{i + 1}.</span>
+                                                    <span>{step}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
 
-                {/* Notifications Bell */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 relative text-muted-foreground hover:text-foreground"
-                        >
-                            <Bell className="h-4 w-4" />
-                            {unreadCount > 0 && (
-                                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] font-medium text-white flex items-center justify-center">
-                                    {unreadCount}
-                                </span>
-                            )}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-80">
-                        <DropdownMenuLabel className="flex items-center justify-between">
-                            <span>Powiadomienia</span>
-                            <div className="flex items-center gap-2">
-                                {unreadCount > 0 && (
-                                    <>
-                                        <Badge variant="secondary" className="text-xs">
-                                            {unreadCount} nowe
-                                        </Badge>
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                markAllAsRead();
-                                            }}
-                                            className="text-xs text-primary hover:underline"
-                                        >
-                                            Oznacz jako przeczytane
-                                        </button>
-                                    </>
+                                {currentPage.tips && (
+                                    <div className="flex items-start gap-2 pt-2 border-t text-xs text-muted-foreground bg-muted/50 rounded-md p-2 -mx-1">
+                                        <span className="text-amber-500">💡</span>
+                                        <span>{currentPage.tips}</span>
+                                    </div>
                                 )}
                             </div>
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {notifications.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-muted-foreground">
-                                Brak powiadomień
-                            </div>
-                        ) : (
-                            notifications.map((notification) => (
-                                <DropdownMenuItem
-                                    key={notification.id}
-                                    className="flex items-start gap-3 p-3 cursor-pointer"
-                                >
-                                    <div className="mt-0.5">
-                                        {getNotificationIcon(notification.type)}
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        <p className={`text-sm ${!notification.read ? 'font-medium' : ''}`}>
-                                            {notification.title}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {notification.description}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {notification.time}
-                                        </p>
-                                    </div>
-                                    {!notification.read && (
-                                        <div className="h-2 w-2 rounded-full bg-blue-500 mt-1" />
+                        </HoverCardContent>
+                    </HoverCard>
+
+                    {/* Notifications Bell */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 relative text-muted-foreground hover:text-foreground"
+                            >
+                                <Bell className="h-4 w-4" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] font-medium text-white flex items-center justify-center">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-80">
+                            <DropdownMenuLabel className="flex items-center justify-between">
+                                <span>Powiadomienia</span>
+                                <div className="flex items-center gap-2">
+                                    {unreadCount > 0 && (
+                                        <>
+                                            <Badge variant="secondary" className="text-xs">
+                                                {unreadCount} nowe
+                                            </Badge>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    markAllAsRead();
+                                                }}
+                                                className="text-xs text-primary hover:underline"
+                                            >
+                                                Oznacz jako przeczytane
+                                            </button>
+                                        </>
                                     )}
+                                </div>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {notifications.length === 0 ? (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                    Brak powiadomień
+                                </div>
+                            ) : (
+                                notifications.map((notification) => (
+                                    <DropdownMenuItem
+                                        key={notification.id}
+                                        className="flex items-start gap-3 p-3 cursor-pointer"
+                                    >
+                                        <div className="mt-0.5">
+                                            {getNotificationIcon(notification.type)}
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            <p className={`text-sm ${!notification.read ? 'font-medium' : ''}`}>
+                                                {notification.title}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {notification.description}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {notification.time}
+                                            </p>
+                                        </div>
+                                        {!notification.read && (
+                                            <div className="h-2 w-2 rounded-full bg-blue-500 mt-1" />
+                                        )}
+                                    </DropdownMenuItem>
+                                ))
+                            )}
+                            <DropdownMenuSeparator />
+                            <Link href="/notifications" className="block">
+                                <DropdownMenuItem className="justify-center text-sm text-muted-foreground cursor-pointer">
+                                    Zobacz wszystkie
+                                    <ChevronRight className="h-4 w-4 ml-1" />
                                 </DropdownMenuItem>
-                            ))
-                        )}
-                        <DropdownMenuSeparator />
-                        <Link href="/notifications" className="block">
-                            <DropdownMenuItem className="justify-center text-sm text-muted-foreground cursor-pointer">
-                                Zobacz wszystkie
-                                <ChevronRight className="h-4 w-4 ml-1" />
-                            </DropdownMenuItem>
-                        </Link>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                            </Link>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
-                {/* Chat AI Button */}
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onOpenChat}
-                    className="gap-2 text-muted-foreground hover:text-foreground"
-                >
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="hidden sm:inline">Chat AI</span>
-                </Button>
+                    {/* Chat AI Button */}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onOpenChat}
+                        className="gap-2 text-muted-foreground hover:text-foreground"
+                    >
+                        <MessageSquare className="h-4 w-4" />
+                        <span className="hidden sm:inline">Chat AI</span>
+                    </Button>
 
-                {/* User Avatar Dropdown */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage
-                                    src={session?.user?.image || undefined}
-                                    alt={session?.user?.name || 'User'}
-                                />
-                                <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs">
-                                    {session?.user?.name ? getInitials(session.user.name) : 'U'}
-                                </AvatarFallback>
-                            </Avatar>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                        {/* User Info */}
-                        <DropdownMenuLabel className="font-normal">
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10">
-                                    <AvatarImage src={session?.user?.image || undefined} />
-                                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+                    {/* User Avatar Dropdown */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage
+                                        src={session?.user?.image || undefined}
+                                        alt={session?.user?.name || 'User'}
+                                    />
+                                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs">
                                         {session?.user?.name ? getInitials(session.user.name) : 'U'}
                                     </AvatarFallback>
                                 </Avatar>
-                                <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium leading-none">
-                                        {session?.user?.name || 'Użytkownik'}
-                                    </p>
-                                    <p className="text-xs leading-none text-muted-foreground">
-                                        {session?.user?.email || 'demo@vantageos.io'}
-                                    </p>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                            {/* User Info */}
+                            <DropdownMenuLabel className="font-normal">
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10">
+                                        <AvatarImage src={session?.user?.image || undefined} />
+                                        <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+                                            {session?.user?.name ? getInitials(session.user.name) : 'U'}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex flex-col space-y-1">
+                                        <p className="text-sm font-medium leading-none">
+                                            {session?.user?.name || 'Użytkownik'}
+                                        </p>
+                                        <p className="text-xs leading-none text-muted-foreground">
+                                            {session?.user?.email || 'demo@vantageos.io'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            {/* Profile & Settings */}
+                            <DropdownMenuGroup>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/settings/profile" className="cursor-pointer">
+                                        <User className="mr-2 h-4 w-4" />
+                                        Profil
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/settings" className="cursor-pointer">
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        Ustawienia ogólne
+                                    </Link>
+                                </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                            <DropdownMenuSeparator />
+
+                            {/* Theme Toggle */}
+                            <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                                Motyw
+                            </DropdownMenuLabel>
+                            <div className="px-2 py-1.5">
+                                <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/50">
+                                    <button
+                                        onClick={() => {
+                                            document.documentElement.classList.remove('dark');
+                                            localStorage.setItem('theme', 'light');
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-background data-[active=true]:bg-background data-[active=true]:shadow-sm"
+                                        data-active={typeof window !== 'undefined' && !document.documentElement.classList.contains('dark')}
+                                    >
+                                        <Sun className="h-3.5 w-3.5" />
+                                        Jasny
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            document.documentElement.classList.add('dark');
+                                            localStorage.setItem('theme', 'dark');
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-background data-[active=true]:bg-background data-[active=true]:shadow-sm"
+                                        data-active={typeof window !== 'undefined' && document.documentElement.classList.contains('dark')}
+                                    >
+                                        <Moon className="h-3.5 w-3.5" />
+                                        Ciemny
+                                    </button>
                                 </div>
                             </div>
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
+                            <DropdownMenuSeparator />
 
-                        {/* Profile & Settings */}
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem asChild>
-                                <Link href="/settings/profile" className="cursor-pointer">
-                                    <User className="mr-2 h-4 w-4" />
-                                    Profil
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/settings" className="cursor-pointer">
-                                    <Settings className="mr-2 h-4 w-4" />
-                                    Ustawienia ogólne
-                                </Link>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
+                            {/* Additional Settings */}
+                            <DropdownMenuGroup>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/settings/api-keys" className="cursor-pointer">
+                                        <Key className="mr-2 h-4 w-4" />
+                                        Klucze API
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/settings/integrations" className="cursor-pointer">
+                                        <Plug className="mr-2 h-4 w-4" />
+                                        Integracje
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/settings/language" className="cursor-pointer">
+                                        <Globe className="mr-2 h-4 w-4" />
+                                        Język
+                                    </Link>
+                                </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                            <DropdownMenuSeparator />
 
-                        {/* Theme Toggle */}
-                        <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-                            Motyw
-                        </DropdownMenuLabel>
-                        <div className="px-2 py-1.5">
-                            <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/50">
-                                <button
-                                    onClick={() => {
-                                        document.documentElement.classList.remove('dark');
-                                        localStorage.setItem('theme', 'light');
-                                    }}
-                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-background data-[active=true]:bg-background data-[active=true]:shadow-sm"
-                                    data-active={typeof window !== 'undefined' && !document.documentElement.classList.contains('dark')}
-                                >
-                                    <Sun className="h-3.5 w-3.5" />
-                                    Jasny
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        document.documentElement.classList.add('dark');
-                                        localStorage.setItem('theme', 'dark');
-                                    }}
-                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-background data-[active=true]:bg-background data-[active=true]:shadow-sm"
-                                    data-active={typeof window !== 'undefined' && document.documentElement.classList.contains('dark')}
-                                >
-                                    <Moon className="h-3.5 w-3.5" />
-                                    Ciemny
-                                </button>
-                            </div>
-                        </div>
-                        <DropdownMenuSeparator />
-
-                        {/* Additional Settings */}
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem asChild>
-                                <Link href="/settings/api-keys" className="cursor-pointer">
-                                    <Key className="mr-2 h-4 w-4" />
-                                    Klucze API
-                                </Link>
+                            {/* Logout */}
+                            <DropdownMenuItem
+                                onClick={() => signOut({ callbackUrl: '/auth/login' })}
+                                className="text-red-600 focus:text-red-600 cursor-pointer"
+                            >
+                                <LogOut className="mr-2 h-4 w-4" />
+                                Wyloguj się
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/settings/integrations" className="cursor-pointer">
-                                    <Plug className="mr-2 h-4 w-4" />
-                                    Integracje
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/settings/language" className="cursor-pointer">
-                                    <Globe className="mr-2 h-4 w-4" />
-                                    Język
-                                </Link>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-
-                        {/* Logout */}
-                        <DropdownMenuItem
-                            onClick={() => signOut({ callbackUrl: '/auth/login' })}
-                            className="text-red-600 focus:text-red-600 cursor-pointer"
-                        >
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Wyloguj się
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
         </TooltipProvider>
     );

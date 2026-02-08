@@ -95,7 +95,7 @@ export function TasksWidget({ userId, limit = 5, onRemove }: TasksWidgetProps) {
             id="tasks-widget"
             title="Zadania"
             icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-            size="md"
+            size="half"
             removable={!!onRemove}
             onRemove={onRemove}
             headerActions={

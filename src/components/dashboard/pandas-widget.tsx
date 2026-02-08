@@ -61,7 +61,7 @@ export function PandasWidget({ userId, onRemove }: PandasWidgetProps) {
             id="pandas-widget"
             title="Twoje Pandy"
             icon={<span className="text-sm">🐼</span>}
-            size="sm"
+            size="third"
             removable={!!onRemove}
             onRemove={onRemove}
         >

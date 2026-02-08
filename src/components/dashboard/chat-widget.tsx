@@ -78,7 +78,7 @@ export function ChatWidget({ onRemove, onExpand }: ChatWidgetProps) {
             id="chat-widget"
             title="Chat AI"
             icon={<Sparkles className="h-3.5 w-3.5" />}
-            size="md"
+            size="half"
             removable={!!onRemove}
             onRemove={onRemove}
             headerActions={

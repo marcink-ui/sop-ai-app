@@ -1177,3 +1177,106 @@ model AgentVersion {
   @@index([agentId])
   @@index([isActive])
 }
+
+// ============================================================================
+// CUSTOM TABLE COLUMNS (Coda-like formula columns)
+// ============================================================================
+
+enum ColumnType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  MULTISELECT
+  FORMULA
+  AI_FORMULA     // @AI("natural language query")
+  LOOKUP
+  ROLLUP
+  CHECKBOX
+  URL
+  EMAIL
+  CURRENCY
+}
+
+enum ColumnApprovalStatus {
+  DRAFT           // Citizen Dev created, not yet submitted
+  PENDING         // Submitted for approval
+  APPROVED        // Approved by Citizen Dev+
+  REJECTED        // Rejected, needs revision
+}
+
+model CustomTableColumn {
+  id          String               @id @default(cuid())
+  name        String               // Column header name
+  slug        String               // Unique identifier within table
+  type        ColumnType           @default(TEXT)
+  
+  // Table context - which entity/view this column belongs to
+  entityType  String               // "SOP", "Agent", "MUDAReport", "ValueChainNode", etc.
+  viewId      String?              // Optional: specific view/table instance
+  
+  // Column configuration
+  width       Int?                 @default(150)
+  order       Int                  @default(0)
+  isVisible   Boolean              @default(true)
+  isLocked    Boolean              @default(false)    // Prevent editing by regular users
+  
+  // Formula configuration
+  formula     String?              @db.Text           // Formula string: SUM(column), @AI("query")
+  formulaConfig Json?                                 // Additional formula settings
+  
+  // Select/Multiselect options
+  options     Json?                                   // [{ value: "x", label: "X", color: "#fff" }]
+  
+  // Lookup/Rollup configuration  
+  lookupConfig Json?                                  // { table: "SOPs", field: "title", filter: {} }
+  
+  // Validation
+  isRequired  Boolean              @default(false)
+  validation  Json?                                   // { min: 0, max: 100, pattern: "regex" }
+  
+  // Approval workflow
+  approvalStatus ColumnApprovalStatus @default(DRAFT)
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectionNote  String?            @db.Text
+  
+  // Multi-tenant
+  organizationId String
+  
+  // Audit
+  createdById String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  
+  @@unique([organizationId, entityType, slug])
+  @@index([organizationId])
+  @@index([entityType])
+  @@index([approvalStatus])
+}
+
+// Custom column values storage (for formula-computed and custom fields)
+model CustomColumnValue {
+  id          String   @id @default(cuid())
+  
+  columnId    String   // Reference to CustomTableColumn
+  entityId    String   // ID of the entity row (SOP id, Agent id, etc.)
+  
+  // Value storage (one of these depending on type)
+  textValue   String?  @db.Text
+  numberValue Float?
+  dateValue   DateTime?
+  jsonValue   Json?               // For SELECT, MULTISELECT, arrays
+  boolValue   Boolean?
+  
+  // Computed formula result cache
+  computedAt  DateTime?
+  computeError String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([columnId, entityId])
+  @@index([columnId])
+  @@index([entityId])
+}

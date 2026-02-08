@@ -120,18 +120,10 @@ export const authOptions: NextAuthOptions = {
     debug: process.env.NODE_ENV === 'development',
 };
 
-// Role-based access control helpers
-export const roleHierarchy: Record<UserRole, number> = {
-    SPONSOR: 5,
-    PILOT: 4,
-    MANAGER: 3,
-    EXPERT: 2,
-    CITIZEN_DEV: 1,
-};
-
-export function hasMinimumRole(userRole: UserRole, requiredRole: UserRole): boolean {
-    return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
-}
+// Import and re-export client-safe role utilities from permissions module
+import { hasMinimumRole as _hasMinimumRole } from './auth/permissions';
+export { roleHierarchy, rolePermissions, hasPermission } from './auth/permissions';
+export const hasMinimumRole = _hasMinimumRole;
 
 export function canAccessDepartment(
     userRole: UserRole,
@@ -151,66 +143,3 @@ export function canAccessDepartment(
     // Experts and Citizen Devs - read access to all, but scoped writes
     return true;
 }
-
-// Permission matrix for different actions
-export const rolePermissions: Record<UserRole, {
-    canCreateSOP: boolean;
-    canApproveSOP: boolean;
-    canDeleteSOP: boolean;
-    canManageAgents: boolean;
-    canVoteCouncil: boolean;
-    canManageUsers: boolean;
-    canViewAnalytics: boolean;
-    canExportData: boolean;
-}> = {
-    SPONSOR: {
-        canCreateSOP: true,
-        canApproveSOP: true,
-        canDeleteSOP: true,
-        canManageAgents: true,
-        canVoteCouncil: true,
-        canManageUsers: true,
-        canViewAnalytics: true,
-        canExportData: true,
-    },
-    PILOT: {
-        canCreateSOP: true,
-        canApproveSOP: true,
-        canDeleteSOP: true,
-        canManageAgents: true,
-        canVoteCouncil: true,
-        canManageUsers: true,
-        canViewAnalytics: true,
-        canExportData: true,
-    },
-    MANAGER: {
-        canCreateSOP: true,
-        canApproveSOP: true,
-        canDeleteSOP: false,
-        canManageAgents: true,
-        canVoteCouncil: true,
-        canManageUsers: false,
-        canViewAnalytics: true,
-        canExportData: true,
-    },
-    EXPERT: {
-        canCreateSOP: true,
-        canApproveSOP: false,
-        canDeleteSOP: false,
-        canManageAgents: false,
-        canVoteCouncil: true,
-        canManageUsers: false,
-        canViewAnalytics: false,
-        canExportData: false,
-    },
-    CITIZEN_DEV: {
-        canCreateSOP: false,
-        canApproveSOP: false,
-        canDeleteSOP: false,
-        canManageAgents: false,
-        canVoteCouncil: false,
-        canManageUsers: false,
-        canViewAnalytics: false,
-        canExportData: false,
-    },
-};

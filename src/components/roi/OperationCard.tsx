@@ -23,6 +23,7 @@ import {
     Clock,
     TrendingUp,
     AlertTriangle,
+    DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Operation, Category, FrequencyUnit, TimeUnit } from '@/lib/roi/types';
@@ -231,6 +232,123 @@ export function OperationCard({ operation }: OperationCardProps) {
                             onCheckedChange={(v) => updateOperation(operation.id, { locEnabled: v })}
                         />
                     </div>
+
+                    {/* Row 5: Automation Levels */}
+                    <div className="space-y-4 p-4 border rounded-lg bg-purple-50/50 dark:bg-purple-950/20">
+                        <h4 className="font-medium flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-purple-500" />
+                            Poziom Automatyzacji
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm">Automatyzacja AI</Label>
+                                    <span className="font-bold text-purple-600">{operation.automationPercent}%</span>
+                                </div>
+                                <Slider
+                                    value={[operation.automationPercent ?? 70]}
+                                    onValueChange={([v]) => updateOperation(operation.id, { automationPercent: v })}
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm">Human-in-the-Loop</Label>
+                                    <span className="font-bold text-blue-600">{operation.humanInLoopPercent}%</span>
+                                </div>
+                                <Slider
+                                    value={[operation.humanInLoopPercent ?? 20]}
+                                    onValueChange={([v]) => updateOperation(operation.id, { humanInLoopPercent: v })}
+                                    min={0}
+                                    max={50}
+                                    step={5}
+                                    className="w-full"
+                                />
+                            </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Razem: {(operation.automationPercent ?? 70) + (operation.humanInLoopPercent ?? 20)}% |
+                            Manualne: {100 - (operation.automationPercent ?? 70) - (operation.humanInLoopPercent ?? 20)}%
+                        </p>
+                    </div>
+
+                    {/* Row 6: Token Costs */}
+                    <div className="flex items-center gap-3 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                        <DollarSign className="h-5 w-5 text-blue-500" />
+                        <div className="flex-1">
+                            <p className="font-medium">Koszty API / LLM</p>
+                            <p className="text-xs text-muted-foreground">Tokeny, modele AI, integracje</p>
+                        </div>
+                        <Switch
+                            checked={operation.tokenCostsEnabled}
+                            onCheckedChange={(v) => updateOperation(operation.id, { tokenCostsEnabled: v })}
+                        />
+                    </div>
+
+                    {operation.tokenCostsEnabled && operation.tokenCosts && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-blue-50/30 dark:bg-blue-950/10">
+                            <div className="space-y-2">
+                                <Label>Model LLM</Label>
+                                <Select
+                                    value={operation.tokenCosts.modelName}
+                                    onValueChange={(v) => updateOperation(operation.id, {
+                                        tokenCosts: {
+                                            ...operation.tokenCosts!,
+                                            modelName: v,
+                                            inputPricePerMToken: v === 'GPT-4o' ? 2.5 : v === 'GPT-4o-mini' ? 0.15 : v === 'Claude 3.5 Sonnet' ? 3 : 1,
+                                            outputPricePerMToken: v === 'GPT-4o' ? 10 : v === 'GPT-4o-mini' ? 0.6 : v === 'Claude 3.5 Sonnet' ? 15 : 5,
+                                        }
+                                    })}
+                                >
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="GPT-4o">GPT-4o ($2.5/$10 M)</SelectItem>
+                                        <SelectItem value="GPT-4o-mini">GPT-4o-mini ($0.15/$0.6 M)</SelectItem>
+                                        <SelectItem value="Claude 3.5 Sonnet">Claude 3.5 Sonnet ($3/$15 M)</SelectItem>
+                                        <SelectItem value="Custom">Custom</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Wywołania/mies.</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={operation.tokenCosts.monthlyApiCalls}
+                                    onChange={(e) => updateOperation(operation.id, {
+                                        tokenCosts: { ...operation.tokenCosts!, monthlyApiCalls: parseInt(e.target.value) || 0 }
+                                    })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Śr. tokenów/wywołanie</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={operation.tokenCosts.avgTokensPerCall}
+                                    onChange={(e) => updateOperation(operation.id, {
+                                        tokenCosts: { ...operation.tokenCosts!, avgTokensPerCall: parseInt(e.target.value) || 0 }
+                                    })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Koszt/rok (szac.)</Label>
+                                <div className="flex items-center h-10 px-3 border rounded-md bg-muted text-sm font-medium">
+                                    {formatCurrency((() => {
+                                        const tc = operation.tokenCosts!;
+                                        const annualCalls = tc.monthlyApiCalls * 12;
+                                        const totalTokens = annualCalls * tc.avgTokensPerCall;
+                                        const inputCost = (totalTokens * 0.7 / 1_000_000) * tc.inputPricePerMToken;
+                                        const outputCost = (totalTokens * 0.3 / 1_000_000) * tc.outputPricePerMToken;
+                                        return (inputCost + outputCost) * 4; // PLN conversion approx
+                                    })())}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Cost Summary */}
                     <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">

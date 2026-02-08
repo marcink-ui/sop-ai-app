@@ -24,6 +24,9 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
+import { ContextProgressBar } from './context-progress-bar';
+import { useTokenTracker } from './token-tracker-provider';
+import { estimateTokens } from '@/lib/ai/token-tracker';
 
 interface Message {
     id: string;
@@ -75,6 +78,9 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+    // Token tracking
+    const { track, updateContextTokens } = useTokenTracker();
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -135,6 +141,15 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
             if (!response.ok) throw new Error('Failed to get response');
 
             const data = await response.json();
+
+            // Track token usage (estimate)
+            const inputTokens = estimateTokens(content);
+            const outputTokens = estimateTokens(data.content || '');
+            track(inputTokens, outputTokens);
+
+            // Update total context
+            const totalTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0) + inputTokens + outputTokens;
+            updateContextTokens(totalTokens);
 
             const assistantMessage: Message = {
                 id: `assistant-${Date.now()}`,
@@ -255,6 +270,9 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
+
+                            {/* Token Progress Bar */}
+                            <ContextProgressBar variant="minimal" className="ml-2" />
                         </div>
 
                         {/* Context Banner */}

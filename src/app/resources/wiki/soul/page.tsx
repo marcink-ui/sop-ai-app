@@ -12,6 +12,11 @@ import {
     CheckCircle2,
     XCircle,
     BookOpen,
+    RefreshCw,
+    Layers,
+    Gauge,
+    Bot,
+    ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,16 +85,90 @@ const SOUL_DOCUMENT = {
         { name: 'Shotgun', emoji: '🔥', description: 'Sprint mode', style: 'Bezpośredni, konkretny' },
         { name: 'Party', emoji: '🎉', description: 'Celebracja', style: 'Entuzjastyczny, wspierający' },
     ],
+    isoa: {
+        name: 'ISOA',
+        fullName: 'Iterate, Simplify, Optimize, Automate',
+        description: 'Metodologia transformacji procesów biznesowych w 4 krokach',
+        steps: [
+            {
+                letter: 'I',
+                name: 'Iterate',
+                namePL: 'Iteruj',
+                icon: RefreshCw,
+                color: 'text-blue-500',
+                bgColor: 'bg-blue-50 dark:bg-blue-950',
+                description: 'Zacznij od małych kroków. Testuj, ucz się, poprawiaj.',
+                actions: [
+                    'Wybierz jeden proces pilotażowy',
+                    'Przeprowadź 2-tygodniowy sprint',
+                    'Zbierz feedback od użytkowników',
+                    'Dokumentuj wnioski i MUDA'
+                ]
+            },
+            {
+                letter: 'S',
+                name: 'Simplify',
+                namePL: 'Upraszczaj',
+                icon: Layers,
+                color: 'text-amber-500',
+                bgColor: 'bg-amber-50 dark:bg-amber-950',
+                description: 'Usuń zbędne kroki. Nie automatyzuj bałaganu.',
+                actions: [
+                    'Zmapuj obecny proces (Value Stream)',
+                    'Zidentyfikuj 7 typów MUDA',
+                    'Eliminuj niepotrzebne zatwierdzenia',
+                    'Standaryzuj nazewnictwo i formaty'
+                ]
+            },
+            {
+                letter: 'O',
+                name: 'Optimize',
+                namePL: 'Optymalizuj',
+                icon: Gauge,
+                color: 'text-emerald-500',
+                bgColor: 'bg-emerald-50 dark:bg-emerald-950',
+                description: 'Mierz i ulepszaj. Fokus na bottlenecki.',
+                actions: [
+                    'Zdefiniuj KPIs procesu',
+                    'Wdróż monitoring czasu/kosztów',
+                    'Usuń wąskie gardła (bottlenecks)',
+                    'Stwórz SOP z checklistami'
+                ]
+            },
+            {
+                letter: 'A',
+                name: 'Automate',
+                namePL: 'Automatyzuj',
+                icon: Bot,
+                color: 'text-violet-500',
+                bgColor: 'bg-violet-50 dark:bg-violet-950',
+                description: 'AI dopiero teraz. Automatyzuj uproszczony proces.',
+                actions: [
+                    'Wybierz AI-ready task (powtarzalny, jasny)',
+                    'Zbuduj agenta z kontrolą człowieka (HITL)',
+                    'Testuj na małej skali przed rollout',
+                    'Mierz ROI i oszczędności'
+                ]
+            }
+        ],
+        principles: [
+            'Nie automatyzuj bałaganu - najpierw uporządkuj',
+            '80/20 - skup się na 20% procesów dających 80% wartości',
+            'Human-in-the-loop - AI wspiera, człowiek decyduje',
+            'Małe iteracje > Wielkie transformacje'
+        ]
+    }
 };
 
 export default function SoulPage() {
-    const [activeTab, setActiveTab] = useState<'identity' | 'values' | 'boundaries' | 'modes'>('identity');
+    const [activeTab, setActiveTab] = useState<'identity' | 'values' | 'boundaries' | 'modes' | 'isoa'>('identity');
 
     const tabs = [
         { id: 'identity', label: 'Tożsamość', icon: Brain },
         { id: 'values', label: 'Wartości', icon: Heart },
         { id: 'boundaries', label: 'Granice', icon: Shield },
         { id: 'modes', label: 'Tryby', icon: Sparkles },
+        { id: 'isoa', label: 'ISOA', icon: RefreshCw },
     ] as const;
 
     return (
@@ -270,6 +349,83 @@ export default function SoulPage() {
                                     </CardContent>
                                 </Card>
                             ))}
+                        </div>
+                    )}
+
+                    {activeTab === 'isoa' && (
+                        <div className="space-y-8">
+                            {/* ISOA Header */}
+                            <Card className="bg-gradient-to-r from-blue-50 via-emerald-50 to-violet-50 dark:from-blue-950/30 dark:via-emerald-950/30 dark:to-violet-950/30">
+                                <CardContent className="pt-6">
+                                    <div className="text-center">
+                                        <h2 className="text-2xl font-bold mb-2">
+                                            {SOUL_DOCUMENT.isoa.fullName}
+                                        </h2>
+                                        <p className="text-muted-foreground">
+                                            {SOUL_DOCUMENT.isoa.description}
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* ISOA Steps */}
+                            <div className="grid md:grid-cols-4 gap-4">
+                                {SOUL_DOCUMENT.isoa.steps.map((step, idx) => {
+                                    const StepIcon = step.icon;
+                                    return (
+                                        <Card key={step.letter} className={cn('relative', step.bgColor)}>
+                                            <CardHeader className="pb-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={cn(
+                                                        'w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl',
+                                                        step.color,
+                                                        'bg-white dark:bg-neutral-900'
+                                                    )}>
+                                                        {step.letter}
+                                                    </div>
+                                                    <div>
+                                                        <CardTitle className="text-lg">{step.name}</CardTitle>
+                                                        <p className="text-sm text-muted-foreground">{step.namePL}</p>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <p className="text-sm mb-4">{step.description}</p>
+                                                <ul className="space-y-1">
+                                                    {step.actions.map((action, actionIdx) => (
+                                                        <li key={actionIdx} className="text-xs flex items-start gap-2">
+                                                            <ArrowRight className={cn('h-3 w-3 mt-0.5', step.color)} />
+                                                            {action}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </CardContent>
+                                            {idx < 3 && (
+                                                <div className="absolute -right-2 top-1/2 -translate-y-1/2 hidden md:block">
+                                                    <ChevronRight className="h-6 w-6 text-muted-foreground" />
+                                                </div>
+                                            )}
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Principles */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Zasady ISOA</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        {SOUL_DOCUMENT.isoa.principles.map((principle, idx) => (
+                                            <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                                                <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                                                <span className="text-sm font-medium">{principle}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     )}
                 </div>

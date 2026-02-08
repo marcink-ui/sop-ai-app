@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-export type WidgetSize = 'sm' | 'md' | 'lg' | 'full';
+export type WidgetSize = 'third' | 'half' | 'full';
 
 export interface WidgetContainerProps {
     id: string;
@@ -30,18 +30,18 @@ export interface WidgetContainerProps {
     onSizeChange?: (size: WidgetSize) => void;
 }
 
+// Size classes: 1/3 (third), 1/2 (half), 1/1 (full)
 const sizeClasses: Record<WidgetSize, string> = {
-    sm: 'col-span-1',
-    md: 'col-span-1 lg:col-span-2',
-    lg: 'col-span-1 lg:col-span-2 xl:col-span-3',
-    full: 'col-span-full',
+    third: 'col-span-1', // 1/3 on lg, 1/2 on md, full on sm
+    half: 'col-span-1 md:col-span-1 lg:col-span-2', // 1/2 on lg, 1/2 on md
+    full: 'col-span-full', // Full width
 };
 
 export function WidgetContainer({
     id,
     title,
     icon,
-    size = 'md',
+    size = 'third',
     children,
     removable = true,
     expandable = true,
@@ -129,14 +129,14 @@ export function WidgetContainer({
                             <DropdownMenuContent align="end">
                                 {onSizeChange && !isExpanded && (
                                     <>
-                                        <DropdownMenuItem onClick={() => onSizeChange('sm')}>
-                                            Mały
+                                        <DropdownMenuItem onClick={() => onSizeChange('third')}>
+                                            1/3 ekranu
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onSizeChange('md')}>
-                                            Średni
+                                        <DropdownMenuItem onClick={() => onSizeChange('half')}>
+                                            1/2 ekranu
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onSizeChange('lg')}>
-                                            Duży
+                                        <DropdownMenuItem onClick={() => onSizeChange('full')}>
+                                            1/1 ekranu (pełna szerokość)
                                         </DropdownMenuItem>
                                     </>
                                 )}

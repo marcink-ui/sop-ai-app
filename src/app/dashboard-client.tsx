@@ -14,13 +14,19 @@ import {
     Sparkles,
     ArrowUpRight,
     Zap,
-    Building2,
     TrendingUp,
+    Settings2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/ui/stat-card';
 import { DatabaseCard } from '@/components/ui/database-card';
 import { StatusBadge, RoleBadge } from '@/components/ui/status-badge';
+import { QuickTasksWidget } from '@/components/dashboard/quick-tasks-widget';
+import { useChat } from '@/components/ai-chat/chat-provider';
+import { DashboardEditProvider, useDashboardEdit } from '@/components/dashboard/dashboard-edit-provider';
+import { ChatHeroWidget } from '@/components/dashboard/chat-hero-widget';
+import { PandyWidget } from '@/components/dashboard/pandy-widget';
+import { WidgetContainer } from '@/components/dashboard/widget-container';
 
 interface DashboardClientProps {
     user: {
@@ -47,7 +53,16 @@ interface DashboardClientProps {
     }>;
 }
 
-export function DashboardClient({ user, stats, recentSops }: DashboardClientProps) {
+// Inner content component that uses the edit context
+function DashboardContent({ user, stats, recentSops }: DashboardClientProps) {
+    const { openChat } = useChat();
+    const { isEditMode, toggleEditMode, widgets, updateWidget, hideWidget } = useDashboardEdit();
+
+    // Get widget config by ID
+    const getWidgetConfig = (id: string) => widgets.find(w => w.id === id);
+    const isWidgetVisible = (id: string) => getWidgetConfig(id)?.visible ?? true;
+    const getWidgetSize = (id: string) => getWidgetConfig(id)?.size ?? 'full';
+
     const databases = [
         { name: 'SOPs', href: '/sops', icon: FileText, count: stats.sops, description: 'Standard Operating Procedures', color: 'blue' as const },
         { name: 'AI Agents', href: '/agents', icon: Bot, count: stats.agents, description: 'Intelligent automation agents', color: 'purple' as const },
@@ -58,43 +73,44 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
     ];
 
     return (
-        <div className="space-y-8">
-            {/* Premium Hero Header */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
-                className="relative overflow-hidden rounded-3xl border p-8 border-neutral-200 bg-gradient-to-br from-white via-neutral-50 to-blue-50 dark:border-neutral-800 dark:bg-gradient-to-br dark:from-neutral-900 dark:via-neutral-900 dark:to-blue-950/30"
-            >
-                {/* Animated gradient orbs */}
-                <motion.div
-                    animate={{
-                        x: [0, 20, 0],
-                        y: [0, -10, 0],
-                        scale: [1, 1.1, 1],
-                    }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2"
-                />
-                <motion.div
-                    animate={{
-                        x: [0, -15, 0],
-                        y: [0, 15, 0],
-                        scale: [1, 1.15, 1],
-                    }}
-                    transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 blur-3xl rounded-full translate-y-1/2 -translate-x-1/2"
-                />
+        <div className="space-y-6">
+            {/* Edit Mode Toggle - positioned at top right */}
+            <div className="flex justify-end">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleEditMode}
+                    className={`text-xs opacity-60 hover:opacity-100 transition-opacity ${isEditMode ? 'text-blue-600 dark:text-blue-400' : ''}`}
+                >
+                    <Settings2 className="h-3 w-3 mr-1" />
+                    {isEditMode ? 'Zakończ edycję' : 'Edycja'}
+                </Button>
+            </div>
 
-                <div className="relative flex items-center justify-between">
-                    <div>
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="flex items-center gap-3 mb-4"
-                        >
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-xl shadow-blue-500/25">
+            {/* Widget-driven layout - render in order based on config */}
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-6">
+
+                {/* ROW 1: Welcome (1/3) + Statistics (2/3) */}
+                {/* Welcome Card */}
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="lg:col-span-2 relative overflow-hidden rounded-2xl border p-6 border-neutral-200 bg-gradient-to-br from-white via-neutral-50 to-blue-50 dark:border-neutral-800 dark:bg-gradient-to-br dark:from-neutral-900 dark:via-neutral-900 dark:to-blue-950/30"
+                >
+                    {/* Animated gradient orb */}
+                    <motion.div
+                        animate={{
+                            scale: [1, 1.1, 1],
+                            opacity: [0.3, 0.5, 0.3],
+                        }}
+                        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute top-0 right-0 w-40 h-40 bg-blue-500/10 blur-2xl rounded-full -translate-y-1/2 translate-x-1/2"
+                    />
+
+                    <div className="relative">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25">
                                 <Sparkles className="h-6 w-6 text-white" />
                             </div>
                             <div>
@@ -103,162 +119,216 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                                     <RoleBadge role={user.role} size="sm" />
                                 </div>
                             </div>
-                        </motion.div>
-                        <motion.h1
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="text-4xl font-bold text-neutral-900 dark:text-white mb-2"
-                        >
+                        </div>
+
+                        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
                             Witaj, {user.name}!
-                        </motion.h1>
-                        <motion.p
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
-                            className="text-neutral-600 dark:text-neutral-400 max-w-lg"
-                        >
-                            Transformuj Standard Operating Procedures w inteligentne AI Agents.
-                            Automatyzuj workflow i eliminuj marnotrawstwo.
-                        </motion.p>
-                    </div>
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.5 }}
-                    >
+                        </h1>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                            Twój osobisty asystent AI jest gotowy. Zadaj pytanie lub skorzystaj z szybkich akcji.
+                        </p>
+
                         <Link href="/sops/new">
                             <Button
-                                size="lg"
-                                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 shadow-xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:scale-105 text-lg px-8"
+                                size="sm"
+                                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40"
                             >
-                                <Plus className="mr-2 h-5 w-5" />
+                                <Plus className="mr-2 h-4 w-4" />
                                 Nowy SOP
                             </Button>
                         </Link>
-                    </motion.div>
-                </div>
-            </motion.div>
-
-            {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                    title="Procedury SOP"
-                    value={stats.sops}
-                    icon={FileText}
-                    trend={{ value: '+12%', direction: 'up' }}
-                    color="blue"
-                    delay={0}
-                />
-                <StatCard
-                    title="AI Agents"
-                    value={stats.agents}
-                    icon={Bot}
-                    trend={{ value: '+5', direction: 'up' }}
-                    color="purple"
-                    delay={0.1}
-                />
-                <StatCard
-                    title="Raporty MUDA"
-                    value={stats.mudaReports}
-                    icon={Search}
-                    trend={{ value: '+3', direction: 'up' }}
-                    color="orange"
-                    delay={0.2}
-                />
-                <StatCard
-                    title="Oszczędności"
-                    value={`${Math.round(stats.totalSavings / 60)}h`}
-                    icon={Clock}
-                    trend={{ value: '+18%', direction: 'up' }}
-                    description="miesięcznie"
-                    color="green"
-                    delay={0.3}
-                />
-            </div>
-
-            {/* Database Navigation */}
-            <div>
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="flex items-center gap-3 mb-4"
-                >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-                        <Zap className="h-4 w-4 text-amber-500 dark:text-yellow-400" />
                     </div>
-                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Bazy danych</h2>
                 </motion.div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {databases.map((db, index) => (
-                        <DatabaseCard key={db.href} {...db} delay={0.5 + index * 0.1} />
-                    ))}
-                </div>
-            </div>
 
-            {/* Recent Activity */}
-            {recentSops.length > 0 && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 }}
-                >
-                    <div className="mb-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                                <TrendingUp className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                            </div>
-                            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Ostatnia aktywność</h2>
+                {/* Statistics (2/3 = 4 columns) */}
+                {isWidgetVisible('stats') && (
+                    <WidgetContainer
+                        id="stats"
+                        title="Statystyki"
+                        icon={<TrendingUp className="h-4 w-4" />}
+                        size="full"
+                        draggable={false}
+                        removable={isEditMode}
+                        onRemove={() => hideWidget('stats')}
+                        onSizeChange={(size) => updateWidget('stats', { size })}
+                        className="lg:col-span-4"
+                    >
+                        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
+                            <StatCard
+                                title="Procedury SOP"
+                                value={stats.sops}
+                                icon={FileText}
+                                trend={{ value: '+12%', direction: 'up' }}
+                                color="blue"
+                                delay={0}
+                            />
+                            <StatCard
+                                title="AI Agents"
+                                value={stats.agents}
+                                icon={Bot}
+                                trend={{ value: '+5', direction: 'up' }}
+                                color="purple"
+                                delay={0.1}
+                            />
+                            <StatCard
+                                title="Raporty MUDA"
+                                value={stats.mudaReports}
+                                icon={Search}
+                                trend={{ value: '+3', direction: 'up' }}
+                                color="orange"
+                                delay={0.2}
+                            />
+                            <StatCard
+                                title="Oszczędności"
+                                value={`${Math.round(stats.totalSavings / 60)}h`}
+                                icon={Clock}
+                                trend={{ value: '+18%', direction: 'up' }}
+                                description="miesięcznie"
+                                color="green"
+                                delay={0.3}
+                            />
                         </div>
-                        <Link
-                            href="/sops"
-                            className="flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-                        >
-                            Zobacz wszystkie
-                            <ArrowUpRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                    <div className="rounded-2xl border overflow-hidden backdrop-blur-sm border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900/50">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/80">
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Tytuł</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Dział</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Data</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {recentSops.map((sop, index) => (
-                                    <motion.tr
-                                        key={sop.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: 0.9 + index * 0.05 }}
-                                        className="border-b last:border-0 transition-colors cursor-pointer border-neutral-100 hover:bg-neutral-50 dark:border-neutral-800/50 dark:hover:bg-neutral-800/30"
-                                    >
-                                        <td className="px-6 py-4">
-                                            <span className="font-medium text-neutral-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                                                {sop.title}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-neutral-600 dark:text-neutral-400">
-                                            {sop.department?.name || '—'}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <StatusBadge status={sop.status as 'draft' | 'active'} />
-                                        </td>
-                                        <td className="px-6 py-4 text-neutral-500 text-sm">
-                                            {new Date(sop.createdAt).toLocaleDateString('pl-PL')}
-                                        </td>
-                                    </motion.tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </motion.div>
-            )}
+                    </WidgetContainer>
+                )}
+
+                {/* ROW 2: Databases (full width) */}
+                {isWidgetVisible('databases') && (
+                    <WidgetContainer
+                        id="databases"
+                        title="Bazy danych"
+                        icon={<FileText className="h-4 w-4" />}
+                        size="full"
+                        draggable={false}
+                        removable={isEditMode}
+                        onRemove={() => hideWidget('databases')}
+                        onSizeChange={(size) => updateWidget('databases', { size })}
+                        className="lg:col-span-6"
+                    >
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {databases.map((db, index) => (
+                                <DatabaseCard key={db.href} {...db} delay={0.1 + index * 0.05} />
+                            ))}
+                        </div>
+                    </WidgetContainer>
+                )}
+
+                {/* ROW 3: AI Assistant (1/3) + Quick Tasks (1/3) + Pandas (1/3) */}
+                {/* AI Assistant - Chat Hero */}
+                {isWidgetVisible('chat-hero') && (
+                    <WidgetContainer
+                        id="chat-hero"
+                        title="Asystent AI"
+                        icon={<Sparkles className="h-4 w-4" />}
+                        size="third"
+                        removable={false}
+                        expandable={true}
+                        draggable={false}
+                        onSizeChange={(size) => updateWidget('chat-hero', { size })}
+                        className="lg:col-span-2"
+                    >
+                        <ChatHeroWidget onOpenFullChat={openChat} />
+                    </WidgetContainer>
+                )}
+
+                {/* Quick Tasks Widget (1/3) */}
+                {isWidgetVisible('quick-tasks') && (
+                    <WidgetContainer
+                        id="quick-tasks"
+                        title="Szybkie zadania"
+                        icon={<Zap className="h-4 w-4" />}
+                        size="third"
+                        draggable={false}
+                        removable={isEditMode}
+                        onRemove={() => hideWidget('quick-tasks')}
+                        onSizeChange={(size) => updateWidget('quick-tasks', { size })}
+                        className="lg:col-span-2"
+                    >
+                        <QuickTasksWidget />
+                    </WidgetContainer>
+                )}
+
+                {/* Pandy Widget (1/3) */}
+                {isWidgetVisible('pandy') && (
+                    <WidgetContainer
+                        id="pandy"
+                        title="Twoje Pandy"
+                        icon={<span className="text-lg">🐼</span>}
+                        size="third"
+                        draggable={false}
+                        removable={isEditMode}
+                        onRemove={() => hideWidget('pandy')}
+                        onSizeChange={(size) => updateWidget('pandy', { size })}
+                        className="lg:col-span-2"
+                    >
+                        <PandyWidget />
+                    </WidgetContainer>
+                )}
+
+                {/* 6. Recent Activity */}
+                {isWidgetVisible('recent-activity') && recentSops.length > 0 && (
+                    <WidgetContainer
+                        id="recent-activity"
+                        title="Ostatnia aktywność"
+                        icon={<TrendingUp className="h-4 w-4" />}
+                        size={getWidgetSize('recent-activity')}
+                        draggable={isEditMode}
+                        removable={isEditMode}
+                        onRemove={() => hideWidget('recent-activity')}
+                        onSizeChange={(size) => updateWidget('recent-activity', { size })}
+                        headerActions={
+                            <Link
+                                href="/sops"
+                                className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+                            >
+                                Zobacz wszystkie
+                                <ArrowUpRight className="h-3 w-3" />
+                            </Link>
+                        }
+                        className="lg:col-span-6"
+                    >
+                        <div className="rounded-xl border overflow-hidden border-neutral-100 dark:border-neutral-800/50">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="border-b border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/80">
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Tytuł</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Dział</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentSops.map((sop, index) => (
+                                        <motion.tr
+                                            key={sop.id}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: 0.1 + index * 0.05 }}
+                                            className="border-b last:border-0 transition-colors cursor-pointer border-neutral-100 hover:bg-neutral-50 dark:border-neutral-800/50 dark:hover:bg-neutral-800/30"
+                                        >
+                                            <td className="px-4 py-3">
+                                                <span className="font-medium text-neutral-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                                    {sop.title}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
+                                                {sop.department?.name || '—'}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <StatusBadge status={sop.status as 'draft' | 'active'} />
+                                            </td>
+                                            <td className="px-4 py-3 text-neutral-500 text-sm">
+                                                {new Date(sop.createdAt).toLocaleDateString('pl-PL')}
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </WidgetContainer>
+                )}
+            </div>
+
+
 
             {/* Empty State */}
             {recentSops.length === 0 && (
@@ -288,5 +358,14 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                 </motion.div>
             )}
         </div>
+    );
+}
+
+// Main exported component - wraps content with provider
+export function DashboardClient({ user, stats, recentSops }: DashboardClientProps) {
+    return (
+        <DashboardEditProvider>
+            <DashboardContent user={user} stats={stats} recentSops={recentSops} />
+        </DashboardEditProvider>
     );
 }

@@ -34,6 +34,18 @@ export const DEFAULT_OPERATION: Omit<Operation, 'id'> = {
     locEnabled: false,
     locActions: [],
     locMultiplier: 1,
+    // Automation & AI
+    automationPercent: 70,
+    humanInLoopPercent: 20,
+    tokenCostsEnabled: false,
+    tokenCosts: {
+        monthlyApiCalls: 1000,
+        avgTokensPerCall: 2000,
+        inputPricePerMToken: 2.5,  // GPT-4o default
+        outputPricePerMToken: 10,
+        modelName: 'GPT-4o',
+    },
+    // Hiring
     hiringEnabled: false,
     hiring: {
         count: 1,
@@ -70,6 +82,7 @@ interface ROIStoreState {
     // Calculations
     calculateOpAnnual: (op: Operation) => number;
     calculateLocAnnual: (op: Operation) => number;
+    calculateTokenCostsAnnual: (op: Operation) => number;
     calculateAnnualCost: (op: Operation) => number;
     calculateFutureCost: (op: Operation) => number;
     calculateTransformationInvestment: (op: Operation) => number;
@@ -181,8 +194,21 @@ export const useROIStore = create<ROIStoreState>()(
                 return op.locActions.reduce((sum, a) => sum + (a.eventsPerMonth * 12 * a.avgCostPerEvent), 0);
             },
 
+            calculateTokenCostsAnnual: (op: Operation) => {
+                if (!op.tokenCostsEnabled || !op.tokenCosts) return 0;
+                const tc = op.tokenCosts;
+                const annualCalls = tc.monthlyApiCalls * 12;
+                const totalTokens = annualCalls * tc.avgTokensPerCall;
+                // Assuming 70% input, 30% output tokens distribution
+                const inputTokens = totalTokens * 0.7;
+                const outputTokens = totalTokens * 0.3;
+                const inputCost = (inputTokens / 1_000_000) * tc.inputPricePerMToken;
+                const outputCost = (outputTokens / 1_000_000) * tc.outputPricePerMToken;
+                return inputCost + outputCost;
+            },
+
             calculateAnnualCost: (op: Operation) => {
-                return get().calculateOpAnnual(op) + get().calculateLocAnnual(op);
+                return get().calculateOpAnnual(op) + get().calculateLocAnnual(op) + get().calculateTokenCostsAnnual(op);
             },
 
             calculateFutureCost: (op: Operation) => {

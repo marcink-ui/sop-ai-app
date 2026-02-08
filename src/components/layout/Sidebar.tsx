@@ -39,6 +39,7 @@ import {
     History,
     Lightbulb,
 } from 'lucide-react';
+import { PandaIcon } from '@/components/icons/panda-icon';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -77,7 +78,8 @@ const SIDEBAR_CATEGORIES = {
         defaultOpen: true,
         items: [
             { name: 'Analityka', href: '/analytics', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Pandy 🐼', href: '/pandas', icon: Trophy, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Pandy', href: '/pandas', icon: PandaIcon, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Kaizen', href: '/kaizen', icon: Lightbulb, color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-500/20', minRole: 'EMPLOYEE' },
             { name: 'Historia AI', href: '/chat-library', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'EMPLOYEE' },
             { name: 'Mój kontekst', href: '/my-context', icon: User, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'EMPLOYEE' },
         ] as NavItemData[],
@@ -103,7 +105,6 @@ const SIDEBAR_CATEGORIES = {
             { name: 'Newsletter', href: '/resources/newsletter', icon: Newspaper, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-500/20', minRole: 'EMPLOYEE' },
             { name: 'Prompty Systemowe', href: '/resources/prompts', icon: Code2, color: 'text-slate-600 dark:text-slate-400', bgColor: 'bg-slate-100 dark:bg-slate-500/20', minRole: 'EMPLOYEE' },
             { name: 'Kursy', href: '/courses', icon: GraduationCap, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Kaizen 💡', href: '/kaizen', icon: Lightbulb, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EMPLOYEE' },
         ] as NavItemData[],
     },
     zarzadzanie: {

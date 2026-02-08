@@ -8,6 +8,7 @@ import { ThemeStyleProvider } from '@/components/theme/ThemeStyleProvider';
 import { UserProvider } from '@/context/UserContext';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { ChatProvider } from '@/components/ai-chat';
+import { TokenTrackerProvider } from '@/components/ai-chat/token-tracker-provider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -47,14 +48,16 @@ export default function RootLayout({
           >
             <ThemeStyleProvider>
               <UserProvider>
-                <ChatProvider>
-                  <MainLayout>{children}</MainLayout>
-                  <Toaster
-                    position="bottom-right"
-                    richColors
-                    closeButton
-                  />
-                </ChatProvider>
+                <TokenTrackerProvider>
+                  <ChatProvider>
+                    <MainLayout>{children}</MainLayout>
+                    <Toaster
+                      position="bottom-right"
+                      richColors
+                      closeButton
+                    />
+                  </ChatProvider>
+                </TokenTrackerProvider>
               </UserProvider>
             </ThemeStyleProvider>
           </ThemeProvider>
