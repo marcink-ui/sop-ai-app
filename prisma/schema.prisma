@@ -89,7 +89,8 @@ model User {
 }
 
 enum UserRole {
-  SPONSOR        // Zarząd - Full access
+  META_ADMIN     // Platform Admin - Global, cross-company access
+  SPONSOR        // Zarząd - Full access (company-scoped)
   PILOT          // COO - KPIs, decision dashboard
   MANAGER        // Manager Działu - Department-scoped
   EXPERT         // Właściciel Wiedzy - SOP expert access

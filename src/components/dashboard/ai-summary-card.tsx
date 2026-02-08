@@ -31,7 +31,7 @@ interface AISummaryCardProps {
     user: {
         name: string;
         email: string;
-        role: 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV';
+        role: 'META_ADMIN' | 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV';
     };
     stats: {
         sops: number;

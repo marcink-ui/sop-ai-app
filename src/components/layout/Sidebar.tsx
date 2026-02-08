@@ -52,8 +52,8 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useChat } from '@/components/ai-chat';
 
-// Role hierarchy for access control
-const ROLE_HIERARCHY = ['EMPLOYEE', 'CITIZEN_DEV', 'MANAGER', 'PILOT', 'SPONSOR'];
+// Role hierarchy for access control (company-scoped + platform-scoped)
+const ROLE_HIERARCHY = ['EMPLOYEE', 'CITIZEN_DEV', 'MANAGER', 'PILOT', 'SPONSOR', 'META_ADMIN'];
 
 const hasMinRole = (userRole: string | undefined, minRole: string): boolean => {
     if (!userRole) return false;
@@ -126,7 +126,7 @@ const SIDEBAR_CATEGORIES = {
         icon: Wrench,
         defaultOpen: false,
         items: [
-            { name: 'Panel Właściciela', href: '/meta-admin', icon: Wrench, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Panel Właściciela', href: '/meta-admin', icon: Wrench, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-500/20', minRole: 'META_ADMIN' },
         ] as NavItemData[],
     },
 };

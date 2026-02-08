@@ -12,6 +12,7 @@ export const roleHierarchy: Record<UserRole, number> = {
     MANAGER: 3,
     PILOT: 4,
     SPONSOR: 5,
+    META_ADMIN: 6, // Platform admin - cross-company access
 };
 
 // Check if user has at least the minimum required role
@@ -37,6 +38,23 @@ export const rolePermissions: Record<UserRole, {
     canEditPrompts: boolean;
     canManageFeatureFlags: boolean;
 }> = {
+    META_ADMIN: {
+        canCreateSOP: true,
+        canApproveSOP: true,
+        canDeleteSOP: true,
+        canManageAgents: true,
+        canVoteCouncil: true,
+        canManageUsers: true,
+        canViewAnalytics: true,
+        canExportData: true,
+        // Meta Admin - FULL global access
+        canAccessMetaAdmin: true,
+        canManageApiKeys: true,
+        canEditStyles: true,
+        canViewChatHistory: true,
+        canEditPrompts: true,
+        canManageFeatureFlags: true,
+    },
     SPONSOR: {
         canCreateSOP: true,
         canApproveSOP: true,

@@ -32,7 +32,7 @@ interface DelegationModalProps {
         label: string;
         type: string;
     };
-    currentUserRole: 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV';
+    currentUserRole: 'META_ADMIN' | 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV';
 }
 
 interface TeamMember {
