@@ -193,19 +193,6 @@ export function Sidebar() {
                         )}
                     </div>
 
-                    {/* Quick Search */}
-                    {!collapsed && (
-                        <div className="mx-3 mt-3">
-                            <button className="w-full flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors border-neutral-200 bg-neutral-50 text-neutral-500 hover:text-neutral-700 hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-500 dark:hover:text-neutral-400 dark:hover:border-neutral-700">
-                                <Search className="h-4 w-4" />
-                                <span className="flex-1 text-left">Szybkie wyszukiwanie...</span>
-                                <kbd className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                                    <Command className="h-3 w-3" />K
-                                </kbd>
-                            </button>
-                        </div>
-                    )}
-
                     {/* Navigation */}
                     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
                         {/* Pulpit - top level, always visible */}
