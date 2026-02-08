@@ -29,6 +29,10 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   title: 'VantageOS | AI-Powered Business Transformation',
   description: 'Transform SOPs into AI Agents using the Lean AI methodology. VantageOS - System Operacyjny Biznesu.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({

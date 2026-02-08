@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
@@ -167,15 +168,27 @@ export function Sidebar() {
                     <div className="flex h-16 items-center justify-between border-b border-neutral-200 dark:border-neutral-800/50 px-4">
                         {!collapsed && (
                             <Link href="/" className="flex items-center gap-3 group">
-                                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow">
-                                    <Sparkles className="h-5 w-5 text-white" />
+                                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 dark:bg-white/10 shadow-lg shadow-neutral-900/25 group-hover:shadow-neutral-900/40 transition-shadow overflow-hidden">
+                                    <Image
+                                        src="/logo.png"
+                                        alt="VantageOS"
+                                        width={28}
+                                        height={28}
+                                        className="object-contain"
+                                    />
                                 </div>
                                 <span className="font-semibold text-neutral-900 dark:text-white tracking-tight">VantageOS</span>
                             </Link>
                         )}
                         {collapsed && (
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 mx-auto">
-                                <Sparkles className="h-5 w-5 text-white" />
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 dark:bg-white/10 mx-auto overflow-hidden">
+                                <Image
+                                    src="/logo.png"
+                                    alt="VantageOS"
+                                    width={28}
+                                    height={28}
+                                    className="object-contain"
+                                />
                             </div>
                         )}
                     </div>

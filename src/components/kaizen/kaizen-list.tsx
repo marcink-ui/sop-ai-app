@@ -39,9 +39,10 @@ const CATEGORY_LABELS = {
 interface KaizenListProps {
     myOnly?: boolean;
     refreshKey?: number;
+    status?: 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'IMPLEMENTED' | 'REJECTED' | 'ARCHIVED';
 }
 
-export function KaizenList({ myOnly = true, refreshKey }: KaizenListProps) {
+export function KaizenList({ myOnly = false, refreshKey, status }: KaizenListProps) {
     const [suggestions, setSuggestions] = useState<KaizenSuggestion[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export function KaizenList({ myOnly = true, refreshKey }: KaizenListProps) {
             try {
                 const params = new URLSearchParams();
                 if (myOnly) params.set('myOnly', 'true');
+                if (status) params.set('status', status);
 
                 const response = await fetch(`/api/kaizen?${params}`);
                 if (response.ok) {
@@ -66,7 +68,7 @@ export function KaizenList({ myOnly = true, refreshKey }: KaizenListProps) {
         };
 
         fetchSuggestions();
-    }, [myOnly, refreshKey]);
+    }, [myOnly, refreshKey, status]);
 
     if (loading) {
         return (

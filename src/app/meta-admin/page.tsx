@@ -24,6 +24,8 @@ import {
     Zap,
     MessageSquare,
     Key,
+    Lightbulb,
+    Brain,
     Palette,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -152,6 +154,18 @@ const metaAdminModules = [
         color: 'from-pink-500 to-rose-500',
         status: 'active',
         stats: 'Personalizuj',
+        category: 'system',
+    },
+    {
+        id: 'ai-models',
+        title: 'Modele AI',
+        description: 'Konfiguracja modeli AI: GPT-4o, Claude, Gemini',
+        icon: Brain,
+        href: '/meta-admin/ai-models',
+        color: 'from-cyan-500 to-blue-500',
+        status: 'active',
+        stats: 'Toggle modeli',
+        category: 'ai',
     },
 ];
 

@@ -27,6 +27,10 @@ import { toast } from 'sonner';
 import { ContextProgressBar } from './context-progress-bar';
 import { useTokenTracker } from './token-tracker-provider';
 import { estimateTokens } from '@/lib/ai/token-tracker';
+// New AI Chat enhancement components
+import { ChatFileUpload, AttachmentPreviewList, useAttachments, type ChatAttachment } from './chat-file-upload';
+import { ModelSelector, useModelSelector, getModelById, type AIModel } from './model-selector';
+import { AssistantPicker, useAssistantPicker, type SystemAgent } from './assistant-picker';
 
 interface Message {
     id: string;
@@ -79,6 +83,12 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
+    // AI Chat enhancement hooks
+    const userRole = 'CITIZEN_DEV'; // TODO: Get from session
+    const { attachments, addAttachments, removeAttachment, clearAttachments } = useAttachments();
+    const { currentModel, selectedModel, handleModelChange } = useModelSelector(userRole);
+    const { currentAssistant, handleAssistantSelect, getSystemPrompt } = useAssistantPicker(userRole);
+
     // Token tracking
     const { track, updateContextTokens } = useTokenTracker();
 
@@ -126,6 +136,11 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
         setIsLoading(true);
 
         try {
+            // Prepare attachments info for the API
+            const attachmentContext = attachments.length > 0
+                ? `\n[Załączniki: ${attachments.map(a => a.name).join(', ')}]`
+                : '';
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -135,6 +150,9 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
                         content: m.content,
                     })),
                     context,
+                    model: currentModel,
+                    systemPrompt: getSystemPrompt(),
+                    attachments: attachments.map(a => ({ type: a.type, name: a.name })),
                 }),
             });
 
@@ -159,6 +177,7 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
             };
 
             setMessages((prev) => [...prev, assistantMessage]);
+            clearAttachments(); // Clear attachments after sending
         } catch (error) {
             console.error('Chat error:', error);
             const errorMessage: Message = {
@@ -431,44 +450,78 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
                         </ScrollArea>
 
                         {/* Input Area */}
-                        <div className="border-t border-neutral-100 dark:border-neutral-800/50 p-4">
-                            <form onSubmit={handleFormSubmit} className="flex gap-2">
-                                <Textarea
-                                    ref={textareaRef}
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder="Napisz wiadomość..."
-                                    className={cn(
-                                        'min-h-[44px] max-h-[120px] resize-none text-sm rounded-xl',
-                                        'bg-neutral-50 dark:bg-neutral-900',
-                                        'border-neutral-200 dark:border-neutral-800',
-                                        'focus:border-blue-500 dark:focus:border-blue-500',
-                                        'placeholder:text-neutral-400'
-                                    )}
+                        <div className="border-t border-neutral-100 dark:border-neutral-800/50">
+                            {/* Model & Assistant Selectors */}
+                            <div className="flex items-center gap-1 px-4 py-2 border-b border-neutral-100 dark:border-neutral-800/30">
+                                <ModelSelector
+                                    currentModel={currentModel}
+                                    onModelChange={handleModelChange}
+                                    userRole={userRole}
                                     disabled={isLoading}
                                 />
-                                <Button
-                                    type="submit"
-                                    size="icon"
-                                    disabled={!input.trim() || isLoading}
-                                    className={cn(
-                                        'shrink-0 h-11 w-11 rounded-xl',
-                                        'bg-blue-500 hover:bg-blue-600',
-                                        'disabled:bg-neutral-200 dark:disabled:bg-neutral-800',
-                                        'transition-colors'
-                                    )}
-                                >
-                                    {isLoading ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Send className="h-4 w-4" />
-                                    )}
-                                </Button>
-                            </form>
-                            <p className="mt-2 text-[10px] text-neutral-400 text-center">
-                                Enter aby wysłać • Shift+Enter nowa linia • ESC zamknij
-                            </p>
+                                <AssistantPicker
+                                    currentAssistant={currentAssistant}
+                                    onAssistantSelect={handleAssistantSelect}
+                                    userRole={userRole}
+                                    disabled={isLoading}
+                                />
+                            </div>
+
+                            {/* Attachment Preview */}
+                            {attachments.length > 0 && (
+                                <AttachmentPreviewList
+                                    attachments={attachments}
+                                    onRemove={removeAttachment}
+                                    className="border-b border-neutral-100 dark:border-neutral-800/30"
+                                />
+                            )}
+
+                            {/* Input Form */}
+                            <div className="p-4">
+                                <form onSubmit={handleFormSubmit} className="flex gap-2">
+                                    <ChatFileUpload
+                                        onFilesSelected={addAttachments}
+                                        attachments={attachments}
+                                        onRemoveAttachment={removeAttachment}
+                                        disabled={isLoading}
+                                    />
+                                    <Textarea
+                                        ref={textareaRef}
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyDown={handleKeyDown}
+                                        placeholder="Napisz wiadomość..."
+                                        className={cn(
+                                            'flex-1 min-h-[44px] max-h-[120px] resize-none text-sm rounded-xl',
+                                            'bg-neutral-50 dark:bg-neutral-900',
+                                            'border-neutral-200 dark:border-neutral-800',
+                                            'focus:border-blue-500 dark:focus:border-blue-500',
+                                            'placeholder:text-neutral-400'
+                                        )}
+                                        disabled={isLoading}
+                                    />
+                                    <Button
+                                        type="submit"
+                                        size="icon"
+                                        disabled={(!input.trim() && attachments.length === 0) || isLoading}
+                                        className={cn(
+                                            'shrink-0 h-11 w-11 rounded-xl',
+                                            'bg-blue-500 hover:bg-blue-600',
+                                            'disabled:bg-neutral-200 dark:disabled:bg-neutral-800',
+                                            'transition-colors'
+                                        )}
+                                    >
+                                        {isLoading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Send className="h-4 w-4" />
+                                        )}
+                                    </Button>
+                                </form>
+                                <p className="mt-2 text-[10px] text-neutral-400 text-center">
+                                    📎 Załącz pliki • Enter wysyła • Shift+Enter nowa linia • ESC zamknij
+                                </p>
+                            </div>
                         </div>
                     </motion.div>
                 </>

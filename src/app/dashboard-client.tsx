@@ -9,24 +9,21 @@ import {
     Users,
     GitBranch,
     Scale,
-    Clock,
     Plus,
-    Sparkles,
     ArrowUpRight,
     Zap,
     TrendingUp,
     Settings2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatCard } from '@/components/ui/stat-card';
 import { DatabaseCard } from '@/components/ui/database-card';
-import { StatusBadge, RoleBadge } from '@/components/ui/status-badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { QuickTasksWidget } from '@/components/dashboard/quick-tasks-widget';
 import { useChat } from '@/components/ai-chat/chat-provider';
 import { DashboardEditProvider, useDashboardEdit } from '@/components/dashboard/dashboard-edit-provider';
-import { ChatHeroWidget } from '@/components/dashboard/chat-hero-widget';
 import { PandyWidget } from '@/components/dashboard/pandy-widget';
 import { WidgetContainer } from '@/components/dashboard/widget-container';
+import { AISummaryCard } from '@/components/dashboard/ai-summary-card';
 
 interface DashboardClientProps {
     user: {
@@ -74,7 +71,7 @@ function DashboardContent({ user, stats, recentSops }: DashboardClientProps) {
 
     return (
         <div className="space-y-6">
-            {/* Edit Mode Toggle - positioned at top right */}
+            {/* Edit Mode Toggle */}
             <div className="flex justify-end">
                 <Button
                     variant="ghost"
@@ -87,111 +84,21 @@ function DashboardContent({ user, stats, recentSops }: DashboardClientProps) {
                 </Button>
             </div>
 
-            {/* Widget-driven layout - render in order based on config */}
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-6">
+            {/* AI-First Hero Section */}
+            <AISummaryCard
+                user={user}
+                stats={{
+                    sops: stats.sops,
+                    agents: stats.agents,
+                    mudaReports: stats.mudaReports,
+                    totalSavings: stats.totalSavings,
+                }}
+                onOpenChat={openChat}
+            />
 
-                {/* ROW 1: Welcome (1/3) + Statistics (2/3) */}
-                {/* Welcome Card */}
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="lg:col-span-2 relative overflow-hidden rounded-2xl border p-6 border-neutral-200 bg-gradient-to-br from-white via-neutral-50 to-blue-50 dark:border-neutral-800 dark:bg-gradient-to-br dark:from-neutral-900 dark:via-neutral-900 dark:to-blue-950/30"
-                >
-                    {/* Animated gradient orb */}
-                    <motion.div
-                        animate={{
-                            scale: [1, 1.1, 1],
-                            opacity: [0.3, 0.5, 0.3],
-                        }}
-                        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-                        className="absolute top-0 right-0 w-40 h-40 bg-blue-500/10 blur-2xl rounded-full -translate-y-1/2 translate-x-1/2"
-                    />
-
-                    <div className="relative">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25">
-                                <Sparkles className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                                <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">VantageOS</span>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <RoleBadge role={user.role} size="sm" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                            Witaj, {user.name}!
-                        </h1>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-                            Twój osobisty asystent AI jest gotowy. Zadaj pytanie lub skorzystaj z szybkich akcji.
-                        </p>
-
-                        <Link href="/sops/new">
-                            <Button
-                                size="sm"
-                                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40"
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Nowy SOP
-                            </Button>
-                        </Link>
-                    </div>
-                </motion.div>
-
-                {/* Statistics (2/3 = 4 columns) */}
-                {isWidgetVisible('stats') && (
-                    <WidgetContainer
-                        id="stats"
-                        title="Statystyki"
-                        icon={<TrendingUp className="h-4 w-4" />}
-                        size="full"
-                        draggable={false}
-                        removable={isEditMode}
-                        onRemove={() => hideWidget('stats')}
-                        onSizeChange={(size) => updateWidget('stats', { size })}
-                        className="lg:col-span-4"
-                    >
-                        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
-                            <StatCard
-                                title="Procedury SOP"
-                                value={stats.sops}
-                                icon={FileText}
-                                trend={{ value: '+12%', direction: 'up' }}
-                                color="blue"
-                                delay={0}
-                            />
-                            <StatCard
-                                title="AI Agents"
-                                value={stats.agents}
-                                icon={Bot}
-                                trend={{ value: '+5', direction: 'up' }}
-                                color="purple"
-                                delay={0.1}
-                            />
-                            <StatCard
-                                title="Raporty MUDA"
-                                value={stats.mudaReports}
-                                icon={Search}
-                                trend={{ value: '+3', direction: 'up' }}
-                                color="orange"
-                                delay={0.2}
-                            />
-                            <StatCard
-                                title="Oszczędności"
-                                value={`${Math.round(stats.totalSavings / 60)}h`}
-                                icon={Clock}
-                                trend={{ value: '+18%', direction: 'up' }}
-                                description="miesięcznie"
-                                color="green"
-                                delay={0.3}
-                            />
-                        </div>
-                    </WidgetContainer>
-                )}
-
-                {/* ROW 2: Databases (full width) */}
+            {/* Main Grid Layout */}
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-6">
+                {/* Databases - Full Width */}
                 {isWidgetVisible('databases') && (
                     <WidgetContainer
                         id="databases"
@@ -212,59 +119,40 @@ function DashboardContent({ user, stats, recentSops }: DashboardClientProps) {
                     </WidgetContainer>
                 )}
 
-                {/* ROW 3: AI Assistant (1/3) + Quick Tasks (1/3) + Pandas (1/3) */}
-                {/* AI Assistant - Chat Hero */}
-                {isWidgetVisible('chat-hero') && (
-                    <WidgetContainer
-                        id="chat-hero"
-                        title="Asystent AI"
-                        icon={<Sparkles className="h-4 w-4" />}
-                        size="third"
-                        removable={false}
-                        expandable={true}
-                        draggable={false}
-                        onSizeChange={(size) => updateWidget('chat-hero', { size })}
-                        className="lg:col-span-2"
-                    >
-                        <ChatHeroWidget onOpenFullChat={openChat} />
-                    </WidgetContainer>
-                )}
-
-                {/* Quick Tasks Widget (1/3) */}
+                {/* Quick Tasks + Pandy Row */}
                 {isWidgetVisible('quick-tasks') && (
                     <WidgetContainer
                         id="quick-tasks"
                         title="Szybkie zadania"
                         icon={<Zap className="h-4 w-4" />}
-                        size="third"
+                        size="half"
                         draggable={false}
                         removable={isEditMode}
                         onRemove={() => hideWidget('quick-tasks')}
                         onSizeChange={(size) => updateWidget('quick-tasks', { size })}
-                        className="lg:col-span-2"
+                        className="lg:col-span-3"
                     >
                         <QuickTasksWidget />
                     </WidgetContainer>
                 )}
 
-                {/* Pandy Widget (1/3) */}
                 {isWidgetVisible('pandy') && (
                     <WidgetContainer
                         id="pandy"
                         title="Twoje Pandy"
                         icon={<span className="text-lg">🐼</span>}
-                        size="third"
+                        size="half"
                         draggable={false}
                         removable={isEditMode}
                         onRemove={() => hideWidget('pandy')}
                         onSizeChange={(size) => updateWidget('pandy', { size })}
-                        className="lg:col-span-2"
+                        className="lg:col-span-3"
                     >
                         <PandyWidget />
                     </WidgetContainer>
                 )}
 
-                {/* 6. Recent Activity */}
+                {/* Recent Activity */}
                 {isWidgetVisible('recent-activity') && recentSops.length > 0 && (
                     <WidgetContainer
                         id="recent-activity"
@@ -297,7 +185,7 @@ function DashboardContent({ user, stats, recentSops }: DashboardClientProps) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {recentSops.map((sop, index) => (
+                                    {recentSops.slice(0, 5).map((sop, index) => (
                                         <motion.tr
                                             key={sop.id}
                                             initial={{ opacity: 0, x: -10 }}
@@ -306,9 +194,11 @@ function DashboardContent({ user, stats, recentSops }: DashboardClientProps) {
                                             className="border-b last:border-0 transition-colors cursor-pointer border-neutral-100 hover:bg-neutral-50 dark:border-neutral-800/50 dark:hover:bg-neutral-800/30"
                                         >
                                             <td className="px-4 py-3">
-                                                <span className="font-medium text-neutral-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                                                    {sop.title}
-                                                </span>
+                                                <Link href={`/sops/${sop.id}`}>
+                                                    <span className="font-medium text-neutral-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                                        {sop.title}
+                                                    </span>
+                                                </Link>
                                             </td>
                                             <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
                                                 {sop.department?.name || '—'}
@@ -327,8 +217,6 @@ function DashboardContent({ user, stats, recentSops }: DashboardClientProps) {
                     </WidgetContainer>
                 )}
             </div>
-
-
 
             {/* Empty State */}
             {recentSops.length === 0 && (
