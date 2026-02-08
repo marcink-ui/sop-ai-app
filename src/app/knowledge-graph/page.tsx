@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import KnowledgeGraph from '@/components/graph/KnowledgeGraph';
+import { Network } from 'lucide-react';
 
 export const metadata: Metadata = {
     title: 'Knowledge Graph | VantageOS',
@@ -19,11 +20,16 @@ export default async function KnowledgeGraphPage() {
 
     return (
         <div className="container mx-auto px-4 py-6 h-full flex flex-col">
-            <div className="flex flex-col gap-2 mb-6">
-                <h1 className="text-3xl font-bold tracking-tight">Graf Wiedzy 🕸️</h1>
-                <p className="text-muted-foreground">
-                    Wizualna mapa struktury organizacji, procedur operacyjnych i agentów AI.
-                </p>
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-500/20">
+                    <Network className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Graf Wiedzy</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Wizualna mapa struktury organizacji, procedur operacyjnych i agentów AI.
+                    </p>
+                </div>
             </div>
 
             <div className="flex-1 min-h-0">

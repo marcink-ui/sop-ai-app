@@ -1,8 +1,9 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, User, Tag, BookOpen, Download, Copy, Sparkles, FolderOpen, Puzzle, ChevronRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Calendar, User, Tag, BookOpen, Download, Copy, Sparkles, FolderOpen, Puzzle, ChevronRight, Pencil, Eye, Save, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,19 +100,19 @@ Agenci AI w VantageOS to specjalizowane jednostki, które automatyzują konkretn
 
 ## Typy agentów
 
-### 1. Agent Dokumentacji
-Pomaga tworzyć i aktualizować dokumentację na podstawie rozmów.
+### 1. Asystent (Assistant)
+Dobrze ustrukturyzowany system prompt + baza wiedzy. Odpowiada na pytania.
 
-### 2. Agent MUDA
-Analizuje procesy pod kątem strat i proponuje optymalizacje.
+### 2. Agent
+Prompt + wiedza + wykonuje konkretne akcje (wewnętrzne lub zewnętrzne).
 
-### 3. Agent SOP
-Generuje procedury na podstawie opisu procesu.
+### 3. Automatyzacja (Automation)
+Deterministyczna logika algorytmiczna — skrypty, wyliczenia, funkcje. Brak AI, 100% pewny wynik.
 
 ## Konfiguracja
 
 1. Przejdź do sekcji **Agenci AI**
-2. Wybierz typ agenta
+2. Wybierz typ: Asystent, Agent lub Automatyzacja
 3. Skonfiguruj parametry
 4. Przypisz do odpowiednich procesów
 
@@ -191,8 +192,29 @@ export default function WikiArticlePage() {
     const params = useParams();
     const router = useRouter();
     const articleId = params.id as string;
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const article = ARTICLES[articleId];
+
+    // Edit mode state
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState('');
+    const [editTitle, setEditTitle] = useState('');
+
+    useEffect(() => {
+        if (article) {
+            setEditContent(article.content);
+            setEditTitle(article.title);
+        }
+    }, [article]);
+
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current && isEditing) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [editContent, isEditing]);
 
     const handleCopy = () => {
         if (article) {
@@ -214,6 +236,22 @@ export default function WikiArticlePage() {
         }
     };
 
+    const handleSave = () => {
+        // In production, this would POST to API
+        toast.success('Zapisano zmiany', {
+            description: 'Artykuł został zaktualizowany pomyślnie.',
+        });
+        setIsEditing(false);
+    };
+
+    const handleCancelEdit = () => {
+        if (article) {
+            setEditContent(article.content);
+            setEditTitle(article.title);
+        }
+        setIsEditing(false);
+    };
+
     if (!article) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
@@ -224,9 +262,9 @@ export default function WikiArticlePage() {
                         <p className="text-muted-foreground mb-4">
                             Przepraszamy, nie możemy znaleźć tego artykułu.
                         </p>
-                        <Button onClick={() => router.push('/resources/wiki')}>
+                        <Button onClick={() => router.push('/resources')}>
                             <ArrowLeft className="h-4 w-4 mr-2" />
-                            Wróć do Wiki
+                            Wróć do Resources
                         </Button>
                     </CardContent>
                 </Card>
@@ -323,11 +361,11 @@ export default function WikiArticlePage() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push('/resources/wiki')}
+                            onClick={() => router.push('/resources')}
                             className="text-muted-foreground hover:text-foreground -ml-2"
                         >
                             <ArrowLeft className="h-4 w-4 mr-2" />
-                            Wróć do Wiki
+                            Wróć do Resources
                         </Button>
                     </motion.div>
 
@@ -339,7 +377,17 @@ export default function WikiArticlePage() {
                         className="flex items-start justify-between mb-6"
                     >
                         <div className="flex-1">
-                            <h1 className="text-3xl font-bold mb-4">{article.title}</h1>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    className="text-3xl font-bold mb-4 bg-transparent border-b-2 border-primary/30 focus:border-primary outline-none w-full pb-2 transition-colors"
+                                    placeholder="Tytuł artykułu..."
+                                />
+                            ) : (
+                                <h1 className="text-3xl font-bold mb-4">{article.title}</h1>
+                            )}
                             <div className="flex flex-wrap gap-2">
                                 {article.tags.map(tag => (
                                     <Badge
@@ -355,26 +403,91 @@ export default function WikiArticlePage() {
 
                         {/* Action Buttons */}
                         <div className="flex gap-2 ml-4">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleDownload}
-                                className="gap-2"
-                            >
-                                <Download className="h-4 w-4" />
-                                Pobierz
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCopy}
-                                className="gap-2"
-                            >
-                                <Copy className="h-4 w-4" />
-                                Kopiuj
-                            </Button>
+                            <AnimatePresence mode="wait">
+                                {isEditing ? (
+                                    <motion.div
+                                        key="editing-buttons"
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        className="flex gap-2"
+                                    >
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={handleCancelEdit}
+                                            className="gap-2 text-red-500 border-red-500/30 hover:bg-red-500/10"
+                                        >
+                                            <X className="h-4 w-4" />
+                                            Anuluj
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleSave}
+                                            className="gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+                                        >
+                                            <Save className="h-4 w-4" />
+                                            Zapisz
+                                        </Button>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="view-buttons"
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        className="flex gap-2"
+                                    >
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setIsEditing(true)}
+                                            className="gap-2 border-violet-500/30 text-violet-600 hover:bg-violet-500/10"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                            Edytuj
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleDownload}
+                                            className="gap-2"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            Pobierz
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleCopy}
+                                            className="gap-2"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                            Kopiuj
+                                        </Button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </motion.div>
+
+                    {/* Edit Mode Indicator */}
+                    <AnimatePresence>
+                        {isEditing && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mb-4"
+                            >
+                                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                                    <Pencil className="h-4 w-4 text-violet-500" />
+                                    <span className="text-sm text-violet-600 dark:text-violet-400 font-medium">Tryb edycji</span>
+                                    <span className="text-xs text-muted-foreground ml-2">Edytuj treść w formacie Markdown. Kliknij &quot;Zapisz&quot; gdy skończysz.</span>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Article Content Card */}
                     <motion.div
@@ -384,7 +497,17 @@ export default function WikiArticlePage() {
                     >
                         <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
                             <CardContent className="p-8">
-                                {renderContent(article.content)}
+                                {isEditing ? (
+                                    <textarea
+                                        ref={textareaRef}
+                                        value={editContent}
+                                        onChange={(e) => setEditContent(e.target.value)}
+                                        className="w-full min-h-[400px] bg-transparent text-foreground font-mono text-sm leading-relaxed resize-none outline-none border-none focus:ring-0 p-0"
+                                        placeholder="Treść artykułu w formacie Markdown..."
+                                    />
+                                ) : (
+                                    renderContent(article.content)
+                                )}
                             </CardContent>
                         </Card>
                     </motion.div>

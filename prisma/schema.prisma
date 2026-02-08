@@ -33,6 +33,8 @@ model Organization {
   roles              OrganizationalRole[]
   departments        Department[]
   aiModelConfigs     AIModelConfig[]
+  orgAiApiKeys       OrgAiApiKey[]
+  aiUsageLogs        AiUsageLog[]
   
   // ZenOS Transformation
   transformationPhases TransformationPhase[]
@@ -41,6 +43,9 @@ model Organization {
   
   // Kaizen System
   kaizenSuggestions   KaizenSuggestion[]
+  
+  // Partner assignments (for PARTNER role users)
+  partnerAssignments  PartnerOrganization[]
   
   @@index([slug])
 }
@@ -84,17 +89,44 @@ model User {
   suggestionsSubmitted     KaizenSuggestion[] @relation("SuggestionsSubmitted")
   suggestionsReviewed      KaizenSuggestion[] @relation("SuggestionsReviewed")
   
+  // Partner: companies assigned to this user (when role = PARTNER)
+  partnerOrganizations     PartnerOrganization[]
+  
   @@index([organizationId])
   @@index([email])
 }
 
 enum UserRole {
   META_ADMIN     // Platform Admin - Global, cross-company access
+  PARTNER        // Consultant/Facilitator - assigned companies access
   SPONSOR        // Zarząd - Full access (company-scoped)
   PILOT          // COO - KPIs, decision dashboard
   MANAGER        // Manager Działu - Department-scoped
   EXPERT         // Właściciel Wiedzy - SOP expert access
   CITIZEN_DEV    // Citizen Devs - Innovation mode, read access
+}
+
+// Partner role types for multi-company consultants
+enum PartnerRole {
+  CONSULTANT     // Transformation consultant
+  FACILITATOR    // Workshop facilitator
+  AUDITOR        // SOP auditor
+}
+
+// Junction table for Partner -> Organization assignments
+model PartnerOrganization {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  partnerRole    PartnerRole @default(CONSULTANT)
+  assignedAt     DateTime    @default(now())
+  notes          String?     // Optional notes about the assignment
+  
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
 }
 
 // ============================================================================
@@ -147,6 +179,76 @@ model AIModelConfig {
   @@unique([organizationId, area, priority])
   @@index([organizationId])
   @@index([area, isActive])
+}
+
+// ============================================================================
+// ORG AI API KEYS (Provisioned by Meta Admin)
+// ============================================================================
+
+model OrgAiApiKey {
+  id             String       @id @default(cuid())
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  provider       AIProvider   @default(OPENAI)
+  label          String                              // "OpenAI Production", "Anthropic Backup"
+  encryptedKey   String       @db.Text               // Encrypted API key
+  maskedKey      String                              // "sk-...xyz789" for display
+  
+  isActive       Boolean      @default(true)
+  monthlyBudget  Float?                              // Optional spending cap in USD
+  
+  // Provisioning metadata
+  provisionedBy  String?                             // User ID of Meta Admin who added it
+  note           String?                             // Admin note
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  
+  usageLogs      AiUsageLog[]
+  
+  @@index([organizationId])
+  @@index([organizationId, provider, isActive])
+}
+
+// ============================================================================
+// AI USAGE LOG (Per-request tracking)
+// ============================================================================
+
+model AiUsageLog {
+  id             String       @id @default(cuid())
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  apiKeyId       String?
+  apiKey         OrgAiApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  
+  userId         String?                             // Who triggered the request
+  
+  // Request details
+  provider       AIProvider
+  model          String                              // "gpt-4-turbo", "claude-3-sonnet"
+  tier           String                              // "platform", "organization", "simulated"
+  
+  // Token usage  
+  promptTokens   Int          @default(0)
+  completionTokens Int        @default(0)
+  totalTokens    Int          @default(0)
+  
+  // Cost (estimated, in USD)
+  estimatedCost  Float        @default(0)
+  
+  // Context
+  sessionId      String?                             // Chat session ID
+  area           String?                             // "chat", "sop_creation", "analysis"
+  
+  createdAt      DateTime     @default(now())
+  
+  @@index([organizationId])
+  @@index([organizationId, createdAt])
+  @@index([apiKeyId])
 }
 
 model Department {
@@ -297,6 +399,10 @@ model Agent {
   tools         Json?     // Array of tool configurations
   integrations  Json?     // Supported integrations (Slack, Teams, etc.)
   
+  // Automation-specific config (deterministic scripts, I/O spec)
+  automationConfig Json?  // { trigger, inputs, outputs, script, schedule }
+  isGlobal         Boolean @default(false) // Meta Admin: visible to all orgs
+  
   // Multi-tenant
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -330,10 +436,9 @@ model Agent {
 }
 
 enum AgentType {
-  ASSISTANT
-  SPECIALIST
-  ORCHESTRATOR
-  VALIDATOR
+  ASSISTANT    // Well-structured system prompt + knowledge base
+  AGENT        // Prompt + knowledge + takes defined actions (internal/external)
+  AUTOMATION   // Algorithmic logic, scripts, 100% deterministic (no AI)
 }
 
 enum AgentStatus {

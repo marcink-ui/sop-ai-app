@@ -44,7 +44,7 @@ export interface FlowExecutionResult {
 
 export interface HeadlessAgentConfig {
     systemPrompt?: string;
-    model?: 'GPT-4o' | 'Claude-Sonnet-4' | 'Gemini-2.5-Pro';
+    model?: 'GPT-4o' | 'GPT-4.1' | 'Claude-Sonnet-4' | 'Claude-Opus-4' | 'Gemini-2.5-Flash' | 'Gemini-2.5-Pro';
     temperature?: number;
     maxTokens?: number;
     saveToDatabase?: boolean;

@@ -16,6 +16,7 @@ import {
     Sparkles,
     Cpu,
     Plus,
+    Key,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,16 @@ const backofficeModules = [
         href: '/backoffice/ai-models',
         stats: 'Routing AI',
         color: 'from-indigo-500 to-violet-600',
+        available: true,
+    },
+    {
+        id: 'ai-keys',
+        title: 'AI Keys & Usage',
+        description: 'Przydzielaj klucze AI klientom i monitoruj zużycie',
+        icon: Key,
+        href: '/backoffice/ai-keys',
+        stats: 'Meta Admin',
+        color: 'from-violet-500 to-fuchsia-600',
         available: true,
     },
     {

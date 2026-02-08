@@ -20,6 +20,8 @@ import {
     FileText,
     Target,
     TrendingUp,
+    Layers,
+    Zap,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -56,26 +58,53 @@ const SUGGESTED_PROMPTS = [
         label: 'Stwórz SOP',
         prompt: 'Pomóż mi stworzyć SOP dla procesu obsługi klienta',
         color: 'text-blue-500',
+        bgColor: 'bg-blue-500/10',
     },
     {
         icon: Target,
         label: 'Znajdź MUDA',
         prompt: 'Jakie marnotrawstwa (MUDA) mogą występować w procesie sprzedaży?',
         color: 'text-amber-500',
+        bgColor: 'bg-amber-500/10',
     },
     {
         icon: TrendingUp,
-        label: 'Optymalizuj',
-        prompt: 'Jak mogę zoptymalizować proces reklamacji?',
+        label: 'Optymalizuj proces',
+        prompt: 'Jak mogę zoptymalizować proces reklamacji? Pokaż kroki i KPI.',
         color: 'text-emerald-500',
+        bgColor: 'bg-emerald-500/10',
     },
     {
         icon: Lightbulb,
-        label: 'AI pomysły',
+        label: 'Automatyzacja AI',
         prompt: 'Jakie procesy w mojej firmie można zautomatyzować za pomocą AI?',
         color: 'text-purple-500',
+        bgColor: 'bg-purple-500/10',
+    },
+    {
+        icon: Layers,
+        label: 'Mapuj Value Chain',
+        prompt: 'Pomóż mi zmapować łańcuch wartości dla mojego głównego produktu',
+        color: 'text-cyan-500',
+        bgColor: 'bg-cyan-500/10',
+    },
+    {
+        icon: Zap,
+        label: 'Deleguj do AI',
+        prompt: 'Które zadania z mojej listy mogę zdelegować do agentów AI?',
+        color: 'text-orange-500',
+        bgColor: 'bg-orange-500/10',
     },
 ];
+
+// Time-of-day greeting
+function getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 6) return 'Dobranoc';
+    if (hour < 12) return 'Dzień dobry';
+    if (hour < 18) return 'Cześć';
+    return 'Dobry wieczór';
+}
 
 export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -312,41 +341,43 @@ export function ChatPanel({ isOpen, onClose, context }: ChatPanelProps) {
                                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 mb-4">
                                         <Sparkles className="h-8 w-8 text-blue-500" />
                                     </div>
-                                    <h4 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
-                                        Witaj w VantageOS AI!
+                                    <h4 className="text-lg font-semibold text-foreground mb-1">
+                                        {getGreeting()} 👋
                                     </h4>
-                                    <p className="text-sm text-neutral-500 text-center mb-6 max-w-xs">
-                                        Mogę pomóc Ci tworzyć SOPy, analizować procesy i znajdować
-                                        możliwości optymalizacji z AI.
+                                    <p className="text-sm text-muted-foreground text-center mb-6 max-w-xs">
+                                        Jestem Twoim asystentem Lean AI. Pomogę Ci z SOPami, analizą procesów
+                                        i automatyzacją.
                                     </p>
 
                                     {/* Suggested Prompts */}
                                     <div className="w-full space-y-2">
-                                        <p className="text-xs text-neutral-400 text-center mb-3">
+                                        <p className="text-xs text-muted-foreground text-center mb-3">
                                             Zacznij od jednego z tych tematów:
                                         </p>
-                                        {SUGGESTED_PROMPTS.map((suggestion, index) => (
-                                            <motion.button
-                                                key={index}
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: index * 0.05 }}
-                                                onClick={() => handleSuggestedPrompt(suggestion.prompt)}
-                                                className={cn(
-                                                    'w-full flex items-center gap-3 p-3 rounded-xl',
-                                                    'bg-neutral-50 dark:bg-neutral-900/50',
-                                                    'border border-neutral-200 dark:border-neutral-800',
-                                                    'hover:bg-neutral-100 dark:hover:bg-neutral-800/50',
-                                                    'hover:border-neutral-300 dark:hover:border-neutral-700',
-                                                    'transition-all duration-200 text-left group'
-                                                )}
-                                            >
-                                                <suggestion.icon className={cn('h-4 w-4', suggestion.color)} />
-                                                <span className="text-sm text-neutral-700 dark:text-neutral-300 group-hover:text-neutral-900 dark:group-hover:text-white">
-                                                    {suggestion.label}
-                                                </span>
-                                            </motion.button>
-                                        ))}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {SUGGESTED_PROMPTS.map((suggestion, index) => (
+                                                <motion.button
+                                                    key={index}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ delay: index * 0.05 }}
+                                                    onClick={() => handleSuggestedPrompt(suggestion.prompt)}
+                                                    className={cn(
+                                                        'flex flex-col items-center gap-2 p-3 rounded-xl',
+                                                        'bg-card/50 border border-border',
+                                                        'hover:bg-accent hover:border-accent-foreground/20',
+                                                        'transition-all duration-200 text-center group'
+                                                    )}
+                                                >
+                                                    <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', suggestion.bgColor)}>
+                                                        <suggestion.icon className={cn('h-4 w-4', suggestion.color)} />
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground group-hover:text-foreground font-medium">
+                                                        {suggestion.label}
+                                                    </span>
+                                                </motion.button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             ) : (

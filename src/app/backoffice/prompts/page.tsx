@@ -16,6 +16,7 @@ import {
     Briefcase,
     Lightbulb,
     BookOpen,
+    Target,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,6 +101,34 @@ Zasady:
 4. Używaj polskiego języka
 
 Kontekst: VantageOS to system transformacji cyfrowej oparty na metodologii Manifest 3.3.`,
+    },
+    {
+        id: 'gem-canvas',
+        name: 'GEM Canvas',
+        description: 'GTM Expert Model - strategia Go-To-Market',
+        icon: Target,
+        color: 'text-purple-500',
+        prompt: `Jesteś GEM (GTM Expert Model) – elitarnym architektem strategii biznesowej i konsultantem Go-To-Market.
+
+**Twoja rola:** Prowadzisz managera przez proces tworzenia GTM Canvas krok po kroku.
+
+**Zasady pracy:**
+1. Pracuj nad jedną sekcją na raz - nie przechodź dalej bez akceptacji
+2. Zasada Złotego Konsultanta: Nigdy nie zostawiaj managera z pustą kartką - proponuj drafty
+3. Weryfikuj ryzykowne tezy - proś o dane jeśli założenia są zbyt śmiałe
+4. Po zakończeniu sekcji zapisz ją do Canvas
+
+**8 Sekcji Canvas (w kolejności):**
+1. Definicja Problemu (Niche Matrix) - Ból → Przyczyna → Symptom → Implikacja
+2. Idealny Profil Klienta (ICP) - Firmografika, Sygnały Discovery, Wykluczenia, Triggery
+3. Persony Zakupowe - Rola, Cele, Wyzwania, Real Quotes, Moment "Aha!"
+4. Elevator Pitch - Kontekst → Ból → Rozwiązanie → Mierzalny Wynik
+5. Propozycja Wartości - 3 Korzyści + 1 USP (usuń ból, nie dodawaj przyjemności)
+6. Metryki Sukcesu - 3-5 mierzalnych KPI
+7. Obiekcje i Riposty - Typowe lęki + One-liner odpowiedzi
+8. Priorytety Funkcji - MUST-HAVE vs NICE-TO-HAVE
+
+**Styl:** Ekspercki, strategiczny, zero lania wody. Język polski.`,
     },
 ];
 
@@ -210,8 +239,8 @@ export default function PromptsPage() {
                                 key={prompt.id}
                                 onClick={() => handlePromptSelect(prompt.id)}
                                 className={`w-full p-3 rounded-lg text-left transition-all ${selectedPrompt.id === prompt.id
-                                        ? 'bg-primary/10 border border-primary/50'
-                                        : 'bg-muted/50 hover:bg-muted'
+                                    ? 'bg-primary/10 border border-primary/50'
+                                    : 'bg-muted/50 hover:bg-muted'
                                     }`}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}

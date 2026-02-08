@@ -95,7 +95,11 @@ export default function NewsletterPublisherPage() {
         );
     }
 
-    if (session?.user?.role !== 'SPONSOR') {
+    // All authenticated users can access — CITIZEN_DEV+ can compose company newsletters
+    // META_ADMIN can send global newsletters
+    const userRole = (session?.user as { role?: string })?.role;
+    const isMetaAdmin = userRole === 'META_ADMIN';
+    if (!session) {
         redirect('/dashboard');
     }
 

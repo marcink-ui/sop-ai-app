@@ -46,6 +46,15 @@ interface FeatureFlag {
 
 const defaultFlags: FeatureFlag[] = [
     {
+        id: 'antigravity_ai',
+        name: 'Antigravity AI',
+        description: 'Udostępnij Antigravity AI jako silnik wewnętrzny dla Meta Adminów',
+        icon: Zap,
+        enabled: false,
+        category: 'ai',
+        requiresRestart: true,
+    },
+    {
         id: 'floating_chat',
         name: 'Floating Chat Widget',
         description: 'Pływający widget chatu AI w prawym dolnym rogu',
@@ -108,6 +117,14 @@ const defaultFlags: FeatureFlag[] = [
         description: 'Wieloagentowe dyskusje i walidacja',
         icon: Users,
         enabled: true,
+        category: 'ai',
+    },
+    {
+        id: 'muda_auto_audit',
+        name: 'MUDA Auto-Audit',
+        description: 'Automatyczny audyt MUDA przy tworzeniu nowego SOP',
+        icon: BotIcon,
+        enabled: false,
         category: 'ai',
     },
     {

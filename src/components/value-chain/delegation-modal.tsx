@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { roleHierarchy } from '@/lib/auth/permissions';
 import {
     Dialog,
     DialogContent,
@@ -32,7 +33,7 @@ interface DelegationModalProps {
         label: string;
         type: string;
     };
-    currentUserRole: 'META_ADMIN' | 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV';
+    currentUserRole: 'META_ADMIN' | 'PARTNER' | 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV';
 }
 
 interface TeamMember {
@@ -41,15 +42,6 @@ interface TeamMember {
     email: string;
     role: string;
 }
-
-// Role hierarchy for delegation permissions
-const roleHierarchy: Record<string, number> = {
-    SPONSOR: 5,
-    PILOT: 4,
-    MANAGER: 3,
-    EXPERT: 2,
-    CITIZEN_DEV: 1,
-};
 
 const elementTypes = [
     { value: 'sop', label: 'Nowe SOP', Icon: FileText, color: 'text-emerald-500' },

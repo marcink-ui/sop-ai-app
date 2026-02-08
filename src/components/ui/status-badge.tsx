@@ -87,7 +87,7 @@ export function StatusBadge({ status, size = 'md', showDot = true }: StatusBadge
 }
 
 interface RoleBadgeProps {
-    role: 'META_ADMIN' | 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV';
+    role: 'META_ADMIN' | 'PARTNER' | 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV';
     size?: 'sm' | 'md';
 }
 
@@ -96,6 +96,11 @@ const roleConfig = {
         bg: 'bg-gradient-to-r from-red-600 to-orange-500',
         text: 'text-white',
         label: 'Meta Admin',
+    },
+    PARTNER: {
+        bg: 'bg-gradient-to-r from-violet-600 to-purple-500',
+        text: 'text-white',
+        label: 'Partner',
     },
     SPONSOR: {
         bg: 'bg-gradient-to-r from-amber-600 to-yellow-500',

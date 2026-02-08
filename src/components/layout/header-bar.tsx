@@ -375,29 +375,55 @@ export function HeaderBar({ onOpenChat }: HeaderBarProps) {
                                     Brak powiadomień
                                 </div>
                             ) : (
-                                notifications.map((notification) => (
-                                    <DropdownMenuItem
-                                        key={notification.id}
-                                        className="flex items-start gap-3 p-3 cursor-pointer"
-                                    >
-                                        <div className="mt-0.5">
-                                            {getNotificationIcon(notification.type)}
-                                        </div>
-                                        <div className="flex-1 space-y-1">
-                                            <p className={`text-sm ${!notification.read ? 'font-medium' : ''}`}>
-                                                {notification.title}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {notification.description}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {notification.time}
-                                            </p>
-                                        </div>
-                                        {!notification.read && (
-                                            <div className="h-2 w-2 rounded-full bg-blue-500 mt-1" />
-                                        )}
-                                    </DropdownMenuItem>
+                                notifications.slice(0, 5).map((notification) => (
+                                    notification.link ? (
+                                        <Link key={notification.id} href={notification.link}>
+                                            <DropdownMenuItem
+                                                className="flex items-start gap-3 p-3 cursor-pointer"
+                                            >
+                                                <div className="mt-0.5">
+                                                    {getNotificationIcon(notification.type)}
+                                                </div>
+                                                <div className="flex-1 space-y-1">
+                                                    <p className={`text-sm ${!notification.read ? 'font-medium' : ''}`}>
+                                                        {notification.title}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {notification.description}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {notification.time}
+                                                    </p>
+                                                </div>
+                                                {!notification.read && (
+                                                    <div className="h-2 w-2 rounded-full bg-blue-500 mt-1" />
+                                                )}
+                                            </DropdownMenuItem>
+                                        </Link>
+                                    ) : (
+                                        <DropdownMenuItem
+                                            key={notification.id}
+                                            className="flex items-start gap-3 p-3 cursor-pointer"
+                                        >
+                                            <div className="mt-0.5">
+                                                {getNotificationIcon(notification.type)}
+                                            </div>
+                                            <div className="flex-1 space-y-1">
+                                                <p className={`text-sm ${!notification.read ? 'font-medium' : ''}`}>
+                                                    {notification.title}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {notification.description}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {notification.time}
+                                                </p>
+                                            </div>
+                                            {!notification.read && (
+                                                <div className="h-2 w-2 rounded-full bg-blue-500 mt-1" />
+                                            )}
+                                        </DropdownMenuItem>
+                                    )
                                 ))
                             )}
                             <DropdownMenuSeparator />

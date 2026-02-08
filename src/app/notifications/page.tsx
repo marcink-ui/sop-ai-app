@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bell, ListTodo, BookOpen, AlertCircle, CheckCheck, ExternalLink } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Bell, ListTodo, BookOpen, AlertCircle, CheckCheck, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 
 interface Notification {
@@ -18,10 +19,13 @@ interface Notification {
     link?: string;
 }
 
+const ITEMS_PER_PAGE = 5;
+
 export default function NotificationsPage() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'unread'>('all');
+    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
     useEffect(() => {
         const fetchNotifications = async () => {
@@ -72,6 +76,8 @@ export default function NotificationsPage() {
         ? notifications.filter(n => !n.read)
         : notifications;
 
+    const visibleNotifications = filteredNotifications.slice(0, visibleCount);
+    const hasMore = visibleCount < filteredNotifications.length;
     const unreadCount = notifications.filter(n => !n.read).length;
 
     if (isLoading) {
@@ -174,57 +180,76 @@ export default function NotificationsPage() {
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            {filteredNotifications.map((notification) => (
-                                <div
-                                    key={notification.id}
-                                    className={`flex items-start gap-4 p-4 rounded-lg border transition-colors ${!notification.read
-                                            ? 'bg-primary/5 border-primary/20'
-                                            : 'bg-muted/30 border-transparent hover:border-border'
-                                        }`}
-                                >
-                                    <div className="mt-0.5 p-2 rounded-full bg-background shadow-sm">
-                                        {getNotificationIcon(notification.type)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <h4 className={`font-medium ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                                {notification.title}
-                                            </h4>
-                                            {!notification.read && (
-                                                <span className="h-2 w-2 bg-red-500 rounded-full" />
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-muted-foreground truncate">
-                                            {notification.description}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                            <Badge variant="outline" className="text-xs">
-                                                {getTypeLabel(notification.type)}
-                                            </Badge>
-                                            <span>{notification.time}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {notification.link && (
-                                            <Link href={notification.link}>
-                                                <Button variant="outline" size="sm" className="gap-1">
-                                                    <ExternalLink className="h-3 w-3" />
-                                                    Otwórz
-                                                </Button>
+                            <AnimatePresence mode="popLayout">
+                                {visibleNotifications.map((notification, index) => {
+                                    const notificationContent = (
+                                        <motion.div
+                                            key={notification.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            transition={{ delay: index * 0.05, duration: 0.2 }}
+                                            className={`flex items-start gap-4 p-4 rounded-lg border transition-colors cursor-pointer ${!notification.read
+                                                ? 'bg-primary/5 border-primary/20 hover:bg-primary/10'
+                                                : 'bg-muted/30 border-transparent hover:border-border hover:bg-muted/50'
+                                                }`}
+                                            onClick={() => markAsRead(notification.id)}
+                                        >
+                                            <div className="mt-0.5 p-2 rounded-full bg-background shadow-sm">
+                                                {getNotificationIcon(notification.type)}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className={`font-medium ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        {notification.title}
+                                                    </h4>
+                                                    {!notification.read && (
+                                                        <span className="h-2 w-2 bg-red-500 rounded-full flex-shrink-0" />
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-muted-foreground truncate">
+                                                    {notification.description}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {getTypeLabel(notification.type)}
+                                                    </Badge>
+                                                    <span>{notification.time}</span>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    );
+
+                                    // Wrap in Link if notification has a link — entire row is clickable
+                                    if (notification.link) {
+                                        return (
+                                            <Link key={notification.id} href={notification.link} className="block">
+                                                {notificationContent}
                                             </Link>
-                                        )}
-                                        {!notification.read && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => markAsRead(notification.id)}
-                                            >
-                                                <CheckCheck className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                        );
+                                    }
+
+                                    return notificationContent;
+                                })}
+                            </AnimatePresence>
+
+                            {/* "Zobacz więcej" pagination button */}
+                            {hasMore && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="pt-4 text-center"
+                                >
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
+                                        className="gap-2"
+                                    >
+                                        <ChevronDown className="h-4 w-4" />
+                                        Zobacz więcej ({filteredNotifications.length - visibleCount} pozostało)
+                                    </Button>
+                                </motion.div>
+                            )}
                         </div>
                     )}
                 </CardContent>

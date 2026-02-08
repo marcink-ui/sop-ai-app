@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { TaskBoard } from '@/components/tasks/task-board';
+import { ClipboardList } from 'lucide-react';
 
 export const metadata: Metadata = {
     title: 'Zadania | VantageOS',
@@ -18,11 +19,16 @@ export default async function TasksPage() {
 
     return (
         <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-col gap-2 mb-6">
-                <h1 className="text-3xl font-bold tracking-tight">Zadania 📋</h1>
-                <p className="text-muted-foreground">
-                    Kanban board do zarządzania requestami: nowe SOPy, ulepszenia agentów, zmiany procesów.
-                </p>
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-500/20">
+                    <ClipboardList className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Zadania</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Kanban board do zarządzania requestami: nowe SOPy, ulepszenia agentów, zmiany procesów.
+                    </p>
+                </div>
             </div>
 
             <TaskBoard />

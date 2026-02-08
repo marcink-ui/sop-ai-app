@@ -219,7 +219,7 @@ async function main() {
             data: {
                 name: 'SalesBot',
                 code: 'AGENT-001',
-                type: AgentType.SPECIALIST,
+                type: AgentType.AGENT,
                 status: AgentStatus.ACTIVE,
                 description: 'Agent wspierający proces sprzedaży - kwalifikacja leadów, przygotowanie ofert, follow-up.',
                 masterPrompt: `Jesteś ekspertem ds. sprzedaży B2B w agencji technologicznej SYHI.
@@ -245,7 +245,7 @@ Kryteria kwalifikacji BANT:
             data: {
                 name: 'DocuMaster',
                 code: 'AGENT-002',
-                type: AgentType.SPECIALIST,
+                type: AgentType.ASSISTANT,
                 status: AgentStatus.ACTIVE,
                 description: 'Agent do tworzenia i zarządzania dokumentacją - SOPs, raporty, specyfikacje.',
                 masterPrompt: `Jesteś ekspertem ds. dokumentacji procesowej.
@@ -261,7 +261,7 @@ Każdy SOP musi zawierać: cel, zakres, definicje, kroki procedury, KPI.`,
             data: {
                 name: 'DataAnalyst',
                 code: 'AGENT-003',
-                type: AgentType.ORCHESTRATOR,
+                type: AgentType.AGENT,
                 status: AgentStatus.ACTIVE,
                 description: 'Agent analityczny - raporty MUDA, KPIs, trendy, predykcje.',
                 model: 'gpt-4-turbo',

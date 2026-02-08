@@ -15,7 +15,8 @@ import {
     AlertTriangle,
     Bot,
     Sparkles,
-    Cpu
+    Cpu,
+    Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,7 @@ import { cn } from '@/lib/utils';
 interface ApiKey {
     id: string;
     name: string;
-    provider: 'openai' | 'anthropic' | 'custom';
+    provider: 'openai' | 'anthropic' | 'google' | 'custom';
     key: string;
     lastUsed: string | null;
     createdAt: string;
@@ -46,6 +47,13 @@ const providerConfig = {
         color: 'text-orange-500',
         bgColor: 'bg-orange-500/10',
         placeholder: 'sk-ant-...'
+    },
+    google: {
+        name: 'Google AI',
+        icon: Zap,
+        color: 'text-blue-500',
+        bgColor: 'bg-blue-500/10',
+        placeholder: 'AIza...'
     },
     custom: {
         name: 'Custom MCP',
@@ -81,7 +89,7 @@ export default function ApiKeysPage() {
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [newKey, setNewKey] = useState({
         name: '',
-        provider: 'openai' as 'openai' | 'anthropic' | 'custom',
+        provider: 'openai' as 'openai' | 'anthropic' | 'google' | 'custom',
         key: ''
     });
 

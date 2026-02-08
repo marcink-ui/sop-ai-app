@@ -40,9 +40,10 @@ export interface AIModel {
 }
 
 export const AI_MODELS: AIModel[] = [
+    // --- Google ---
     {
-        id: 'gemini-2.0-flash',
-        name: 'Gemini 2.0 Flash',
+        id: 'gemini-2.5-flash',
+        name: 'Gemini 2.5 Flash',
         provider: 'google',
         description: 'Szybki i wszechstronny',
         icon: Zap,
@@ -51,22 +52,51 @@ export const AI_MODELS: AIModel[] = [
         isDefault: true,
     },
     {
+        id: 'gemini-2.5-pro',
+        name: 'Gemini 2.5 Pro',
+        provider: 'google',
+        description: 'Zaawansowane rozumowanie i analiza',
+        icon: Brain,
+        color: 'text-blue-600',
+        allowedRoles: ['MANAGER', 'PILOT', 'SPONSOR'],
+    },
+    // --- OpenAI ---
+    {
         id: 'gpt-4o',
         name: 'GPT-4o',
         provider: 'openai',
-        description: 'Zaawansowane rozumowanie',
+        description: 'Multimodalny, szybki',
         icon: Sparkles,
         color: 'text-emerald-500',
         allowedRoles: ['CITIZEN_DEV', 'MANAGER', 'PILOT', 'SPONSOR'],
     },
     {
-        id: 'claude-3-5-sonnet',
-        name: 'Claude 3.5 Sonnet',
-        provider: 'anthropic',
-        description: 'Najlepszy do kodowania',
-        icon: Brain,
-        color: 'text-purple-500',
+        id: 'gpt-4.1',
+        name: 'GPT-4.1',
+        provider: 'openai',
+        description: 'Najnowszy model OpenAI',
+        icon: Sparkles,
+        color: 'text-emerald-600',
         allowedRoles: ['PILOT', 'SPONSOR'],
+    },
+    // --- Anthropic ---
+    {
+        id: 'claude-sonnet-4',
+        name: 'Claude Sonnet 4',
+        provider: 'anthropic',
+        description: 'Extended thinking, kodowanie',
+        icon: Brain,
+        color: 'text-orange-500',
+        allowedRoles: ['MANAGER', 'PILOT', 'SPONSOR'],
+    },
+    {
+        id: 'claude-opus-4',
+        name: 'Claude Opus 4',
+        provider: 'anthropic',
+        description: 'Najlepszy Anthropic — deep reasoning',
+        icon: Brain,
+        color: 'text-orange-600',
+        allowedRoles: ['SPONSOR'],
     },
 ];
 

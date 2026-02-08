@@ -71,7 +71,6 @@ export default function ValueChainPage() {
     const handleSave = useCallback((nodes: Node[], edges: Edge[]) => {
         setCurrentNodes(nodes);
         setCurrentEdges(edges);
-        console.log('Workflow updated:', { nodes: nodes.length, edges: edges.length });
     }, []);
 
     const handleSaveSnapshot = () => {

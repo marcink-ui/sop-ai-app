@@ -72,7 +72,8 @@ export default function KnowledgeGraph3D() {
     const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
     const [loading, setLoading] = useState(true);
     const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
-    const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d'); // Default to 2D
+    const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const getNodeUrl = (id: string, type: string): string | undefined => {
         switch (type) {
@@ -208,7 +209,7 @@ export default function KnowledgeGraph3D() {
     }
 
     return (
-        <div className="relative w-full h-[80vh] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
+        <div className="relative w-full h-[80vh] bg-background rounded-xl overflow-hidden border border-border shadow-2xl">
             {/* Controls */}
             <div className="absolute top-4 left-4 z-20 flex gap-2">
                 <TooltipProvider>
@@ -253,35 +254,46 @@ export default function KnowledgeGraph3D() {
                 </TooltipProvider>
             </div>
 
+            {/* Search Bar */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Szukaj węzła..."
+                    className="px-4 py-2 rounded-lg bg-card/90 backdrop-blur-sm border border-border text-sm text-foreground placeholder:text-muted-foreground w-64 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+            </div>
+
             {/* Legend */}
-            <div className="absolute top-4 right-4 z-20 bg-slate-900/90 backdrop-blur-sm border border-slate-700 p-3 rounded-lg text-xs space-y-2 shadow-lg">
-                <div className="font-semibold mb-2 text-slate-300">Legenda</div>
-                <div className="flex items-center gap-2 text-slate-400">
+            <div className="absolute top-16 right-4 z-20 bg-card/90 backdrop-blur-sm border border-border p-3 rounded-lg text-xs space-y-2 shadow-lg">
+                <div className="font-semibold mb-2 text-foreground">Legenda</div>
+                <div className="flex items-center gap-2 text-muted-foreground">
                     <FileText className="h-3 w-3 text-amber-500" />
                     <span>SOP (procedura)</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-muted-foreground">
                     <Bot className="h-3 w-3 text-indigo-500" />
                     <span>Agent AI</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-muted-foreground">
                     <Building2 className="h-3 w-3 text-blue-500" />
                     <span>Dział</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-muted-foreground">
                     <GitBranch className="h-3 w-3 text-emerald-500" />
                     <span>Proces</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-muted-foreground">
                     <div className="h-3 w-3 rounded-full bg-pink-500" />
                     <span>Ontologia</span>
                 </div>
-                <div className="mt-3 pt-2 border-t border-slate-700 text-slate-500 text-[10px] space-y-1">
+                <div className="mt-3 pt-2 border-t border-border text-muted-foreground/60 text-[10px] space-y-1">
                     <div>Kliknij element aby otworzyć</div>
                     <div className="flex items-center gap-1">
-                        <kbd className="px-1 py-0.5 bg-slate-800 rounded text-[9px]">↑↓←→</kbd>
+                        <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">↑↓←→</kbd>
                         <span>Pan</span>
-                        <kbd className="px-1 py-0.5 bg-slate-800 rounded text-[9px] ml-1">+/-</kbd>
+                        <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] ml-1">+/-</kbd>
                         <span>Zoom</span>
                     </div>
                 </div>
@@ -289,17 +301,17 @@ export default function KnowledgeGraph3D() {
 
             {/* Hovered node tooltip */}
             {hoveredNode && (
-                <div className="absolute bottom-4 left-4 z-20 bg-slate-900/90 backdrop-blur-sm border border-slate-700 px-4 py-2 rounded-lg shadow-lg">
+                <div className="absolute bottom-4 left-4 z-20 bg-card/90 backdrop-blur-sm border border-border px-4 py-2 rounded-lg shadow-lg">
                     <div className="flex items-center gap-2">
                         <div
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: hoveredNode.color }}
                         />
-                        <span className="font-medium text-slate-200">{hoveredNode.label}</span>
-                        <span className="text-xs text-slate-500 capitalize">({hoveredNode.type})</span>
+                        <span className="font-medium text-foreground">{hoveredNode.label}</span>
+                        <span className="text-xs text-muted-foreground capitalize">({hoveredNode.type})</span>
                     </div>
                     {hoveredNode.url && (
-                        <div className="text-xs text-slate-400 mt-1">Kliknij aby otworzyć →</div>
+                        <div className="text-xs text-muted-foreground mt-1">Kliknij aby otworzyć →</div>
                     )}
                 </div>
             )}
@@ -320,12 +332,20 @@ export default function KnowledgeGraph3D() {
                     ref={graphRef}
                     graphData={graphData}
                     nodeLabel={(node: any) => `${node.label} (${node.type})`}
-                    nodeColor={(node: any) => node.color}
+                    nodeColor={(node: any) => {
+                        if (searchQuery && !node.label?.toLowerCase().includes(searchQuery.toLowerCase())) {
+                            return 'rgba(100,100,100,0.3)';
+                        }
+                        return node.color;
+                    }}
                     nodeVal={(node: any) => node.val || 5}
                     nodeOpacity={0.9}
-                    linkColor={() => 'rgba(255,255,255,0.15)'}
-                    linkWidth={0.5}
-                    linkOpacity={0.4}
+                    linkColor={(link: any) => {
+                        const sourceNode = typeof link.source === 'object' ? link.source : graphData.nodes.find(n => n.id === link.source);
+                        return sourceNode?.color ? sourceNode.color + '55' : 'rgba(255,255,255,0.15)';
+                    }}
+                    linkWidth={0.8}
+                    linkOpacity={0.5}
                     backgroundColor="rgba(0,0,0,0)"
                     onNodeClick={handleNodeClick}
                     onNodeHover={(node: any) => setHoveredNode(node as GraphNode | null)}
@@ -333,14 +353,14 @@ export default function KnowledgeGraph3D() {
                     enableNavigationControls={true}
                     showNavInfo={false}
                     warmupTicks={100}
-                    cooldownTime={3000}
-                    d3AlphaDecay={0.02}
-                    d3VelocityDecay={0.3}
+                    cooldownTime={5000}
+                    d3AlphaDecay={0.03}
+                    d3VelocityDecay={0.4}
                 />
             )}
 
             {/* Stats */}
-            <div className="absolute bottom-4 right-4 z-20 text-xs text-slate-500">
+            <div className="absolute bottom-4 right-4 z-20 text-xs text-muted-foreground">
                 {graphData.nodes.length} elementów · {graphData.links.length} połączeń
             </div>
         </div>

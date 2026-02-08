@@ -39,7 +39,13 @@ import {
     GraduationCap,
     History,
     Lightbulb,
+    Rocket,
+    Building2,
+    Target,
+    AppWindow,
+    Cog,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { PandaIcon } from '@/components/icons/panda-icon';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -52,60 +58,77 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useChat } from '@/components/ai-chat';
 
-// Role hierarchy for access control (company-scoped + platform-scoped)
-const ROLE_HIERARCHY = ['EMPLOYEE', 'CITIZEN_DEV', 'MANAGER', 'PILOT', 'SPONSOR', 'META_ADMIN'];
+// Multi-dimensional role access (imported from permissions.ts logic)
+// INTERNAL: CITIZEN_DEV → EXPERT → MANAGER → PILOT → SPONSOR
+// EXTERNAL: PARTNER (separate axis — only Partner Portal)
+// PLATFORM: META_ADMIN (sees everything)
+const INTERNAL_LEVELS: Record<string, number> = {
+    CITIZEN_DEV: 1, EXPERT: 2, MANAGER: 3, PILOT: 4, SPONSOR: 5,
+    PARTNER: -1, META_ADMIN: 99,
+};
 
 const hasMinRole = (userRole: string | undefined, minRole: string): boolean => {
     if (!userRole) return false;
-    const userIndex = ROLE_HIERARCHY.indexOf(userRole);
-    const minIndex = ROLE_HIERARCHY.indexOf(minRole);
-    return userIndex >= minIndex;
+    if (userRole === 'META_ADMIN') return true;
+    if (minRole === 'PARTNER') return userRole === 'PARTNER' || userRole === 'META_ADMIN';
+    if (minRole === 'META_ADMIN') return userRole === 'META_ADMIN';
+    if (userRole === 'PARTNER') return false; // PARTNER can't access internal pages
+    return (INTERNAL_LEVELS[userRole] ?? 0) >= (INTERNAL_LEVELS[minRole] ?? 0);
 };
 
 interface NavItemData {
     name: string;
     href: string;
-    icon: any;
+    icon: LucideIcon;
     color: string;
     bgColor: string;
     minRole: string;
 }
 
-// NEW SIDEBAR STRUCTURE per user requirements
+// NEW SIDEBAR STRUCTURE — priority-based, grouped by usage
 const SIDEBAR_CATEGORIES = {
-    mojaPraca: {
-        label: 'Moja Praca',
+    szybkiDostep: {
+        label: 'Szybki Dostęp',
         icon: Home,
         defaultOpen: true,
         items: [
-            { name: 'Analityka', href: '/analytics', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Pandy', href: '/pandas', icon: PandaIcon, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Kaizen', href: '/kaizen', icon: Lightbulb, color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Historia AI', href: '/chat-library', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Mój kontekst', href: '/my-context', icon: User, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Pandy', href: '/pandas', icon: PandaIcon, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EXPLORER' },
+            { name: 'Analityka', href: '/analytics', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Kaizen', href: '/kaizen', icon: Lightbulb, color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Historia AI', href: '/chat-library', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Mój kontekst', href: '/my-context', icon: User, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
-    procesSOP: {
-        label: 'Proces SOP',
+    procesy: {
+        label: 'Procesy',
         icon: FileText,
         defaultOpen: true,
         items: [
-            { name: 'SOP', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Raporty MUDA', href: '/muda', icon: Search, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Graf Wiedzy', href: '/knowledge-graph', icon: Network, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-100 dark:bg-pink-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Słownik', href: '/ontology', icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'EMPLOYEE' },
+            { name: 'SOP', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Raporty MUDA', href: '/muda', icon: Search, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Łańcuch Wartości', href: '/value-chain', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Słownik', href: '/ontology', icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
-    zasoby: {
-        label: 'Zasoby',
-        icon: FolderOpen,
+    wiedza: {
+        label: 'Wiedza & Zasoby',
+        icon: Library,
         defaultOpen: false,
         items: [
-            { name: 'Wiki', href: '/resources/wiki', icon: Library, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Newsletter', href: '/resources/newsletter', icon: Newspaper, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Prompty Systemowe', href: '/resources/prompts', icon: Code2, color: 'text-slate-600 dark:text-slate-400', bgColor: 'bg-slate-100 dark:bg-slate-500/20', minRole: 'EMPLOYEE' },
-            { name: 'Kursy', href: '/courses', icon: GraduationCap, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'EMPLOYEE' },
+            { name: 'Resources Hub', href: '/resources', icon: Library, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Graf Wiedzy', href: '/knowledge-graph', icon: Network, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-100 dark:bg-pink-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Automatyzacje', href: '/automations', icon: Cog, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'MANAGER' },
+            { name: 'Kursy', href: '/courses', icon: GraduationCap, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'CITIZEN_DEV' },
+        ] as NavItemData[],
+    },
+    canvas: {
+        label: 'Canvas',
+        icon: ClipboardList,
+        defaultOpen: false,
+        items: [
+            { name: 'AI Canvas', href: '/canvas', icon: ClipboardList, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'GTM Canvas', href: '/canvas/gtm', icon: Target, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
     zarzadzanie: {
@@ -113,12 +136,21 @@ const SIDEBAR_CATEGORIES = {
         icon: Briefcase,
         defaultOpen: false,
         items: [
-            { name: 'Rada', href: '/council', icon: Scale, color: 'text-amber-600 dark:text-yellow-400', bgColor: 'bg-amber-100 dark:bg-yellow-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Kalkulator ROI', href: '/roi-calculator', icon: Calculator, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Rejestr Ról', href: '/roles', icon: Users, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Łańcuch Wartości', href: '/value-chain', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Historia Czat AI', href: '/chat-history-admin', icon: History, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Backoffice', href: '/backoffice', icon: Settings2, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Rada', href: '/council', icon: Scale, color: 'text-amber-600 dark:text-yellow-400', bgColor: 'bg-amber-100 dark:bg-yellow-500/20', minRole: 'MANAGER' },
+            { name: 'Kalkulator ROI', href: '/roi-calculator', icon: Calculator, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'MANAGER' },
+            { name: 'Rejestr Ról', href: '/roles', icon: Users, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-500/20', minRole: 'MANAGER' },
+            { name: 'Historia Czat AI', href: '/chat-history-admin', icon: History, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'SPONSOR' },
+            { name: 'Backoffice', href: '/backoffice', icon: Settings2, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'SPONSOR' },
+        ] as NavItemData[],
+    },
+    partner: {
+        label: 'Portal Partnera',
+        icon: Building2,
+        defaultOpen: false,
+        items: [
+            { name: 'Dashboard', href: '/partner', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'PARTNER' },
+            { name: 'Moje Firmy', href: '/partner/company', icon: Building2, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'PARTNER' },
+            { name: 'Transformacje', href: '/partner/transformations', icon: Rocket, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'PARTNER' },
         ] as NavItemData[],
     },
     metaAdmin: {
@@ -168,26 +200,30 @@ export function Sidebar() {
                     <div className="flex h-16 items-center justify-between border-b border-neutral-200 dark:border-neutral-800/50 px-4">
                         {!collapsed && (
                             <Link href="/" className="flex items-center gap-3 group">
-                                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 dark:bg-white/10 shadow-lg shadow-neutral-900/25 group-hover:shadow-neutral-900/40 transition-shadow overflow-hidden">
+                                {/* iOS 26 Liquid Glass squircle */}
+                                <div className="relative flex h-10 w-10 items-center justify-center rounded-[22%] bg-gradient-to-br from-white/80 to-white/40 dark:from-white/15 dark:to-white/5 backdrop-blur-2xl shadow-[0_2px_12px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] ring-1 ring-black/[0.06] dark:ring-white/[0.12] group-hover:ring-black/[0.12] dark:group-hover:ring-white/[0.2] group-hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] dark:group-hover:shadow-[0_4px_16px_rgba(0,0,0,0.4)] transition-all duration-300 overflow-hidden">
                                     <Image
                                         src="/logo.png"
                                         alt="VantageOS"
                                         width={28}
                                         height={28}
-                                        className="object-contain"
+                                        className="object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
                                     />
                                 </div>
-                                <span className="font-semibold text-neutral-900 dark:text-white tracking-tight">VantageOS</span>
+                                <div className="flex flex-col">
+                                    <span className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-white/95">VantageOS</span>
+                                    <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 tracking-[0.08em] uppercase">Business OS</span>
+                                </div>
                             </Link>
                         )}
                         {collapsed && (
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 dark:bg-white/10 mx-auto overflow-hidden">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-[22%] bg-gradient-to-br from-white/80 to-white/40 dark:from-white/15 dark:to-white/5 backdrop-blur-2xl mx-auto overflow-hidden ring-1 ring-black/[0.06] dark:ring-white/[0.12] shadow-[0_2px_12px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
                                 <Image
                                     src="/logo.png"
                                     alt="VantageOS"
                                     width={28}
                                     height={28}
-                                    className="object-contain"
+                                    className="object-contain drop-shadow-sm"
                                 />
                             </div>
                         )}

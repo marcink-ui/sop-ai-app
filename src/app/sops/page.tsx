@@ -102,8 +102,8 @@ export default function SOPsPage() {
                     setDataSource('prisma');
                 }
             }
-        } catch (error) {
-            console.log('API not available, falling back to localStorage');
+        } catch {
+            // API not available, falling back to localStorage
         }
 
         // Also load from localStorage for backward compatibility
