@@ -126,7 +126,7 @@ const SIDEBAR_CATEGORIES = {
         icon: Wrench,
         defaultOpen: false,
         items: [
-            { name: 'Panel Właściciela', href: '/meta-admin', icon: Wrench, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-500/20', minRole: 'SPONSOR' },
+            { name: 'Panel Właściciela', href: '/meta-admin', icon: Wrench, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
 };

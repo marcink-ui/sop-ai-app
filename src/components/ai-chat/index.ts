@@ -1,6 +1,8 @@
 export { ChatPanel } from './chat-panel';
 export { ChatModal } from './chat-modal';
+export { ChatOverlay } from './chat-overlay';
 export { ChatProvider, useChat } from './chat-provider';
+export type { ChatOverlayMode, Message } from './chat-provider';
 export { ChatMessageBubble, ChatEmptyState } from './chat-message-bubble';
 export { ChatComposer } from './chat-composer';
 export { ChatFileUpload, AttachmentPreview, useAttachments } from './chat-file-upload';
