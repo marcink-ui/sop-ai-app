@@ -44,3 +44,20 @@ export type {
     CombinedAnalysisResult,
     UseCombinedAnalysisState,
 } from './use-langchain';
+
+// Headless Agent for programmatic AI workflows
+export {
+    HeadlessAgent,
+    createHeadlessAgent,
+    quickQuery,
+    runFlow,
+    PREDEFINED_FLOWS,
+} from './headless-agent';
+
+export type {
+    AgentFlow,
+    AgentFlowStep,
+    FlowExecutionResult,
+    HeadlessAgentConfig,
+} from './headless-agent';
+
