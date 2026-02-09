@@ -169,13 +169,11 @@ export function Sidebar() {
     const userRole = session?.user?.role;
 
     // State for category expansion
-    const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-        mojaPraca: true,
-        procesSOP: true,
-        zasoby: false,
-        zarzadzanie: false,
-        metaAdmin: false,
-    });
+    const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
+        Object.fromEntries(
+            Object.entries(SIDEBAR_CATEGORIES).map(([key, cat]) => [key, cat.defaultOpen])
+        )
+    );
 
     const toggleCategory = (key: string) => {
         setOpenCategories(prev => ({ ...prev, [key]: !prev[key] }));
