@@ -15,6 +15,9 @@ import ReactFlow, {
     Panel,
     useReactFlow,
     ReactFlowProvider,
+    ConnectionLineType,
+    MarkerType,
+    DefaultEdgeOptions,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
@@ -32,7 +35,9 @@ import {
     Cog,
     AlertTriangle,
     ArrowRightLeft,
-    UserPlus
+    UserPlus,
+    BarChart3,
+    Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { nodeTypes } from './nodes';
@@ -48,61 +53,84 @@ interface WhiteboardProps {
     initialEdges?: Edge[];
     onSave?: (nodes: Node[], edges: Edge[]) => void;
     readOnly?: boolean;
+    onOpenOptimization?: () => void;
 }
 
-// Sample initial data
+// ── Default Edge Options ───────────────────────────
+
+const defaultEdgeOptions: DefaultEdgeOptions = {
+    type: 'smoothstep',
+    animated: true,
+    style: { strokeWidth: 2.5, stroke: '#94a3b8' },
+    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#94a3b8' },
+};
+
+// ── Edge Label Base ────────────────────────────────
+
+const edgeLabelStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 600,
+    padding: '2px 8px',
+    borderRadius: 6,
+    background: 'var(--background, #fff)',
+    border: '1px solid var(--border, #e5e7eb)',
+    color: 'var(--foreground, #111)',
+};
+
+// ── Sample Initial Data ────────────────────────────
+
 const defaultNodes: Node[] = [
     {
         id: '1',
         type: 'process',
-        position: { x: 50, y: 200 },
+        position: { x: 60, y: 220 },
         data: { label: 'Lead Generation', description: 'Marketing & inbound leads', automation: 0.6 },
     },
     {
         id: '2',
         type: 'sop',
-        position: { x: 300, y: 100 },
+        position: { x: 360, y: 80 },
         data: { label: 'SOP-SALES-001', status: 'approved' },
     },
     {
         id: '3',
         type: 'process',
-        position: { x: 300, y: 300 },
+        position: { x: 360, y: 340 },
         data: { label: 'Lead Qualification', description: 'Score and prioritize', automation: 0.8 },
     },
     {
         id: '4',
         type: 'agent',
-        position: { x: 550, y: 200 },
+        position: { x: 660, y: 220 },
         data: { label: 'Sales Assistant', model: 'GPT-4', active: true },
     },
     {
         id: '5',
         type: 'decision',
-        position: { x: 780, y: 200 },
+        position: { x: 960, y: 220 },
         data: { label: 'Qualified?' },
     },
     {
         id: '6',
         type: 'handoff',
-        position: { x: 1000, y: 100 },
+        position: { x: 1260, y: 80 },
         data: { label: 'Sales Team', from: 'AI Agent', to: 'Account Executive' },
     },
     {
         id: '7',
         type: 'process',
-        position: { x: 1000, y: 300 },
+        position: { x: 1260, y: 340 },
         data: { label: 'Nurture Campaign', description: 'Automated follow-up', automation: 0.9 },
     },
 ];
 
 const defaultEdges: Edge[] = [
-    { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#22c55e' } },
-    { id: 'e1-3', source: '1', target: '3', animated: true, style: { stroke: '#3b82f6' } },
-    { id: 'e3-4', source: '3', target: '4', animated: true, style: { stroke: '#a855f7' } },
-    { id: 'e4-5', source: '4', target: '5', animated: true, style: { stroke: '#f59e0b' } },
-    { id: 'e5-6', source: '5', sourceHandle: 'yes', target: '6', label: 'Yes', style: { stroke: '#22c55e' } },
-    { id: 'e5-7', source: '5', sourceHandle: 'no', target: '7', label: 'No', style: { stroke: '#ef4444' } },
+    { id: 'e1-2', source: '1', target: '2', type: 'smoothstep', animated: true, style: { stroke: '#22c55e', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#22c55e', width: 16, height: 16 } },
+    { id: 'e1-3', source: '1', target: '3', type: 'smoothstep', animated: true, style: { stroke: '#3b82f6', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6', width: 16, height: 16 } },
+    { id: 'e3-4', source: '3', target: '4', type: 'smoothstep', animated: true, style: { stroke: '#a855f7', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#a855f7', width: 16, height: 16 } },
+    { id: 'e4-5', source: '4', target: '5', type: 'smoothstep', animated: true, style: { stroke: '#f59e0b', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#f59e0b', width: 16, height: 16 } },
+    { id: 'e5-6', source: '5', sourceHandle: 'yes', target: '6', type: 'smoothstep', label: 'Tak', labelStyle: edgeLabelStyle, style: { stroke: '#22c55e', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#22c55e', width: 16, height: 16 } },
+    { id: 'e5-7', source: '5', sourceHandle: 'no', target: '7', type: 'smoothstep', label: 'Nie', labelStyle: edgeLabelStyle, style: { stroke: '#ef4444', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444', width: 16, height: 16 } },
 ];
 
 export function ValueChainWhiteboard({
@@ -110,6 +138,7 @@ export function ValueChainWhiteboard({
     initialEdges = defaultEdges,
     onSave,
     readOnly = false,
+    onOpenOptimization,
 }: WhiteboardProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -170,7 +199,13 @@ export function ValueChainWhiteboard({
     const canDelegate = true; // All roles can delegate with hierarchy rules
 
     const onConnect = useCallback(
-        (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
+        (params: Connection) => setEdges((eds) => addEdge({
+            ...params,
+            type: 'smoothstep',
+            animated: true,
+            style: { strokeWidth: 2.5, stroke: '#94a3b8' },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 16, height: 16 },
+        }, eds)),
         [setEdges]
     );
 
@@ -309,9 +344,15 @@ export function ValueChainWhiteboard({
                 onDragOver={readOnly ? undefined : onDragOver}
                 onNodeClick={handleNodeClick}
                 nodeTypes={nodeTypes}
+                defaultEdgeOptions={defaultEdgeOptions}
+                connectionLineType={ConnectionLineType.SmoothStep}
+                connectionLineStyle={{ strokeWidth: 2.5, stroke: '#94a3b8', strokeDasharray: '8 4' }}
                 fitView
+                fitViewOptions={{ padding: 0.3, maxZoom: 1.2 }}
                 snapToGrid
-                snapGrid={[15, 15]}
+                snapGrid={[20, 20]}
+                minZoom={0.2}
+                maxZoom={2}
                 className="bg-neutral-50 dark:bg-neutral-950"
             >
                 <Background
@@ -381,6 +422,30 @@ export function ValueChainWhiteboard({
                                     Deleguj
                                 </Button>
                             </>
+                        )}
+                    </div>
+                </Panel>
+
+                {/* Analysis Buttons Panel */}
+                <Panel position="top-right" className="!m-4">
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-card/90 border border-border backdrop-blur-sm">
+                        <Button
+                            variant={simulationOpen ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setSimulationOpen(!simulationOpen)}
+                        >
+                            <BarChart3 className="h-4 w-4 mr-1" />
+                            Symulacja
+                        </Button>
+                        {onOpenOptimization && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={onOpenOptimization}
+                            >
+                                <Target className="h-4 w-4 mr-1" />
+                                Optymalizacja
+                            </Button>
                         )}
                     </div>
                 </Panel>

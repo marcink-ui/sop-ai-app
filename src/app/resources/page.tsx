@@ -247,7 +247,7 @@ export default function ResourcesPage() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-6 h-auto p-1">
+                <TabsList className="flex flex-wrap w-full h-auto p-1 gap-1">
                     {tabConfig.map(tab => (
                         <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 py-2.5 text-xs sm:text-sm">
                             <tab.icon className="h-4 w-4" />
@@ -430,8 +430,8 @@ export default function ResourcesPage() {
                                                         <Badge
                                                             variant="outline"
                                                             className={`text-[10px] ${agent.status === 'ACTIVE' ? 'bg-green-500/10 text-green-600 border-green-500/20' :
-                                                                    agent.status === 'TESTING' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                                                                        'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                                                                agent.status === 'TESTING' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                                    'bg-gray-500/10 text-gray-500 border-gray-500/20'
                                                                 }`}
                                                         >
                                                             {agent.status === 'ACTIVE' ? '● Aktywny' : agent.status === 'TESTING' ? '◐ Testowy' : '○ Nieaktywny'}

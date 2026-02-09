@@ -23,6 +23,8 @@ import { ValueChainWhiteboard } from '@/components/value-chain/whiteboard';
 import { ComparisonView } from '@/components/value-chain/comparison-view';
 import { ValueChainTable } from '@/components/value-chain/ValueChainTable';
 import { ValueChainLibrary } from '@/components/value-chain/ValueChainLibrary';
+import { AreaManager, Area } from '@/components/value-chain/AreaManager';
+import { OptimizationPanel } from '@/components/value-chain/OptimizationPanel';
 import { toast } from 'sonner';
 import {
     Dialog,
@@ -41,7 +43,16 @@ const stats = {
     processes: 17,
     automation: 52,
     agents: 3,
+    areas: 4,
 };
+
+// Sample areas for demo
+const SAMPLE_AREAS: Area[] = [
+    { id: 'area-1', name: 'Marketing', color: '#3B82F6', icon: 'Users', order: 0, nodeCount: 3 },
+    { id: 'area-2', name: 'Sprzedaż', color: '#22C55E', icon: 'Banknote', order: 1, nodeCount: 5 },
+    { id: 'area-3', name: 'Produkcja', color: '#F59E0B', icon: 'Factory', order: 2, nodeCount: 6 },
+    { id: 'area-4', name: 'IT & Automatyzacja', color: '#A855F7', icon: 'Code2', order: 3, nodeCount: 3 },
+];
 
 interface WorkflowSnapshot {
     id: string;
@@ -67,6 +78,14 @@ export default function ValueChainPage() {
     // Save dialog
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
     const [snapshotName, setSnapshotName] = useState('');
+
+    // Areas state
+    const [areas, setAreas] = useState<Area[]>(SAMPLE_AREAS);
+    const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+    const [areasOpen, setAreasOpen] = useState(true);
+
+    // Optimization panel state
+    const [optimizationOpen, setOptimizationOpen] = useState(false);
 
     const handleSave = useCallback((nodes: Node[], edges: Edge[]) => {
         setCurrentNodes(nodes);
@@ -112,6 +131,28 @@ export default function ValueChainPage() {
         }
         setSelectingSlot(null);
     };
+
+    // Area CRUD handlers
+    const handleCreateArea = useCallback((data: Omit<Area, 'id' | 'order' | 'nodeCount'>) => {
+        const newArea: Area = {
+            ...data,
+            id: `area-${Date.now()}`,
+            order: areas.length,
+            nodeCount: 0,
+        };
+        setAreas(prev => [...prev, newArea]);
+        toast.success(`Obszar "${data.name}" utworzony`);
+    }, [areas.length]);
+
+    const handleUpdateArea = useCallback((id: string, updates: Partial<Area>) => {
+        setAreas(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    }, []);
+
+    const handleDeleteArea = useCallback((id: string) => {
+        setAreas(prev => prev.filter(a => a.id !== id));
+        if (selectedAreaId === id) setSelectedAreaId(null);
+        toast.success('Obszar usunięty');
+    }, [selectedAreaId]);
 
     return (
         <div className="space-y-6">
@@ -190,7 +231,7 @@ export default function ValueChainPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="grid gap-4 md:grid-cols-4"
+                className="grid gap-4 md:grid-cols-5"
             >
                 <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-cyan-500/30 transition-colors">
                     <div className="flex items-center gap-2 text-muted-foreground">
@@ -220,6 +261,13 @@ export default function ValueChainPage() {
                     </div>
                     <p className="mt-2 text-2xl font-bold text-emerald-400">{stats.automation}%</p>
                 </div>
+                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-indigo-500/30 transition-colors">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <Layers className="h-4 w-4" />
+                        <span className="text-sm">Obszary</span>
+                    </div>
+                    <p className="mt-2 text-2xl font-bold text-indigo-400">{areas.length}</p>
+                </div>
             </motion.div>
 
             {/* Content */}
@@ -232,7 +280,7 @@ export default function ValueChainPage() {
                 >
                     {/* Library Panel */}
                     {libraryOpen && (
-                        <div className="w-64 flex-shrink-0 rounded-lg border border-border bg-card/50 overflow-hidden">
+                        <div className="w-64 flex-shrink-0 rounded-lg border border-border bg-card/50 overflow-hidden flex flex-col max-h-[calc(100vh-280px)]">
                             <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
                                 <span className="text-sm font-medium">Biblioteka</span>
                                 <Button
@@ -244,10 +292,25 @@ export default function ValueChainPage() {
                                     <PanelLeft className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
-                            <ValueChainLibrary
-                                selectedId={selectedChainId}
-                                onSelect={setSelectedChainId}
-                            />
+                            <div className="flex-1 overflow-y-auto">
+                                <ValueChainLibrary
+                                    selectedId={selectedChainId}
+                                    onSelect={setSelectedChainId}
+                                />
+                            </div>
+                            {/* Areas Section */}
+                            <div className="border-t border-border">
+                                <AreaManager
+                                    areas={areas}
+                                    selectedAreaId={selectedAreaId}
+                                    onSelectArea={setSelectedAreaId}
+                                    onCreateArea={handleCreateArea}
+                                    onUpdateArea={handleUpdateArea}
+                                    onDeleteArea={handleDeleteArea}
+                                    isOpen={areasOpen}
+                                    onToggle={() => setAreasOpen(!areasOpen)}
+                                />
+                            </div>
                         </div>
                     )}
 
@@ -266,6 +329,7 @@ export default function ValueChainPage() {
                         )}
                         <ValueChainWhiteboard
                             onSave={handleSave}
+                            onOpenOptimization={() => setOptimizationOpen(!optimizationOpen)}
                         />
                     </div>
                 </motion.div>
@@ -424,6 +488,14 @@ export default function ValueChainPage() {
                     Wybierz snapshot dla Workflow {selectingSlot}
                 </div>
             )}
+
+            {/* Optimization Panel */}
+            <OptimizationPanel
+                nodes={currentNodes}
+                areas={areas}
+                isOpen={optimizationOpen}
+                onToggle={() => setOptimizationOpen(false)}
+            />
         </div>
     );
 }

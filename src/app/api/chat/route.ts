@@ -120,11 +120,114 @@ export async function POST(request: NextRequest) {
         let modelUsed: string;
 
         if (isRealAIAvailable(resolvedKey)) {
-            // TODO: Integrate real AI provider call here
-            // For now, use simulated but log that a key IS available
-            console.log(`[Chat API] Real AI key available (${resolvedKey.provider}/${resolvedKey.model}), but using simulated for now`);
-            responseContent = generateWikiEnrichedResponse(messages, context, wikiArticles);
-            modelUsed = `${resolvedKey.model} (simulated — key ready)`;
+            try {
+                // Build messages array for OpenAI-compatible API
+                const apiMessages = [
+                    { role: 'system' as const, content: contextString },
+                    ...messages.slice(-20).map((m: { role: string; content: string }) => ({
+                        role: m.role as 'user' | 'assistant',
+                        content: m.content,
+                    })),
+                ];
+
+                if (resolvedKey.provider === 'openai') {
+                    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${resolvedKey.apiKey}`,
+                        },
+                        body: JSON.stringify({
+                            model: resolvedKey.model,
+                            messages: apiMessages,
+                            max_tokens: 2048,
+                            temperature: 0.7,
+                        }),
+                    });
+
+                    if (!openaiRes.ok) {
+                        const errData = await openaiRes.json().catch(() => ({}));
+                        console.error('[Chat API] OpenAI error:', openaiRes.status, errData);
+                        throw new Error(`OpenAI API error: ${openaiRes.status}`);
+                    }
+
+                    const completion = await openaiRes.json();
+                    responseContent = completion.choices?.[0]?.message?.content || 'Brak odpowiedzi z API.';
+                    modelUsed = completion.model || resolvedKey.model;
+
+                    // Log usage
+                    const usage = completion.usage;
+                    if (usage && user.organizationId) {
+                        await prisma.aiUsageLog.create({
+                            data: {
+                                organizationId: user.organizationId,
+                                userId: user.id,
+                                provider: resolvedKey.provider.toUpperCase() as 'OPENAI' | 'ANTHROPIC' | 'GOOGLE',
+                                model: modelUsed,
+                                tier: resolvedKey.tier,
+                                promptTokens: usage.prompt_tokens || 0,
+                                completionTokens: usage.completion_tokens || 0,
+                                totalTokens: usage.total_tokens || 0,
+                                estimatedCost: (usage.total_tokens || 0) * 0.00003, // GPT-4 turbo ~$0.03/1K
+                            },
+                        }).catch(err => console.error('[Chat API] Usage log error:', err));
+                    }
+                } else if (resolvedKey.provider === 'anthropic') {
+                    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-api-key': resolvedKey.apiKey,
+                            'anthropic-version': '2023-06-01',
+                        },
+                        body: JSON.stringify({
+                            model: resolvedKey.model,
+                            max_tokens: 2048,
+                            system: contextString,
+                            messages: messages.slice(-20).map((m: { role: string; content: string }) => ({
+                                role: m.role === 'assistant' ? 'assistant' : 'user',
+                                content: m.content,
+                            })),
+                        }),
+                    });
+
+                    if (!anthropicRes.ok) {
+                        const errData = await anthropicRes.json().catch(() => ({}));
+                        console.error('[Chat API] Anthropic error:', anthropicRes.status, errData);
+                        throw new Error(`Anthropic API error: ${anthropicRes.status}`);
+                    }
+
+                    const completion = await anthropicRes.json();
+                    responseContent = completion.content?.[0]?.text || 'Brak odpowiedzi z API.';
+                    modelUsed = completion.model || resolvedKey.model;
+
+                    // Log usage
+                    const usage = completion.usage;
+                    if (usage && user.organizationId) {
+                        await prisma.aiUsageLog.create({
+                            data: {
+                                organizationId: user.organizationId,
+                                userId: user.id,
+                                provider: 'ANTHROPIC',
+                                model: modelUsed,
+                                tier: resolvedKey.tier,
+                                promptTokens: usage.input_tokens || 0,
+                                completionTokens: usage.output_tokens || 0,
+                                totalTokens: (usage.input_tokens || 0) + (usage.output_tokens || 0),
+                                estimatedCost: ((usage.input_tokens || 0) + (usage.output_tokens || 0)) * 0.000015,
+                            },
+                        }).catch(err => console.error('[Chat API] Usage log error:', err));
+                    }
+                } else {
+                    // Google or unknown provider — use wiki-enriched for now
+                    responseContent = generateWikiEnrichedResponse(messages, context, wikiArticles);
+                    modelUsed = `${resolvedKey.model} (wiki-enriched)`;
+                }
+            } catch (aiError) {
+                console.error('[Chat API] AI provider error, falling back to wiki:', aiError);
+                responseContent = generateWikiEnrichedResponse(messages, context, wikiArticles);
+                modelUsed = `${resolvedKey.model} (fallback-wiki)`;
+            }
         } else {
             responseContent = generateWikiEnrichedResponse(messages, context, wikiArticles);
             modelUsed = 'simulated-wiki';

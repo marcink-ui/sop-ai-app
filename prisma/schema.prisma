@@ -583,9 +583,35 @@ model ValueChainMap {
   // Relations
   nodes ValueChainNode[]
   edges ValueChainEdge[]
+  areas ValueChainArea[]
   
   @@index([organizationId])
   @@index([segment])
+}
+
+model ValueChainArea {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?  @db.Text
+  color         String   @default("#3B82F6")  // Hex color for overlay
+  icon          String   @default("Building2") // Lucide icon name
+  order         Int      @default(0)           // Display order
+  
+  // Position on whiteboard (bounding box)
+  positionX     Float?   @default(0)
+  positionY     Float?   @default(0)
+  width         Float?   @default(400)
+  height        Float?   @default(300)
+  
+  mapId         String
+  map           ValueChainMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  
+  nodes         ValueChainNode[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([mapId])
 }
 
 model ValueChainNode {
@@ -622,6 +648,10 @@ model ValueChainNode {
   mapId       String
   map         ValueChainMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
   
+  // Area / Department grouping
+  areaId      String?
+  area        ValueChainArea? @relation(fields: [areaId], references: [id])
+  
   // Connections to SOPs and Agents
   sopId       String?
   sop         SOP?     @relation(fields: [sopId], references: [id])
@@ -637,6 +667,7 @@ model ValueChainNode {
   updatedAt   DateTime @updatedAt
   
   @@index([mapId])
+  @@index([areaId])
 }
 
 model ValueChainEdge {

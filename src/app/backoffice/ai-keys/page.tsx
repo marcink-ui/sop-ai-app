@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -20,6 +20,8 @@ import {
     ActivityIcon,
     TrendingUp,
     Send,
+    Loader2,
+    RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,45 +69,9 @@ const providerConfig: Record<string, { name: string; icon: typeof Sparkles; colo
     GOOGLE: { name: 'Google AI', icon: Zap, color: 'text-blue-500', bgColor: 'bg-blue-500/10', placeholder: 'AIza...' },
 };
 
-// ── Demo Data ──────────────────────────────────────
+// ── Fallback Demo Data ─────────────────────────────
 
-const demoOrgs: OrgSummary[] = [
-    {
-        id: 'org-1',
-        name: 'SYHI Digital Agency',
-        slug: 'syhi',
-        activeKeys: 2,
-        keys: [
-            { id: 'key-1', provider: 'OPENAI', label: 'Production GPT-4', maskedKey: 'sk-proj-abc...xyz9', isActive: true, monthlyBudget: 100 },
-            { id: 'key-2', provider: 'ANTHROPIC', label: 'Claude Backup', maskedKey: 'sk-ant-api...uv12', isActive: true, monthlyBudget: 50 },
-        ],
-        userCount: 5,
-        totalRequests: 1247,
-        usage30d: { totalTokens: 847320, estimatedCost: 12.45, promptTokens: 523100, completionTokens: 324220, requestCount: 342 },
-    },
-    {
-        id: 'org-2',
-        name: 'DemoTech Solutions',
-        slug: 'demotech',
-        activeKeys: 1,
-        keys: [
-            { id: 'key-3', provider: 'OPENAI', label: 'GPT-4 Turbo', maskedKey: 'sk-proj-def...abc3', isActive: true, monthlyBudget: 200 },
-        ],
-        userCount: 6,
-        totalRequests: 89,
-        usage30d: { totalTokens: 125400, estimatedCost: 1.87, promptTokens: 78200, completionTokens: 47200, requestCount: 89 },
-    },
-    {
-        id: 'org-3',
-        name: 'Ciarko S.A.',
-        slug: 'ciarko',
-        activeKeys: 0,
-        keys: [],
-        userCount: 3,
-        totalRequests: 0,
-        usage30d: { totalTokens: 0, estimatedCost: 0, promptTokens: 0, completionTokens: 0, requestCount: 0 },
-    },
-];
+const EMPTY_USAGE: OrgUsage = { totalTokens: 0, estimatedCost: 0, promptTokens: 0, completionTokens: 0, requestCount: 0 };
 
 // ── Helper Functions ───────────────────────────────
 
@@ -149,10 +115,38 @@ function StatCard({ icon: Icon, label, value, subValue, color }: {
 // ── Main Page ──────────────────────────────────────
 
 export default function AdminAiKeysPage() {
-    const [orgs] = useState<OrgSummary[]>(demoOrgs);
+    const [orgs, setOrgs] = useState<OrgSummary[]>([]);
+    const [loading, setLoading] = useState(true);
     const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
-    const [showAddForm, setShowAddForm] = useState<string | null>(null); // orgId
+    const [showAddForm, setShowAddForm] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
     const [newKey, setNewKey] = useState({ label: '', provider: 'OPENAI', apiKey: '', monthlyBudget: '' });
+
+    // ── Fetch organizations from API ──
+    const fetchOrgs = useCallback(async () => {
+        try {
+            setLoading(true);
+            const res = await fetch('/api/admin/ai-keys?view=summary');
+            if (!res.ok) throw new Error('API error');
+            const data = await res.json();
+            setOrgs(data.organizations || []);
+        } catch {
+            toast.error('Nie udało się pobrać danych. Używam danych demo.');
+            // Fallback to demo data so the page remains usable
+            setOrgs([
+                {
+                    id: 'org-1', name: 'SYHI Digital Agency', slug: 'syhi', activeKeys: 2, keys: [
+                        { id: 'key-1', provider: 'OPENAI', label: 'Production GPT-4', maskedKey: 'sk-proj-abc...xyz9', isActive: true, monthlyBudget: 100 },
+                        { id: 'key-2', provider: 'ANTHROPIC', label: 'Claude Backup', maskedKey: 'sk-ant-api...uv12', isActive: true, monthlyBudget: 50 },
+                    ], userCount: 5, totalRequests: 1247, usage30d: { totalTokens: 847320, estimatedCost: 12.45, promptTokens: 523100, completionTokens: 324220, requestCount: 342 }
+                },
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
 
     // Global stats
     const totalTokens = orgs.reduce((sum, org) => sum + org.usage30d.totalTokens, 0);
@@ -160,22 +154,63 @@ export default function AdminAiKeysPage() {
     const totalRequests = orgs.reduce((sum, org) => sum + org.usage30d.requestCount, 0);
     const totalKeys = orgs.reduce((sum, org) => sum + org.activeKeys, 0);
 
-    const handleAddKey = (orgId: string) => {
+    // ── Add Key (real API) ──
+    const handleAddKey = async (orgId: string) => {
         if (!newKey.label || !newKey.apiKey) {
             toast.error('Wypełnij nazwę i klucz API');
             return;
         }
-        toast.success(`Klucz "${newKey.label}" dodany dla organizacji`);
-        setShowAddForm(null);
-        setNewKey({ label: '', provider: 'OPENAI', apiKey: '', monthlyBudget: '' });
+        setSaving(true);
+        try {
+            const res = await fetch('/api/admin/ai-keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    organizationId: orgId,
+                    provider: newKey.provider,
+                    label: newKey.label,
+                    apiKey: newKey.apiKey,
+                    monthlyBudget: newKey.monthlyBudget ? parseFloat(newKey.monthlyBudget) : null,
+                }),
+            });
+            if (!res.ok) throw new Error('Failed to add key');
+            toast.success(`Klucz "${newKey.label}" dodany pomyślnie`);
+            setShowAddForm(null);
+            setNewKey({ label: '', provider: 'OPENAI', apiKey: '', monthlyBudget: '' });
+            fetchOrgs(); // Refresh data
+        } catch {
+            toast.error('Nie udało się dodać klucza');
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleToggleKey = (keyId: string, currentState: boolean) => {
-        toast.success(currentState ? 'Klucz dezaktywowany' : 'Klucz aktywowany');
+    // ── Toggle Key (real API) ──
+    const handleToggleKey = async (keyId: string, currentState: boolean) => {
+        try {
+            const res = await fetch('/api/admin/ai-keys', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyId, isActive: !currentState }),
+            });
+            if (!res.ok) throw new Error('Failed to toggle key');
+            toast.success(currentState ? 'Klucz dezaktywowany' : 'Klucz aktywowany');
+            fetchOrgs();
+        } catch {
+            toast.error('Nie udało się zmienić statusu klucza');
+        }
     };
 
-    const handleDeleteKey = (keyId: string) => {
-        toast.success('Klucz usunięty');
+    // ── Delete Key (real API) ──
+    const handleDeleteKey = async (keyId: string) => {
+        try {
+            const res = await fetch(`/api/admin/ai-keys?keyId=${keyId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete key');
+            toast.success('Klucz usunięty');
+            fetchOrgs();
+        } catch {
+            toast.error('Nie udało się usunąć klucza');
+        }
     };
 
     return (
@@ -198,6 +233,9 @@ export default function AdminAiKeysPage() {
                         </p>
                     </div>
                 </div>
+                <Button variant="ghost" size="icon" onClick={fetchOrgs} disabled={loading} className="h-9 w-9">
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
             </div>
 
             {/* Global Stats */}

@@ -108,9 +108,20 @@ async function main() {
                 departmentId: deptRozwoj.id,
             },
         }),
+        // META_ADMIN (Platform Owner)
+        prisma.user.create({
+            data: {
+                email: 'admin@vantage.os',
+                name: 'Meta Admin',
+                hashedPassword,
+                role: UserRole.META_ADMIN,
+                organizationId: org.id,
+                departmentId: deptZarzad.id,
+            },
+        }),
     ]);
 
-    const [userSponsor, userPilot, userManager, userExpert, userCitizen] = users;
+    const [userSponsor, userPilot, userManager, userExpert, userCitizen, userMetaAdmin] = users;
 
     // ==========================================================================
     // 4. CREATE SOPS

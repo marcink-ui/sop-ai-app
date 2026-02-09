@@ -44,6 +44,8 @@ import {
     Target,
     AppWindow,
     Cog,
+    Shield,
+    FolderKanban,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PandaIcon } from '@/components/icons/panda-icon';
@@ -93,7 +95,6 @@ const SIDEBAR_CATEGORIES = {
         defaultOpen: true,
         items: [
             { name: 'Pandy', href: '/pandas', icon: PandaIcon, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EXPLORER' },
-            { name: 'Analityka', href: '/analytics', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Kaizen', href: '/kaizen', icon: Lightbulb, color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Historia AI', href: '/chat-library', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Mój kontekst', href: '/my-context', icon: User, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'CITIZEN_DEV' },
@@ -105,8 +106,8 @@ const SIDEBAR_CATEGORIES = {
         defaultOpen: true,
         items: [
             { name: 'SOP', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Raporty MUDA', href: '/muda', icon: Search, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Łańcuch Wartości', href: '/value-chain', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Słownik', href: '/ontology', icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
@@ -117,7 +118,6 @@ const SIDEBAR_CATEGORIES = {
         items: [
             { name: 'Resources Hub', href: '/resources', icon: Library, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Graf Wiedzy', href: '/knowledge-graph', icon: Network, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-100 dark:bg-pink-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Automatyzacje', href: '/automations', icon: Cog, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'MANAGER' },
             { name: 'Kursy', href: '/courses', icon: GraduationCap, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
@@ -136,29 +136,27 @@ const SIDEBAR_CATEGORIES = {
         icon: Briefcase,
         defaultOpen: false,
         items: [
+            { name: 'Analityka', href: '/analytics', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Łańcuch Wartości', href: '/value-chain', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Kontekst Firmowy', href: '/backoffice/context', icon: Building2, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Baza Canvas', href: '/canvas/base', icon: FolderKanban, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Rada', href: '/council', icon: Scale, color: 'text-amber-600 dark:text-yellow-400', bgColor: 'bg-amber-100 dark:bg-yellow-500/20', minRole: 'MANAGER' },
             { name: 'Kalkulator ROI', href: '/roi-calculator', icon: Calculator, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'MANAGER' },
             { name: 'Rejestr Ról', href: '/roles', icon: Users, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-500/20', minRole: 'MANAGER' },
             { name: 'Historia Czat AI', href: '/chat-history-admin', icon: History, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'SPONSOR' },
-            { name: 'Backoffice', href: '/backoffice', icon: Settings2, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'SPONSOR' },
+            { name: 'Backoffice', href: '/backoffice', icon: Settings2, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
     partner: {
-        label: 'Portal Partnera',
+        label: 'Partner',
         icon: Building2,
         defaultOpen: false,
         items: [
             { name: 'Dashboard', href: '/partner', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'PARTNER' },
             { name: 'Moje Firmy', href: '/partner/company', icon: Building2, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'PARTNER' },
+            { name: 'Firmy', href: '/backoffice/companies', icon: Building2, color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-100 dark:bg-sky-500/20', minRole: 'PARTNER' },
             { name: 'Transformacje', href: '/partner/transformations', icon: Rocket, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'PARTNER' },
-        ] as NavItemData[],
-    },
-    metaAdmin: {
-        label: 'Meta Admin',
-        icon: Wrench,
-        defaultOpen: false,
-        items: [
-            { name: 'Panel Właściciela', href: '/meta-admin', icon: Wrench, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-500/20', minRole: 'META_ADMIN' },
+            { name: 'Admin', href: '/admin-panel', icon: Shield, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-500/20', minRole: 'META_ADMIN' },
         ] as NavItemData[],
     },
 };

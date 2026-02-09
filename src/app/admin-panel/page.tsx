@@ -1,126 +1,163 @@
 'use client';
 
-import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { redirect } from 'next/navigation';
 import { motion } from 'framer-motion';
-import {
-    Settings2,
-    Building2,
-    Users,
-    FileCode2,
-    Bot,
-    BarChart3,
-    Shield,
-    ChevronRight,
-    Terminal,
-    Database,
-    Sparkles,
-    Cpu,
-    Plus,
-    Key,
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import {
+    Shield,
+    Key,
+    Newspaper,
+    Library,
+    Activity,
+    FileText,
+    Users,
+    Building2,
+    BarChart3,
+    ChevronRight,
+    Globe,
+    Terminal,
+    Sparkles,
+    Bell,
+    Send,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
-
-const backofficeModules = [
+const adminModules = [
     {
-        id: 'prompts',
-        title: 'System Prompts',
-        description: 'Edytuj prompty AI dla różnych kontekstów i ról',
-        icon: FileCode2,
-        href: '/backoffice/prompts',
-        stats: '4 prompty',
-        color: 'from-violet-500 to-purple-600',
-        available: true,
-    },
-    {
-        id: 'ai-models',
-        title: 'Modele AI',
-        description: 'Konfiguracja providerów i routingu modeli',
-        icon: Cpu,
-        href: '/backoffice/ai-models',
-        stats: 'Routing AI',
-        color: 'from-indigo-500 to-violet-600',
-        available: true,
-    },
-    {
-        id: 'ai-keys',
-        title: 'AI Keys & Usage',
-        description: 'Przydzielaj klucze AI klientom i monitoruj zużycie',
+        id: 'api-keys',
+        title: 'API Keys & Usage',
+        description: 'Zarządzaj kluczami API do narzędzi i providerów AI',
         icon: Key,
         href: '/backoffice/ai-keys',
-        stats: 'Meta Admin',
+        stats: '24 klucze',
         color: 'from-violet-500 to-fuchsia-600',
-        available: true,
     },
     {
-        id: 'transcript-processor',
-        title: 'Transcript Processor',
-        description: 'AI ekstrakcja SOPs, Ról i Value Chains z transkrypcji',
-        icon: FileCode2,
-        href: '/backoffice/transcript-processor',
-        stats: 'Nowe!',
-        color: 'from-fuchsia-500 to-pink-600',
-        available: true,
+        id: 'newsletters',
+        title: 'Newslettery',
+        description: 'Wysyłaj komunikaty globalnie lub do wybranych firm',
+        icon: Send,
+        href: '/admin-panel/newsletters',
+        stats: '3 drafty',
+        color: 'from-blue-500 to-cyan-600',
+    },
+    {
+        id: 'resources',
+        title: 'Resources Hub',
+        description: 'Zarządzaj zasobami i pushuj content do organizacji',
+        icon: Library,
+        href: '/resources',
+        stats: '47 zasobów',
+        color: 'from-emerald-500 to-teal-600',
+    },
+    {
+        id: 'organizations',
+        title: 'Wszystkie Organizacje',
+        description: 'Zarządzaj firmami, limitami i subskrypcjami',
+        icon: Building2,
+        href: '/backoffice/companies',
+        stats: '12 firm',
+        color: 'from-sky-500 to-blue-600',
     },
     {
         id: 'users',
-        title: 'Użytkownicy',
-        description: 'Zarządzaj kontami i rolami użytkowników',
+        title: 'Wszyscy Użytkownicy',
+        description: 'Konta, role, uprawnienia na poziomie platformy',
         icon: Users,
         href: '/backoffice/users',
-        stats: '12 użytkowników',
-        color: 'from-emerald-500 to-teal-600',
-        available: true,
+        stats: '156 kont',
+        color: 'from-amber-500 to-orange-600',
+    },
+    {
+        id: 'system-health',
+        title: 'Stan Systemu',
+        description: 'Zdrowie serwisów, kolejki, metryki wydajności',
+        icon: Activity,
+        href: '/admin-panel/health',
+        stats: 'Healthy',
+        color: 'from-green-500 to-emerald-600',
+    },
+    {
+        id: 'audit-log',
+        title: 'Audit Log',
+        description: 'Pełna historia zdarzeń i zmian na platformie',
+        icon: FileText,
+        href: '/admin-panel/audit',
+        stats: '2.4K events',
+        color: 'from-rose-500 to-pink-600',
+    },
+    {
+        id: 'notifications',
+        title: 'Powiadomienia Globalne',
+        description: 'Bannery, alerty i push notifications dla firm',
+        icon: Bell,
+        href: '/admin-panel/notifications',
+        stats: '2 aktywne',
+        color: 'from-indigo-500 to-violet-600',
     },
 ];
 
-const systemStats = [
-    { label: 'SOPs', value: '17', change: '+3 ten tydzień', color: 'text-violet-500' },
-    { label: 'Aktywne sesje', value: '8', change: 'teraz', color: 'text-emerald-500' },
-    { label: 'Tokeny AI (dziś)', value: '45K', change: '$0.12', color: 'text-blue-500' },
-    { label: 'Wnioski Rady', value: '4', change: '1 oczekujący', color: 'text-amber-500' },
+const platformStats = [
+    { label: 'Organizacje', value: '12', change: '+2 ten miesiąc', color: 'text-blue-500' },
+    { label: 'Aktywni Użytkownicy', value: '156', change: '+18 ten tydzień', color: 'text-emerald-500' },
+    { label: 'Tokeny AI (MTD)', value: '$847', change: '-12% vs prev', color: 'text-violet-500' },
+    { label: 'Uptime', value: '99.9%', change: '30d rolling', color: 'text-green-500' },
 ];
 
-export default function BackofficePage() {
+export default function AdminPanelPage() {
+    const { data: session, status } = useSession();
+
+    if (status === 'loading') {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <Shield className="h-8 w-8 animate-pulse text-red-500" />
+            </div>
+        );
+    }
+
+    if (session?.user?.role !== 'META_ADMIN') {
+        redirect('/');
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
-                        <Settings2 className="h-6 w-6 text-white" />
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
+                        <Shield className="h-6 w-6 text-white" />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">Backoffice</h1>
-                            <Badge variant="secondary" className="bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400">
-                                Admin
+                            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">Admin Panel</h1>
+                            <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                                Meta Admin
                             </Badge>
                         </div>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            Panel administracyjny VantageOS
+                            Zarządzanie platformą VantageOS
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
-                        <Database className="h-4 w-4 mr-2" />
-                        Baza danych
+                        <Terminal className="h-4 w-4 mr-2" />
+                        Logi Systemu
                     </Button>
                     <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
-                        <Terminal className="h-4 w-4 mr-2" />
-                        Logi
+                        <Globe className="h-4 w-4 mr-2" />
+                        Status API
                     </Button>
                 </div>
             </div>
 
-            {/* System Stats - Single row */}
+            {/* Platform Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {systemStats.map((stat, index) => (
+                {platformStats.map((stat, index) => (
                     <motion.div
                         key={stat.label}
                         initial={{ opacity: 0, y: 10 }}
@@ -138,13 +175,13 @@ export default function BackofficePage() {
                 ))}
             </div>
 
-            {/* Modules - 2 Column Grid */}
+            {/* Admin Modules Grid */}
             <div>
                 <h2 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-3 uppercase tracking-wide">
-                    Moduły
+                    Moduły Administracyjne
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {backofficeModules.map((module, index) => (
+                    {adminModules.map((module, index) => (
                         <motion.div
                             key={module.id}
                             initial={{ opacity: 0, y: 10 }}
@@ -192,22 +229,26 @@ export default function BackofficePage() {
                 <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-amber-500" />
-                        Szybkie akcje
+                        Szybkie Akcje
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                     <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
-                            <Shield className="h-4 w-4 mr-2" />
-                            Sprawdź uprawnienia
+                            <Send className="h-4 w-4 mr-2" />
+                            Nowy Newsletter
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
+                            <Building2 className="h-4 w-4 mr-2" />
+                            Dodaj Organizację
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
+                            <Key className="h-4 w-4 mr-2" />
+                            Generuj API Key
                         </Button>
                         <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
                             <BarChart3 className="h-4 w-4 mr-2" />
-                            Raport zużycia
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
-                            <Bot className="h-4 w-4 mr-2" />
-                            Test promptu AI
+                            Raport Zużycia AI
                         </Button>
                     </div>
                 </CardContent>
