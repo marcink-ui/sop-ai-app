@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { SOPStatus, Prisma } from '@prisma/client';
+import { validateBody, createSopSchema } from '@/lib/validations';
 
 // GET /api/sops - List all SOPs for organization
 export async function GET(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -74,18 +74,16 @@ export async function GET(request: Request) {
 // POST /api/sops - Create new SOP
 export async function POST(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
-        const { title, code, purpose, scope, departmentId, steps, kpis, definitions, owner, reviewer } = body;
+        const { data, error } = await validateBody(request, createSopSchema);
+        if (error) return error;
 
-        if (!title || !code) {
-            return NextResponse.json({ error: 'Title and code are required' }, { status: 400 });
-        }
+        const { title, code, purpose, scope, departmentId, steps, kpis, definitions, owner, reviewer } = data;
 
         // Check if code already exists in organization
         const existing = await prisma.sOP.findFirst({

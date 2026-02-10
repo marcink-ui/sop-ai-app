@@ -16,16 +16,13 @@ import {
     Sun,
     Moon,
     Cloud,
-    TrendingUp,
-    FileText,
-    Bot,
     ArrowRight,
     Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RoleBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
+
 
 interface AISummaryCardProps {
     user: {
@@ -55,11 +52,7 @@ function getTimeGreeting(): { greeting: string; icon: typeof Sun; period: 'morni
     }
 }
 
-const QUICK_ACTIONS = [
-    { label: 'Nowy SOP', href: '/sops/new', icon: FileText, color: 'blue' },
-    { label: 'AI Agent', href: '/agents', icon: Bot, color: 'purple' },
-    { label: 'Analiza MUDA', href: '/muda', icon: TrendingUp, color: 'orange' },
-];
+
 
 export function AISummaryCard({ user, stats, onOpenChat, className }: AISummaryCardProps) {
     const { greeting, icon: TimeIcon, period } = getTimeGreeting();
@@ -103,8 +96,8 @@ export function AISummaryCard({ user, stats, onOpenChat, className }: AISummaryC
             />
 
             <div className="relative z-10">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-6">
+                {/* Header — greeting + role badge + AI CTA */}
+                <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <motion.div
                             initial={{ scale: 0 }}
@@ -130,97 +123,37 @@ export function AISummaryCard({ user, stats, onOpenChat, className }: AISummaryC
                             </h1>
                         </div>
                     </div>
-                    <RoleBadge role={user.role} size="sm" />
-                </div>
 
-                {/* Quick Stats Row */}
-                <div className="grid grid-cols-4 gap-4 mb-6">
-                    <QuickStat label="SOPs" value={stats.sops} color="blue" />
-                    <QuickStat label="Agentów" value={stats.agents} color="purple" />
-                    <QuickStat label="MUDA" value={stats.mudaReports} color="orange" />
-                    <QuickStat
-                        label="Oszczędności"
-                        value={`${Math.round(stats.totalSavings / 60)}h`}
-                        color="green"
-                    />
-                </div>
-
-                {/* Quick Actions */}
-                <div className="flex items-center gap-3">
-                    {QUICK_ACTIONS.map((action, index) => (
-                        <motion.div
-                            key={action.href}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.3 + index * 0.1 }}
-                        >
-                            <Link href={action.href}>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm hover:bg-white dark:hover:bg-neutral-800"
-                                >
-                                    <action.icon className="h-4 w-4" />
-                                    {action.label}
-                                </Button>
-                            </Link>
-                        </motion.div>
-                    ))}
-
-                    {onOpenChat && (
-                        <motion.div
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.6 }}
-                            className="ml-auto"
-                        >
-                            <Button
-                                onClick={onOpenChat}
-                                className={cn(
-                                    'gap-2',
-                                    `bg-gradient-to-r ${accentColor}`,
-                                    'hover:opacity-90 shadow-lg'
-                                )}
+                    <div className="flex items-center gap-3">
+                        <RoleBadge role={user.role} size="sm" />
+                        {onOpenChat && (
+                            <motion.div
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.4 }}
                             >
-                                <Zap className="h-4 w-4" />
-                                Zapytaj AI
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
-                        </motion.div>
-                    )}
+                                <Button
+                                    onClick={onOpenChat}
+                                    size="sm"
+                                    className={cn(
+                                        'gap-2',
+                                        `bg-gradient-to-r ${accentColor}`,
+                                        'hover:opacity-90 shadow-lg'
+                                    )}
+                                >
+                                    <Zap className="h-4 w-4" />
+                                    Zapytaj AI
+                                    <ArrowRight className="h-4 w-4" />
+                                </Button>
+                            </motion.div>
+                        )}
+                    </div>
                 </div>
             </div>
         </motion.div>
     );
 }
 
-// Mini stat component for compact display
-function QuickStat({
-    label,
-    value,
-    color
-}: {
-    label: string;
-    value: number | string;
-    color: 'blue' | 'purple' | 'orange' | 'green';
-}) {
-    const colorClasses = {
-        blue: 'text-blue-600 dark:text-blue-400',
-        purple: 'text-purple-600 dark:text-purple-400',
-        orange: 'text-orange-600 dark:text-orange-400',
-        green: 'text-green-600 dark:text-green-400',
-    };
 
-    return (
-        <div className="text-center">
-            <div className={cn('text-2xl font-bold', colorClasses[color])}>
-                {value}
-            </div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                {label}
-            </div>
-        </div>
-    );
-}
 
 export default AISummaryCard;

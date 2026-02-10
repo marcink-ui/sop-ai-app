@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth-server';
 
 export async function GET() {
     try {
-        // Fetch different types of notifications
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { organizationId } = session.user;
+
+        // Fetch different types of notifications scoped to user's organization
 
         // 1. Pending tasks assigned to current user
         const pendingTasks = await prisma.councilRequest.findMany({
             where: {
                 status: 'PENDING',
+                organizationId,
             },
             take: 5,
             orderBy: { createdAt: 'desc' },
@@ -21,6 +30,7 @@ export async function GET() {
 
         // 2. Recent SOPs (knowledge updates)
         const recentSOPs = await prisma.sOP.findMany({
+            where: { organizationId },
             take: 3,
             orderBy: { updatedAt: 'desc' },
             select: {
@@ -32,6 +42,7 @@ export async function GET() {
 
         // 3. Recent AI Agents
         const recentAgents = await prisma.agent.findMany({
+            where: { organizationId },
             take: 2,
             orderBy: { updatedAt: 'desc' },
             select: {
@@ -72,43 +83,16 @@ export async function GET() {
             })),
         ];
 
-        // Sort by time (newest first)
-        notifications.sort((a, b) => {
-            // Simple sort - in production use actual timestamps
-            return 0;
-        });
-
         return NextResponse.json({
             notifications: notifications.slice(0, 10),
             unreadCount: notifications.filter(n => !n.read).length,
         });
     } catch (error) {
         console.error('Error fetching notifications:', error);
-
-        // Return mock data on error
         return NextResponse.json({
-            notifications: [
-                {
-                    id: '1',
-                    type: 'task',
-                    title: 'Nowe zadanie przypisane',
-                    description: 'Add CRM integration to Sales SOP',
-                    time: '5 min temu',
-                    read: false,
-                    link: '/council',
-                },
-                {
-                    id: '2',
-                    type: 'knowledge',
-                    title: 'Nowy SOP dodany',
-                    description: 'Onboarding Process v2.0',
-                    time: '1 godz. temu',
-                    read: false,
-                    link: '/sops',
-                },
-            ],
-            unreadCount: 2,
-        });
+            notifications: [],
+            unreadCount: 0,
+        }, { status: 500 });
     }
 }
 

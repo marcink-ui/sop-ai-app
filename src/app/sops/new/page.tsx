@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import {
     FileText,
     Upload,
@@ -69,7 +69,7 @@ const defaultTriggerSuggestions: TriggerSuggestion[] = [
 
 export default function NewSOPPage() {
     const router = useRouter();
-    const { data: session, status } = useSession();
+    const { data: session, isPending } = useSession();
 
     // State
     const [isGenerating, setIsGenerating] = useState(false);
@@ -110,7 +110,7 @@ export default function NewSOPPage() {
     // Load departments and roles from API
     useEffect(() => {
         async function loadData() {
-            if (status !== 'authenticated') return;
+            if (isPending || !session) return;
 
             setIsLoadingData(true);
             try {
@@ -171,7 +171,7 @@ export default function NewSOPPage() {
         }
 
         loadData();
-    }, [status]);
+    }, [isPending, session]);
 
     // Filter trigger suggestions based on selected department
     useEffect(() => {
@@ -304,7 +304,7 @@ export default function NewSOPPage() {
     };
 
     // Loading state
-    if (status === 'loading' || isLoadingData) {
+    if (isPending || isLoadingData) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

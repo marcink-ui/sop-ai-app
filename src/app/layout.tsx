@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Outfit, Space_Mono } from 'next/font/google';
 import './globals.css';
-import { MainLayout } from '@/components/layout';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeStyleProvider } from '@/components/theme/ThemeStyleProvider';
@@ -9,6 +8,7 @@ import { UserProvider } from '@/context/UserContext';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { ChatProvider } from '@/components/ai-chat';
 import { TokenTrackerProvider } from '@/components/ai-chat/token-tracker-provider';
+import { AppShell } from '@/components/layout/AppShell';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -54,7 +54,7 @@ export default function RootLayout({
               <UserProvider>
                 <TokenTrackerProvider>
                   <ChatProvider>
-                    <MainLayout>{children}</MainLayout>
+                    <AppShell>{children}</AppShell>
                     <Toaster
                       position="bottom-right"
                       richColors

@@ -1,12 +1,12 @@
 'use client';
 
-import { SessionProvider } from 'next-auth/react';
 import { ReactNode } from 'react';
 
-interface AuthProviderProps {
-    children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
-    return <SessionProvider>{children}</SessionProvider>;
+/**
+ * AuthProvider — with better-auth, no wrapper provider is needed.
+ * The useSession hook from @/lib/auth-client works standalone.
+ * Keeping this component for backward compatibility (used in layout.tsx).
+ */
+export function AuthProvider({ children }: { children: ReactNode }) {
+    return <>{children}</>;
 }

@@ -25,7 +25,9 @@ import {
     ChevronRight,
     History,
     PanelRightClose,
+    PanelLeftClose,
     Minus,
+    ArrowLeftRight,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -69,10 +71,16 @@ const SUGGESTED_PROMPTS = [
 ];
 
 const MIN_WIDTH = 320;
-const MAX_WIDTH = 600;
+const MAX_WIDTH = 800;
 const COMPACT_WIDTH = 60;
 
-export function ChatOverlay() {
+interface ChatOverlayProps {
+    /** When true, renders as an inline flex child (side-by-side with content).
+     *  When false/omitted, renders as a fixed overlay (minimized FAB). */
+    inline?: boolean;
+}
+
+export function ChatOverlay({ inline = false }: ChatOverlayProps) {
     const {
         mode,
         setMode,
@@ -85,6 +93,8 @@ export function ChatOverlay() {
         clearMessages,
         panelWidth,
         setPanelWidth,
+        dockSide,
+        toggleDock,
         pageContext,
     } = useChat();
 
@@ -143,7 +153,12 @@ export function ChatOverlay() {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing || !panelRef.current) return;
             const panelRect = panelRef.current.getBoundingClientRect();
-            const newWidth = panelRect.right - e.clientX;
+            let newWidth: number;
+            if (dockSide === 'right') {
+                newWidth = panelRect.right - e.clientX;
+            } else {
+                newWidth = e.clientX - panelRect.left;
+            }
             setPanelWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth)));
         };
 
@@ -164,7 +179,7 @@ export function ChatOverlay() {
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
         };
-    }, [isResizing, setPanelWidth]);
+    }, [isResizing, setPanelWidth, dockSide]);
 
     const handleSubmit = async (messageContent?: string) => {
         const content = messageContent || input.trim();
@@ -269,10 +284,10 @@ export function ChatOverlay() {
     };
 
     const isEmpty = messages.length === 0;
-    const lastMessage = messages[messages.length - 1];
 
-    // Minimized FAB button
-    if (mode === 'minimized') {
+    // ── Non-inline mode: Only render the minimized FAB ──
+    if (!inline) {
+        if (mode !== 'minimized') return null;
         return (
             <motion.button
                 initial={{ scale: 0, opacity: 0 }}
@@ -288,7 +303,7 @@ export function ChatOverlay() {
                     'transition-shadow duration-200'
                 )}
             >
-                <MessageSquare className="h-6 w-6" />
+                <Sparkles className="h-6 w-6" />
                 {messages.length > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold">
                         {messages.filter((m) => m.role === 'assistant').length}
@@ -298,24 +313,15 @@ export function ChatOverlay() {
         );
     }
 
-    // Hidden state
-    if (mode === 'hidden') {
-        return null;
-    }
-
-    // Compact bar
+    // ── Inline mode: Compact bar ──
     if (mode === 'compact') {
         return (
-            <motion.div
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
+            <div
                 className={cn(
-                    'fixed right-0 top-0 z-50 h-full',
-                    'flex flex-col items-center py-4',
-                    'border-l border-neutral-200 dark:border-neutral-800',
+                    'h-full flex flex-col items-center py-4 shrink-0',
+                    'border-neutral-200 dark:border-neutral-800',
                     'bg-white/95 dark:bg-neutral-950/95 backdrop-blur-sm',
-                    'shadow-lg'
+                    dockSide === 'right' ? 'border-l' : 'border-r'
                 )}
                 style={{ width: COMPACT_WIDTH }}
             >
@@ -326,7 +332,7 @@ export function ChatOverlay() {
                     className="mb-4"
                     title="Rozwiń czat"
                 >
-                    <ChevronRight className="h-5 w-5 rotate-180" />
+                    <ChevronRight className={cn('h-5 w-5', dockSide === 'right' && 'rotate-180')} />
                 </Button>
                 <div className="flex-1 flex flex-col items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
@@ -347,242 +353,254 @@ export function ChatOverlay() {
                 >
                     <Minus className="h-4 w-4" />
                 </Button>
-            </motion.div>
+            </div>
         );
     }
 
-    // Expanded panel
+    // ── Inline mode: Expanded panel (side-by-side) ──
+    const resizeHandle = (
+        <div
+            ref={resizeRef}
+            onMouseDown={() => setIsResizing(true)}
+            className={cn(
+                'absolute top-0 bottom-0 w-1.5 cursor-col-resize z-10',
+                'hover:bg-blue-500/50 active:bg-blue-500 transition-colors',
+                isResizing && 'bg-blue-500',
+                dockSide === 'right' ? 'left-0' : 'right-0'
+            )}
+        />
+    );
+
     return (
-        <AnimatePresence>
-            <motion.div
-                ref={panelRef}
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                className={cn(
-                    'fixed right-0 top-0 z-50 h-full',
-                    'flex flex-col',
-                    'border-l border-neutral-200 dark:border-neutral-800',
-                    'bg-white dark:bg-neutral-950',
-                    'shadow-2xl'
-                )}
-                style={{ width: panelWidth }}
-            >
-                {/* Resize handle */}
-                <div
-                    ref={resizeRef}
-                    onMouseDown={() => setIsResizing(true)}
-                    className={cn(
-                        'absolute left-0 top-0 bottom-0 w-1 cursor-col-resize',
-                        'hover:bg-blue-500/50 transition-colors',
-                        isResizing && 'bg-blue-500'
-                    )}
-                />
+        <div
+            ref={panelRef}
+            className={cn(
+                'relative h-full flex flex-col shrink-0',
+                'border-neutral-200 dark:border-neutral-800',
+                'bg-white dark:bg-neutral-950',
+                dockSide === 'right' ? 'border-l' : 'border-r'
+            )}
+            style={{ width: panelWidth }}
+        >
+            {/* Resize handle */}
+            {resizeHandle}
 
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-800/50">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-sm">
-                            <Sparkles className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-neutral-900 dark:text-white text-sm">
-                                VantageOS AI
-                            </h3>
-                            <p className="text-xs text-neutral-500">
-                                {pageContext.pageType === 'sop'
-                                    ? `SOP: ${pageContext.sopTitle || 'Edycja'}`
-                                    : 'Twój asystent Lean AI'}
-                            </p>
-                        </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-800/50 shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-sm">
+                        <Sparkles className="h-4 w-4 text-white" />
                     </div>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setShowHistory(!showHistory)}
-                            className="h-8 w-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                            title="Historia"
-                        >
-                            <History className="h-4 w-4" />
-                        </Button>
-                        {messages.length > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={clearMessages}
-                                className="h-8 w-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                                title="Wyczyść czat"
-                            >
-                                <RotateCcw className="h-4 w-4" />
-                            </Button>
-                        )}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setMode('compact')}
-                            className="h-8 w-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                            title="Zwiń"
-                        >
-                            <PanelRightClose className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={hide}
-                            className="h-8 w-8 text-neutral-400 hover:text-red-500"
-                            title="Zamknij (⌘/)"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Context indicator */}
-                {pageContext.selectedText && (
-                    <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30">
-                        <p className="text-xs text-blue-600 dark:text-blue-400 truncate">
-                            📝 Zaznaczony tekst: &quot;{pageContext.selectedText.slice(0, 50)}...&quot;
+                    <div>
+                        <h3 className="font-semibold text-neutral-900 dark:text-white text-sm">
+                            VantageOS AI
+                        </h3>
+                        <p className="text-xs text-neutral-500">
+                            {pageContext.pageType === 'sop'
+                                ? `SOP: ${pageContext.sopTitle || 'Edycja'}`
+                                : 'Twój asystent Lean AI'}
                         </p>
                     </div>
-                )}
-
-                {/* Messages */}
-                <ScrollArea className="flex-1 px-4 py-4">
-                    {isEmpty ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center">
-                            <div className="mb-6">
-                                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10">
-                                    <Bot className="h-8 w-8 text-blue-500" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                                    Jak mogę Ci pomóc?
-                                </h3>
-                                <p className="text-sm text-neutral-500 mt-1">
-                                    Jestem Twoim asystentem Lean AI
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
-                                {SUGGESTED_PROMPTS.map((item, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => handleSubmit(item.prompt)}
-                                        className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-left"
-                                    >
-                                        <item.icon className={cn('h-4 w-4', item.color)} />
-                                        <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                                            {item.label}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {messages.map((message) => (
-                                <div
-                                    key={message.id}
-                                    className={cn(
-                                        'flex gap-3',
-                                        message.role === 'user' && 'flex-row-reverse'
-                                    )}
-                                >
-                                    <div
-                                        className={cn(
-                                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                                            message.role === 'user'
-                                                ? 'bg-blue-500'
-                                                : 'bg-gradient-to-br from-purple-500 to-blue-500'
-                                        )}
-                                    >
-                                        {message.role === 'user' ? (
-                                            <User className="h-4 w-4 text-white" />
-                                        ) : (
-                                            <Bot className="h-4 w-4 text-white" />
-                                        )}
-                                    </div>
-                                    <div
-                                        className={cn(
-                                            'flex-1 rounded-lg px-3 py-2',
-                                            message.role === 'user'
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-neutral-100 dark:bg-neutral-800'
-                                        )}
-                                    >
-                                        {message.role === 'assistant' ? (
-                                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                    {message.content || '...'}
-                                                </ReactMarkdown>
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm">{message.content}</p>
-                                        )}
-                                        <div className="flex items-center justify-between mt-2">
-                                            <span className="text-xs opacity-60">
-                                                {formatTime(message.timestamp)}
-                                            </span>
-                                            {message.role === 'assistant' && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() =>
-                                                        handleCopyMessage(message.content, message.id)
-                                                    }
-                                                    className="h-6 w-6"
-                                                >
-                                                    {copiedMessageId === message.id ? (
-                                                        <Check className="h-3 w-3 text-green-500" />
-                                                    ) : (
-                                                        <Copy className="h-3 w-3" />
-                                                    )}
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            <div ref={messagesEndRef} />
-                        </div>
-                    )}
-                </ScrollArea>
-
-                {/* Input */}
-                <div className="border-t border-neutral-100 dark:border-neutral-800 px-4 py-3">
-                    <div className="flex gap-2">
-                        <Textarea
-                            ref={textareaRef}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSubmit();
-                                }
-                            }}
-                            placeholder="Napisz wiadomość..."
-                            disabled={isLoading}
-                            className="min-h-[44px] max-h-32 resize-none"
-                            rows={1}
-                        />
+                </div>
+                <div className="flex items-center gap-1">
+                    {/* Dock toggle */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleDock}
+                        className="h-8 w-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                        title={dockSide === 'right' ? 'Zadokuj po lewej' : 'Zadokuj po prawej'}
+                    >
+                        <ArrowLeftRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="h-8 w-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                        title="Historia"
+                    >
+                        <History className="h-4 w-4" />
+                    </Button>
+                    {messages.length > 0 && (
                         <Button
-                            onClick={() => handleSubmit()}
-                            disabled={!input.trim() || isLoading}
-                            className="shrink-0 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                            variant="ghost"
+                            size="icon"
+                            onClick={clearMessages}
+                            className="h-8 w-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                            title="Wyczyść czat"
                         >
-                            {isLoading ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <Send className="h-4 w-4" />
-                            )}
+                            <RotateCcw className="h-4 w-4" />
                         </Button>
-                    </div>
-                    <p className="text-xs text-neutral-400 mt-2 text-center">
-                        ⌘/ aby toggle • ESC aby zwinąć
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setMode('compact')}
+                        className="h-8 w-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                        title="Zwiń"
+                    >
+                        {dockSide === 'right' ? (
+                            <PanelRightClose className="h-4 w-4" />
+                        ) : (
+                            <PanelLeftClose className="h-4 w-4" />
+                        )}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={hide}
+                        className="h-8 w-8 text-neutral-400 hover:text-red-500"
+                        title="Zamknij (⌘/)"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+
+            {/* Context indicator */}
+            {pageContext.selectedText && (
+                <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30 shrink-0">
+                    <p className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                        📝 Zaznaczony tekst: &quot;{pageContext.selectedText.slice(0, 50)}...&quot;
                     </p>
                 </div>
-            </motion.div>
-        </AnimatePresence>
+            )}
+
+            {/* Messages */}
+            <ScrollArea className="flex-1 px-4 py-4">
+                {isEmpty ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                        <div className="mb-6">
+                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+                                <Bot className="h-8 w-8 text-blue-500" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                                Jak mogę Ci pomóc?
+                            </h3>
+                            <p className="text-sm text-neutral-500 mt-1">
+                                Jestem Twoim asystentem Lean AI
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
+                            {SUGGESTED_PROMPTS.map((item, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => handleSubmit(item.prompt)}
+                                    className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-left"
+                                >
+                                    <item.icon className={cn('h-4 w-4', item.color)} />
+                                    <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                                        {item.label}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {messages.map((message) => (
+                            <div
+                                key={message.id}
+                                className={cn(
+                                    'flex gap-3',
+                                    message.role === 'user' && 'flex-row-reverse'
+                                )}
+                            >
+                                <div
+                                    className={cn(
+                                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                                        message.role === 'user'
+                                            ? 'bg-blue-500'
+                                            : 'bg-gradient-to-br from-purple-500 to-blue-500'
+                                    )}
+                                >
+                                    {message.role === 'user' ? (
+                                        <User className="h-4 w-4 text-white" />
+                                    ) : (
+                                        <Bot className="h-4 w-4 text-white" />
+                                    )}
+                                </div>
+                                <div
+                                    className={cn(
+                                        'flex-1 rounded-lg px-3 py-2',
+                                        message.role === 'user'
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-neutral-100 dark:bg-neutral-800'
+                                    )}
+                                >
+                                    {message.role === 'assistant' ? (
+                                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {message.content || '...'}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm">{message.content}</p>
+                                    )}
+                                    <div className="flex items-center justify-between mt-2">
+                                        <span className="text-xs opacity-60">
+                                            {formatTime(message.timestamp)}
+                                        </span>
+                                        {message.role === 'assistant' && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    handleCopyMessage(message.content, message.id)
+                                                }
+                                                className="h-6 w-6"
+                                            >
+                                                {copiedMessageId === message.id ? (
+                                                    <Check className="h-3 w-3 text-green-500" />
+                                                ) : (
+                                                    <Copy className="h-3 w-3" />
+                                                )}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
+                )}
+            </ScrollArea>
+
+            {/* Input */}
+            <div className="border-t border-neutral-100 dark:border-neutral-800 px-4 py-3 shrink-0">
+                <div className="flex gap-2">
+                    <Textarea
+                        ref={textareaRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSubmit();
+                            }
+                        }}
+                        placeholder="Napisz wiadomość..."
+                        disabled={isLoading}
+                        className="min-h-[44px] max-h-32 resize-none"
+                        rows={1}
+                    />
+                    <Button
+                        onClick={() => handleSubmit()}
+                        disabled={!input.trim() || isLoading}
+                        className="shrink-0 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                    >
+                        {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Send className="h-4 w-4" />
+                        )}
+                    </Button>
+                </div>
+                <p className="text-xs text-neutral-400 mt-2 text-center">
+                    ⌘/ aby toggle • ESC aby zwinąć • ↔ aby zmienić stronę
+                </p>
+            </div>
+        </div>
     );
 }

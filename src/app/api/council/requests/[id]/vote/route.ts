@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
-import { VoteDecision } from '@prisma/client';
+import { VoteDecision, UserRole } from '@prisma/client';
+import { hasPermission } from '@/lib/auth/permissions';
+import { validateBody, voteSchema } from '@/lib/validations';
 
 interface Params {
     params: Promise<{ id: string }>;
@@ -11,19 +12,22 @@ interface Params {
 // PUT /api/council/requests/[id]/vote - Cast or update vote
 export async function PUT(request: Request, { params }: Params) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id } = await params;
-        const body = await request.json();
-        const { decision } = body; // 'APPROVE' | 'REJECT' | 'ABSTAIN'
-
-        if (!decision || !['APPROVE', 'REJECT', 'ABSTAIN'].includes(decision)) {
-            return NextResponse.json({ error: 'Valid decision is required (APPROVE, REJECT, ABSTAIN)' }, { status: 400 });
+        // Check voting permission
+        if (!hasPermission(session.user.role as UserRole, 'canVoteCouncil')) {
+            return NextResponse.json({ error: 'Forbidden: you cannot vote' }, { status: 403 });
         }
+
+        const { id } = await params;
+        const { data, error } = await validateBody(request, voteSchema);
+        if (error) return error;
+
+        const { decision } = data;
 
         // Check if request exists and belongs to organization
         const councilRequest = await prisma.councilRequest.findFirst({

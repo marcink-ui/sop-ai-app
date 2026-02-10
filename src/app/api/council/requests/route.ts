@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { CouncilRequestStatus, VoteDecision, Prisma } from '@prisma/client';
+import { validateBody, createCouncilRequestSchema } from '@/lib/validations';
 
 // GET /api/council/requests - List council requests
 export async function GET(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -79,18 +79,16 @@ export async function GET(request: Request) {
 // POST /api/council/requests - Create new council request
 export async function POST(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
-        const { title, description, type, priority, rationale, impact, labels, dueDate } = body;
+        const { data, error } = await validateBody(request, createCouncilRequestSchema);
+        if (error) return error;
 
-        if (!title || !type) {
-            return NextResponse.json({ error: 'Title and type are required' }, { status: 400 });
-        }
+        const { title, description, type, priority, rationale, impact, labels, dueDate } = data;
 
         const councilRequest = await prisma.councilRequest.create({
             data: {

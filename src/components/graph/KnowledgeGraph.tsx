@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { Loader2, ZoomIn, ZoomOut, RotateCcw, FileText, Bot, Building2, GitBranch, Grid3x3, Box } from 'lucide-react';
+import { Loader2, ZoomIn, ZoomOut, RotateCcw, FileText, Bot, Building2, GitBranch, Grid3x3, Box, AlertCircle, Plus, X, Tag, FolderTree, User, BookOpen, Eye, EyeOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, MoveVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -26,7 +26,7 @@ const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), {
 interface GraphNode {
     id: string;
     label: string;
-    type: 'sop' | 'agent' | 'department' | 'process' | 'user' | 'ontology' | 'panda';
+    type: 'sop' | 'agent' | 'department' | 'process' | 'user' | 'ontology' | 'tag' | 'category' | 'panda';
     color: string;
     url?: string;
     val?: number;
@@ -50,11 +50,13 @@ interface GraphData {
 // Obsidian-like color scheme
 const NODE_COLORS: Record<string, string> = {
     sop: '#f59e0b',
-    agent: '#6366f1', // indigo (was violet)
+    agent: '#6366f1',
     department: '#3b82f6',
     process: '#10b981',
     user: '#8b5cf6',
-    ontology: '#ec4899', // pink - słownik firmowy
+    ontology: '#ec4899',
+    tag: '#22c55e',
+    category: '#f97316',
 };
 
 const NODE_SIZES: Record<string, number> = {
@@ -64,6 +66,8 @@ const NODE_SIZES: Record<string, number> = {
     process: 7,
     user: 5,
     ontology: 5,
+    tag: 4,
+    category: 6,
 };
 
 export default function KnowledgeGraph3D() {
@@ -71,9 +75,12 @@ export default function KnowledgeGraph3D() {
     const graphRef = useRef<any>(null);
     const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
     const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(Object.keys(NODE_COLORS)));
+    const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 
     const getNodeUrl = (id: string, type: string): string | undefined => {
         switch (type) {
@@ -115,53 +122,12 @@ export default function KnowledgeGraph3D() {
                             });
                         }
                     });
-                } else {
-                    // Fallback sample data when DB is empty
-                    const sampleNodes: GraphNode[] = [
-                        { id: 'dept-1', label: 'Sprzedaż', type: 'department', color: NODE_COLORS.department, val: NODE_SIZES.department },
-                        { id: 'dept-2', label: 'Marketing', type: 'department', color: NODE_COLORS.department, val: NODE_SIZES.department },
-                        { id: 'dept-3', label: 'Operacje', type: 'department', color: NODE_COLORS.department, val: NODE_SIZES.department },
-                        { id: 'sop-1', label: 'Onboarding Klienta', type: 'sop', color: NODE_COLORS.sop, val: NODE_SIZES.sop, url: '/sops' },
-                        { id: 'sop-2', label: 'Lead Scoring', type: 'sop', color: NODE_COLORS.sop, val: NODE_SIZES.sop, url: '/sops' },
-                        { id: 'sop-3', label: 'Follow-up Automatyczny', type: 'sop', color: NODE_COLORS.sop, val: NODE_SIZES.sop, url: '/sops' },
-                        { id: 'agent-1', label: 'Sales AI', type: 'agent', color: NODE_COLORS.agent, val: NODE_SIZES.agent, url: '/agents' },
-                        { id: 'agent-2', label: 'Marketing AI', type: 'agent', color: NODE_COLORS.agent, val: NODE_SIZES.agent, url: '/agents' },
-                        { id: 'process-1', label: 'Generowanie Leadów', type: 'process', color: NODE_COLORS.process, val: NODE_SIZES.process, url: '/value-chain' },
-                        { id: 'process-2', label: 'Konwersja', type: 'process', color: NODE_COLORS.process, val: NODE_SIZES.process, url: '/value-chain' },
-                        { id: 'onto-1', label: 'Klient MSP', type: 'ontology', color: NODE_COLORS.ontology, val: NODE_SIZES.ontology, url: '/ontology' },
-                        { id: 'onto-2', label: 'Audyt AI', type: 'ontology', color: NODE_COLORS.ontology, val: NODE_SIZES.ontology, url: '/ontology' },
-                    ];
-                    const sampleLinks: GraphLink[] = [
-                        { source: 'sop-1', target: 'dept-1', label: 'należy do' },
-                        { source: 'sop-2', target: 'dept-1', label: 'należy do' },
-                        { source: 'sop-3', target: 'dept-2', label: 'należy do' },
-                        { source: 'agent-1', target: 'sop-1', label: 'wykonuje' },
-                        { source: 'agent-1', target: 'sop-2', label: 'wykonuje' },
-                        { source: 'agent-2', target: 'sop-3', label: 'wykonuje' },
-                        { source: 'process-1', target: 'dept-2', label: 'w dziale' },
-                        { source: 'process-2', target: 'dept-1', label: 'w dziale' },
-                        { source: 'onto-1', target: 'sop-1', label: 'dotyczy' },
-                        { source: 'onto-2', target: 'process-1', label: 'dotyczy' },
-                    ];
-                    nodes.push(...sampleNodes);
-                    links.push(...sampleLinks.map(l => ({ ...l, color: 'rgba(255,255,255,0.2)' })));
                 }
 
                 setGraphData({ nodes, links });
             } catch (err) {
                 console.error('Failed to load graph data', err);
-                // Set minimal fallback on error
-                setGraphData({
-                    nodes: [
-                        { id: 'demo-1', label: 'Demo: Dodaj SOPs', type: 'sop', color: NODE_COLORS.sop, val: 8, url: '/sops/new' },
-                        { id: 'demo-2', label: 'Demo: Dodaj Agentów', type: 'agent', color: NODE_COLORS.agent, val: 8, url: '/agents' },
-                        { id: 'demo-3', label: 'Demo: Value Chain', type: 'process', color: NODE_COLORS.process, val: 8, url: '/value-chain' },
-                    ],
-                    links: [
-                        { source: 'demo-1', target: 'demo-2', color: 'rgba(255,255,255,0.2)' },
-                        { source: 'demo-2', target: 'demo-3', color: 'rgba(255,255,255,0.2)' },
-                    ],
-                });
+                setError('Nie udało się załadować grafu. Sprawdź połączenie z bazą danych.');
             } finally {
                 setLoading(false);
             }
@@ -169,12 +135,24 @@ export default function KnowledgeGraph3D() {
         fetchData();
     }, []);
 
-    // Handle node click - navigate to document
+    // Handle node click - show detail panel or navigate
     const handleNodeClick = useCallback((node: any) => {
-        if (node?.url) {
-            router.push(node.url);
-        }
+        setSelectedNode(node as GraphNode);
+    }, []);
+
+    const handleNavigate = useCallback((url: string) => {
+        router.push(url);
     }, [router]);
+
+    // Toggle a node type filter
+    const toggleFilter = useCallback((type: string) => {
+        setActiveFilters(prev => {
+            const next = new Set(prev);
+            if (next.has(type)) next.delete(type);
+            else next.add(type);
+            return next;
+        });
+    }, []);
 
     // Zoom controls
     const handleZoomIn = () => {
@@ -197,12 +175,100 @@ export default function KnowledgeGraph3D() {
         }
     };
 
+    // Directional camera pan controls for 3D graph
+    const panCamera = useCallback((dx: number, dy: number) => {
+        if (!graphRef.current) return;
+        const cam = graphRef.current.cameraPosition();
+        graphRef.current.cameraPosition(
+            { x: (cam.x || 0) + dx, y: (cam.y || 0) + dy, z: cam.z },
+            null,
+            300
+        );
+    }, []);
+
+    const handlePanUp = useCallback(() => panCamera(0, 40), [panCamera]);
+    const handlePanDown = useCallback(() => panCamera(0, -40), [panCamera]);
+    const handlePanLeft = useCallback(() => panCamera(-40, 0), [panCamera]);
+    const handlePanRight = useCallback(() => panCamera(40, 0), [panCamera]);
+
+    // Filter pipeline: type filters → search query
+    const filteredData = useMemo(() => {
+        // Step 1: filter by active type toggles
+        let nodes = graphData.nodes.filter(n => activeFilters.has(n.type));
+        // Step 2: filter by search query
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            nodes = nodes.filter(n => n.label.toLowerCase().includes(q));
+        }
+        const nodeIds = new Set(nodes.map(n => n.id));
+        return {
+            nodes,
+            links: graphData.links.filter(l => {
+                const src = typeof l.source === 'string' ? l.source : l.source.id;
+                const tgt = typeof l.target === 'string' ? l.target : l.target.id;
+                return nodeIds.has(src) && nodeIds.has(tgt);
+            }),
+        };
+    }, [graphData, searchQuery, activeFilters]);
+
+    // Get connected nodes for detail panel
+    const connectedNodes = useMemo(() => {
+        if (!selectedNode) return [];
+        const id = selectedNode.id;
+        const connectedIds = new Set<string>();
+        graphData.links.forEach(l => {
+            const src = typeof l.source === 'string' ? l.source : l.source.id;
+            const tgt = typeof l.target === 'string' ? l.target : l.target.id;
+            if (src === id) connectedIds.add(tgt);
+            if (tgt === id) connectedIds.add(src);
+        });
+        return graphData.nodes.filter(n => connectedIds.has(n.id));
+    }, [selectedNode, graphData]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full w-full">
                 <div className="text-center space-y-4">
                     <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                     <p className="text-muted-foreground">Ładowanie grafu wiedzy...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center h-full w-full">
+                <div className="text-center space-y-4">
+                    <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+                    <p className="text-muted-foreground">{error}</p>
+                    <button onClick={() => window.location.reload()} className="text-sm text-primary hover:underline">
+                        Spróbuj ponownie
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (graphData.nodes.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-full w-full">
+                <div className="text-center space-y-6 max-w-md">
+                    <div className="h-16 w-16 rounded-full bg-primary/10 mx-auto flex items-center justify-center">
+                        <GitBranch className="h-8 w-8 text-primary" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Graf wiedzy jest pusty</h3>
+                        <p className="text-sm text-muted-foreground">Dodaj procedury, agentów i działy, aby zobaczyć ich powiązania na grafie.</p>
+                    </div>
+                    <div className="flex gap-3 justify-center">
+                        <button onClick={() => router.push('/sops/new')} className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors">
+                            <Plus className="h-4 w-4" /> Dodaj SOP
+                        </button>
+                        <button onClick={() => router.push('/agents')} className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm hover:bg-secondary/80 transition-colors">
+                            <Bot className="h-4 w-4" /> Dodaj Agenta
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -265,31 +331,44 @@ export default function KnowledgeGraph3D() {
                 />
             </div>
 
+            {/* Type Filter Toggles */}
+            <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex gap-1 flex-wrap justify-center">
+                {Object.entries(NODE_COLORS).map(([type, color]) => (
+                    <button
+                        key={type}
+                        onClick={() => toggleFilter(type)}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium border transition-all ${activeFilters.has(type)
+                            ? 'border-transparent text-white'
+                            : 'border-border bg-card/60 text-muted-foreground opacity-50'
+                            }`}
+                        style={activeFilters.has(type) ? { backgroundColor: color } : {}}
+                    >
+                        {activeFilters.has(type) ? <Eye className="h-2.5 w-2.5" /> : <EyeOff className="h-2.5 w-2.5" />}
+                        {type}
+                    </button>
+                ))}
+            </div>
+
             {/* Legend */}
             <div className="absolute top-16 right-4 z-20 bg-card/90 backdrop-blur-sm border border-border p-3 rounded-lg text-xs space-y-2 shadow-lg">
                 <div className="font-semibold mb-2 text-foreground">Legenda</div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <FileText className="h-3 w-3 text-amber-500" />
-                    <span>SOP (procedura)</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <Bot className="h-3 w-3 text-indigo-500" />
-                    <span>Agent AI</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="h-3 w-3 text-blue-500" />
-                    <span>Dział</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <GitBranch className="h-3 w-3 text-emerald-500" />
-                    <span>Proces</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="h-3 w-3 rounded-full bg-pink-500" />
-                    <span>Ontologia</span>
-                </div>
+                {[
+                    { icon: <FileText className="h-3 w-3 text-amber-500" />, label: 'SOP (procedura)' },
+                    { icon: <Bot className="h-3 w-3 text-indigo-500" />, label: 'Agent AI' },
+                    { icon: <Building2 className="h-3 w-3 text-blue-500" />, label: 'Dział' },
+                    { icon: <GitBranch className="h-3 w-3 text-emerald-500" />, label: 'Proces' },
+                    { icon: <User className="h-3 w-3 text-violet-500" />, label: 'Użytkownik' },
+                    { icon: <BookOpen className="h-3 w-3 text-pink-500" />, label: 'Ontologia' },
+                    { icon: <Tag className="h-3 w-3 text-green-500" />, label: 'Tag' },
+                    { icon: <FolderTree className="h-3 w-3 text-orange-500" />, label: 'Kategoria' },
+                ].map(({ icon, label }) => (
+                    <div key={label} className="flex items-center gap-2 text-muted-foreground">
+                        {icon}
+                        <span>{label}</span>
+                    </div>
+                ))}
                 <div className="mt-3 pt-2 border-t border-border text-muted-foreground/60 text-[10px] space-y-1">
-                    <div>Kliknij element aby otworzyć</div>
+                    <div>Kliknij element aby zobaczyć szczegóły</div>
                     <div className="flex items-center gap-1">
                         <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">↑↓←→</kbd>
                         <span>Pan</span>
@@ -299,8 +378,35 @@ export default function KnowledgeGraph3D() {
                 </div>
             </div>
 
+            {/* D-Pad directional controls (3D mode only) */}
+            {viewMode === '3d' && (
+                <div className="absolute bottom-6 right-6 z-20">
+                    <div className="grid grid-cols-3 gap-0.5 w-[108px]">
+                        <div />
+                        <Button variant="secondary" size="icon" className="h-8 w-8" onClick={handlePanUp}>
+                            <ArrowUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <div />
+                        <Button variant="secondary" size="icon" className="h-8 w-8" onClick={handlePanLeft}>
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="secondary" size="icon" className="h-8 w-8" onClick={handleReset}>
+                            <MoveVertical className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="secondary" size="icon" className="h-8 w-8" onClick={handlePanRight}>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                        </Button>
+                        <div />
+                        <Button variant="secondary" size="icon" className="h-8 w-8" onClick={handlePanDown}>
+                            <ArrowDown className="h-3.5 w-3.5" />
+                        </Button>
+                        <div />
+                    </div>
+                </div>
+            )}
+
             {/* Hovered node tooltip */}
-            {hoveredNode && (
+            {hoveredNode && !selectedNode && (
                 <div className="absolute bottom-4 left-4 z-20 bg-card/90 backdrop-blur-sm border border-border px-4 py-2 rounded-lg shadow-lg">
                     <div className="flex items-center gap-2">
                         <div
@@ -311,16 +417,75 @@ export default function KnowledgeGraph3D() {
                         <span className="text-xs text-muted-foreground capitalize">({hoveredNode.type})</span>
                     </div>
                     {hoveredNode.url && (
-                        <div className="text-xs text-muted-foreground mt-1">Kliknij aby otworzyć →</div>
+                        <div className="text-xs text-muted-foreground mt-1">Kliknij aby zobaczyć szczegóły →</div>
                     )}
+                </div>
+            )}
+
+            {/* Node Detail Panel */}
+            {selectedNode && (
+                <div className="absolute bottom-4 left-4 z-30 bg-card/95 backdrop-blur-md border border-border rounded-xl shadow-2xl w-80 max-h-[50vh] overflow-y-auto">
+                    <div className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedNode.color }} />
+                                <div>
+                                    <div className="font-semibold text-foreground text-sm">{selectedNode.label}</div>
+                                    <div className="text-xs text-muted-foreground capitalize">{selectedNode.type}</div>
+                                </div>
+                            </div>
+                            <button onClick={() => setSelectedNode(null)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {selectedNode.url && (
+                            <button
+                                onClick={() => handleNavigate(selectedNode.url!)}
+                                className="w-full mb-3 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                            >
+                                Otwórz szczegóły →
+                            </button>
+                        )}
+
+                        {connectedNodes.length > 0 && (
+                            <div>
+                                <div className="text-xs font-medium text-muted-foreground mb-2">
+                                    Powiązane ({connectedNodes.length})
+                                </div>
+                                <div className="space-y-1">
+                                    {connectedNodes.slice(0, 15).map(cn => (
+                                        <button
+                                            key={cn.id}
+                                            onClick={() => setSelectedNode(cn)}
+                                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left hover:bg-muted/50 transition-colors"
+                                        >
+                                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cn.color }} />
+                                            <span className="truncate text-foreground">{cn.label}</span>
+                                            <span className="text-muted-foreground capitalize ml-auto flex-shrink-0">{cn.type}</span>
+                                        </button>
+                                    ))}
+                                    {connectedNodes.length > 15 && (
+                                        <div className="text-xs text-muted-foreground text-center py-1">+{connectedNodes.length - 15} więcej</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {connectedNodes.length === 0 && (
+                            <div className="text-xs text-muted-foreground text-center py-2">
+                                Brak powiązań
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
             {/* Graph View - 2D or 3D */}
             {viewMode === '2d' ? (
                 <CytoscapeGraph
-                    nodes={graphData.nodes}
-                    links={graphData.links.map(link => ({
+                    nodes={filteredData.nodes}
+                    links={filteredData.links.map(link => ({
                         source: typeof link.source === 'string' ? link.source : link.source.id,
                         target: typeof link.target === 'string' ? link.target : link.target.id,
                         label: link.label,
@@ -330,7 +495,7 @@ export default function KnowledgeGraph3D() {
             ) : (
                 <ForceGraph3D
                     ref={graphRef}
-                    graphData={graphData}
+                    graphData={filteredData}
                     nodeLabel={(node: any) => `${node.label} (${node.type})`}
                     nodeColor={(node: any) => {
                         if (searchQuery && !node.label?.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -361,7 +526,10 @@ export default function KnowledgeGraph3D() {
 
             {/* Stats */}
             <div className="absolute bottom-4 right-4 z-20 text-xs text-muted-foreground">
-                {graphData.nodes.length} elementów · {graphData.links.length} połączeń
+                {filteredData.nodes.length} elementów · {filteredData.links.length} połączeń
+                {searchQuery && graphData.nodes.length !== filteredData.nodes.length && (
+                    <span className="ml-1">(z {graphData.nodes.length})</span>
+                )}
             </div>
         </div>
     );

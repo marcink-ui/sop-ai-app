@@ -6,7 +6,7 @@ import { AchievementsGrid } from '@/components/gamification/AchievementsGrid';
 import { GamificationLeaderboard } from '@/components/gamification/GamificationLeaderboard';
 import { StatsCard } from '@/components/gamification/StatsCard';
 import { Gamepad2, Loader2 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 
 interface LevelInfo {
     level: number;

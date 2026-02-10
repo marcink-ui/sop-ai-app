@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -78,7 +78,7 @@ interface Pagination {
 }
 
 export default function ChatHistoryPage() {
-    const { data: session, status } = useSession();
+    const { data: session, isPending } = useSession();
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [pagination, setPagination] = useState<Pagination | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -110,13 +110,13 @@ export default function ChatHistoryPage() {
     }, [page, search]);
 
     useEffect(() => {
-        if (status === 'authenticated' && session?.user?.role === 'SPONSOR') {
+        if (!isPending && session?.user?.role === 'SPONSOR') {
             fetchSessions();
         }
-    }, [fetchSessions, status, session?.user?.role]);
+    }, [fetchSessions, isPending, session?.user?.role]);
 
     // Access check - after all hooks
-    if (status === 'loading') {
+    if (isPending) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />

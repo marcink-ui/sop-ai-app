@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 
 // Note: SuggestionStatus type will be available after prisma db push
@@ -11,7 +10,7 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
         if (!session?.user?.organizationId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -46,7 +45,7 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
         if (!session?.user?.id || !session?.user?.organizationId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -120,7 +119,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
         if (!session?.user?.id || !session?.user?.organizationId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }

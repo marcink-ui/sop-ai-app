@@ -1,8 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { KnowledgeDocumentType, Prisma } from '@prisma/client';
+import { validateBody, createAgentKnowledgeSchema } from '@/lib/validations';
 
 // GET /api/agents/[id]/knowledge - Get agent's knowledge base
 export async function GET(
@@ -10,7 +10,7 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -67,7 +67,7 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -87,22 +87,10 @@ export async function POST(
             return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
         }
 
-        const body = await request.json();
-        const {
-            name,
-            type,
-            content,
-            url,
-            fileUrl,
-            description,
-            mimeType,
-            fileSize,
-            accessLevel
-        } = body;
+        const { data, error } = await validateBody(request, createAgentKnowledgeSchema);
+        if (error) return error;
 
-        if (!name || !type) {
-            return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
-        }
+        const { name, type, content, url, fileUrl, description, mimeType, fileSize, accessLevel } = data;
 
         const document = await prisma.agentKnowledgeDocument.create({
             data: {
@@ -138,7 +126,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

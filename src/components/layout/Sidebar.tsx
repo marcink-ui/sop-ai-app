@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import {
     LayoutDashboard,
@@ -20,6 +20,7 @@ import {
     ChevronRight,
     ChevronDown,
     Sparkles,
+    MessageCircle,
     Command,
     BookOpen,
     BarChart3,
@@ -153,9 +154,8 @@ const SIDEBAR_CATEGORIES = {
         defaultOpen: false,
         items: [
             { name: 'Dashboard', href: '/partner', icon: BarChart3, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'PARTNER' },
-            { name: 'Moje Firmy', href: '/partner/company', icon: Building2, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'PARTNER' },
-            { name: 'Firmy', href: '/backoffice/companies', icon: Building2, color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-100 dark:bg-sky-500/20', minRole: 'PARTNER' },
             { name: 'Transformacje', href: '/partner/transformations', icon: Rocket, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'PARTNER' },
+            { name: 'Firmy', href: '/backoffice/companies', icon: Building2, color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-100 dark:bg-sky-500/20', minRole: 'PARTNER' },
             { name: 'Admin', href: '/admin-panel', icon: Shield, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-500/20', minRole: 'META_ADMIN' },
         ] as NavItemData[],
     },
@@ -183,7 +183,7 @@ export function Sidebar() {
         <TooltipProvider delayDuration={0}>
             <aside
                 className={cn(
-                    'fixed left-0 top-0 z-40 h-screen border-r transition-all duration-300 ease-in-out',
+                    'sticky top-0 z-40 h-screen shrink-0 border-r transition-all duration-300 ease-in-out',
                     'border-neutral-200 bg-white/80 backdrop-blur-xl',
                     'dark:border-neutral-800/50 dark:bg-neutral-950/80',
                     collapsed ? 'w-16' : 'w-64'
@@ -208,7 +208,7 @@ export function Sidebar() {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-white/95">VantageOS</span>
-                                    <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 tracking-[0.08em] uppercase">Business OS</span>
+                                    <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 tracking-[0.08em] uppercase">{(session?.user as Record<string, unknown>)?.organizationName as string || 'Business OS'}</span>
                                 </div>
                             </Link>
                         )}
@@ -352,7 +352,7 @@ export function Sidebar() {
                                             ? 'bg-blue-200 dark:bg-blue-500/30'
                                             : 'bg-neutral-100 dark:bg-neutral-800/50'
                                     )}>
-                                        <MessageSquare className={cn(
+                                        <Sparkles className={cn(
                                             'h-4 w-4',
                                             isChatOpen
                                                 ? 'text-blue-600 dark:text-blue-400'

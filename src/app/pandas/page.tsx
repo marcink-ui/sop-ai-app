@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import { PandaGiveCard } from '@/components/panda/PandaGiveCard';
 import { PandaFeed } from '@/components/panda/PandaFeed';
 import { PandaLeaderboard } from '@/components/panda/PandaLeaderboard';

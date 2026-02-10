@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import { redirect } from 'next/navigation';
 import {
     Wrench,
@@ -97,10 +97,10 @@ const systemHealth = [
 ];
 
 export default function MetaAdminPage() {
-    const { data: session, status } = useSession();
+    const { data: session, isPending } = useSession();
 
     // Require META_ADMIN role
-    if (status === 'loading') {
+    if (isPending) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" />

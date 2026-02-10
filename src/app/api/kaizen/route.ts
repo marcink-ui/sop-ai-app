@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
+import { validateBody, createKaizenSchema } from '@/lib/validations';
 
 // Note: SuggestionCategory type will be available after prisma db push
 
 // GET /api/kaizen - list kaizen suggestions
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
         if (!session?.user?.organizationId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -58,26 +58,15 @@ export async function GET(request: NextRequest) {
 // POST /api/kaizen - create new kaizen suggestion
 export async function POST(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
         if (!session?.user?.id || !session?.user?.organizationId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
-        const { title, description, category } = body;
+        const { data, error } = await validateBody(request, createKaizenSchema);
+        if (error) return error;
 
-        // Validation
-        if (!title || !description || !category) {
-            return NextResponse.json({ error: 'Missing required fields: title, description, category' }, { status: 400 });
-        }
-
-        if (title.length > 255) {
-            return NextResponse.json({ error: 'Title too long (max 255 characters)' }, { status: 400 });
-        }
-
-        if (!['APPLICATION', 'COMPANY_PROCESS'].includes(category)) {
-            return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
-        }
+        const { title, description, category } = data;
 
         // Create suggestion
         const suggestion = await prisma.kaizenSuggestion.create({

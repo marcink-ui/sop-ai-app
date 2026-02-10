@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requirePermission } from '@/lib/api-auth';
+import { validateBody, createAiKeySchema, updateAiKeySchema } from '@/lib/validations';
 
 // ===========================================
 // GET: List all org API keys + usage stats
 // ===========================================
 export async function GET(request: NextRequest) {
     try {
+        const guard = await requirePermission('canManageApiKeys');
+        if (guard.error) return guard.error;
+
         const { searchParams } = new URL(request.url);
         const orgId = searchParams.get('orgId');
         const view = searchParams.get('view'); // 'keys' | 'usage' | 'summary'
@@ -128,15 +133,13 @@ export async function GET(request: NextRequest) {
 // ===========================================
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-        const { organizationId, provider, label, apiKey, monthlyBudget, note } = body;
+        const guard = await requirePermission('canManageApiKeys');
+        if (guard.error) return guard.error;
 
-        if (!organizationId || !provider || !label || !apiKey) {
-            return NextResponse.json(
-                { error: 'Missing required fields: organizationId, provider, label, apiKey' },
-                { status: 400 }
-            );
-        }
+        const { data, error } = await validateBody(request, createAiKeySchema);
+        if (error) return error;
+
+        const { organizationId, provider, label, apiKey, monthlyBudget, note } = data;
 
         // Mask the key for display (show first 7 and last 4 chars)
         const maskedKey = apiKey.length > 12
@@ -183,12 +186,13 @@ export async function POST(request: NextRequest) {
 // ===========================================
 export async function PATCH(request: NextRequest) {
     try {
-        const body = await request.json();
-        const { keyId, isActive, monthlyBudget, note } = body;
+        const guard = await requirePermission('canManageApiKeys');
+        if (guard.error) return guard.error;
 
-        if (!keyId) {
-            return NextResponse.json({ error: 'Missing keyId' }, { status: 400 });
-        }
+        const { data, error } = await validateBody(request, updateAiKeySchema);
+        if (error) return error;
+
+        const { keyId, isActive, monthlyBudget, note } = data;
 
         const updated = await prisma.orgAiApiKey.update({
             where: { id: keyId },
@@ -211,6 +215,9 @@ export async function PATCH(request: NextRequest) {
 // ===========================================
 export async function DELETE(request: NextRequest) {
     try {
+        const guard = await requirePermission('canManageApiKeys');
+        if (guard.error) return guard.error;
+
         const { searchParams } = new URL(request.url);
         const keyId = searchParams.get('keyId');
 

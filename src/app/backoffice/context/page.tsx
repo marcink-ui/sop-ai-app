@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
-import { getServerSession } from 'next-auth';
+import { getSession } from '@/lib/auth-server';
 import { redirect } from 'next/navigation';
-import { authOptions } from '@/lib/auth';
 import { CompanyContextManager } from '@/components/backoffice/company-context-manager';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BackofficeContextPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
 
     if (!session) {
         redirect('/auth/login');

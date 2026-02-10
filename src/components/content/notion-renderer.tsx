@@ -16,6 +16,7 @@ import {
     Lightbulb,
     BookOpen,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 // Import Notion renderer dynamically for SSR compatibility
 const NotionRenderer = dynamic(
@@ -297,7 +298,7 @@ function MarkdownView({ markdown }: { markdown: string }) {
     return (
         <div
             className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: html }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
         />
     );
 }

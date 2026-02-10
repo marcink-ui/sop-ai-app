@@ -13,7 +13,7 @@ if (typeof window !== 'undefined') {
 interface GraphNode {
     id: string;
     label: string;
-    type: 'sop' | 'agent' | 'department' | 'process' | 'user' | 'ontology' | 'panda';
+    type: 'sop' | 'agent' | 'department' | 'process' | 'user' | 'ontology' | 'tag' | 'category' | 'panda';
     color: string;
     url?: string;
 }
@@ -38,6 +38,8 @@ const NODE_COLORS: Record<string, string> = {
     process: '#10b981',   // emerald
     user: '#8b5cf6',      // violet
     ontology: '#ec4899',  // pink
+    tag: '#22c55e',       // green
+    category: '#f97316',  // orange
     panda: '#fbbf24',     // gold
 };
 
@@ -48,6 +50,8 @@ const NODE_SIZES: Record<string, number> = {
     process: 32,
     user: 26,
     ontology: 26,
+    tag: 22,
+    category: 28,
     panda: 22,
 };
 

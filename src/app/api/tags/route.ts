@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 
-// GET /api/tags - List all tags (global, not organization-specific)
+// GET /api/tags - List all tags (scoped to organization)
 export async function GET() {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const tags = await prisma.tag.findMany({
+            where: {
+                organizationId: session.user.organizationId,
+            },
             include: {
                 _count: {
                     select: {
@@ -40,10 +42,10 @@ export async function GET() {
     }
 }
 
-// POST /api/tags - Create new tag (global)
+// POST /api/tags - Create new tag (scoped to organization)
 export async function POST(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -56,9 +58,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Name is required' }, { status: 400 });
         }
 
-        // Check if name already exists (globally unique)
+        // Check if name already exists within this organization
         const existing = await prisma.tag.findFirst({
-            where: { name },
+            where: { name, organizationId: session.user.organizationId },
         });
 
         if (existing) {
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
                 color,
                 description,
                 icon,
+                organizationId: session.user.organizationId,
             },
         });
 
@@ -90,7 +93,7 @@ export async function POST(request: Request) {
 // PATCH /api/tags - Update a tag
 export async function PATCH(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -111,10 +114,10 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: 'Tag not found' }, { status: 404 });
         }
 
-        // Check if new name conflicts with another tag
+        // Check if new name conflicts with another tag in this organization
         if (name && name !== existing.name) {
             const conflict = await prisma.tag.findFirst({
-                where: { name },
+                where: { name, organizationId: session.user.organizationId },
             });
 
             if (conflict) {

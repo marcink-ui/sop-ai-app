@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -169,7 +169,7 @@ const categoryLabels: Record<string, { label: string; color: string }> = {
 };
 
 export default function FeatureFlagsPage() {
-    const { data: session, status } = useSession();
+    const { data: session, isPending } = useSession();
     const [flags, setFlags] = useState<FeatureFlag[]>(defaultFlags);
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -192,7 +192,7 @@ export default function FeatureFlagsPage() {
     }, []);
 
     // Access checks - after all hooks
-    if (status === 'loading') {
+    if (isPending) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />

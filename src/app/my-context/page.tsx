@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import {
     User,
     Brain,
@@ -47,7 +47,7 @@ interface UserContext {
 }
 
 export default function MyContextPage() {
-    const { data: session, status } = useSession();
+    const { data: session, isPending } = useSession();
     const [context, setContext] = useState<UserContext | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -102,10 +102,10 @@ export default function MyContextPage() {
             }
         };
 
-        if (status !== 'loading') {
+        if (!isPending) {
             fetchContext();
         }
-    }, [session, status]);
+    }, [session, isPending]);
 
     // Calculate context completeness
     const calculateCompleteness = () => {

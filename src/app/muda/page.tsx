@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Search,
     Filter,
@@ -40,6 +41,7 @@ const mudaTypes = [
 ];
 
 export default function MUDAPage() {
+    const router = useRouter();
     const [reports, setReports] = useState<MudaReport[]>([]);
     const [sops, setSops] = useState<SOP[]>([]);
     const [search, setSearch] = useState('');
@@ -159,7 +161,8 @@ export default function MUDAPage() {
                             filteredReports.map((report) => (
                                 <tr
                                     key={report.id}
-                                    className="border-b border-border transition-colors hover:bg-muted/30 last:border-0"
+                                    className="border-b border-border transition-colors hover:bg-muted/30 last:border-0 cursor-pointer"
+                                    onClick={() => router.push(`/muda/${report.id}`)}
                                 >
                                     <td className="px-4 py-4">
                                         <span className="font-medium text-foreground">{getSopName(report.sop_id)}</span>

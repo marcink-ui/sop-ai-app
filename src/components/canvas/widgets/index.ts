@@ -7,6 +7,7 @@ import { ChartLineWidget } from './chart-line';
 import { AIInsightWidget } from './ai-insight';
 import { SOPStatusWidget } from './sop-status';
 import { MUDAHeatmapWidget } from './muda-heatmap';
+import { SOPGeneratorWidget } from './sop-generator';
 
 // Widget types enum
 export type WidgetType =
@@ -15,7 +16,8 @@ export type WidgetType =
     | 'chart-line'
     | 'ai-insight'
     | 'sop-status'
-    | 'muda-heatmap';
+    | 'muda-heatmap'
+    | 'sop-generator';
 
 // Widget configuration interface
 export interface CanvasWidget {
@@ -78,6 +80,12 @@ export const WIDGET_REGISTRY: Record<WidgetType, {
         description: 'Mini mapa strat procesowych',
         defaultSize: { w: 4, h: 3, minW: 3, minH: 2 },
         component: MUDAHeatmapWidget,
+    },
+    'sop-generator': {
+        label: 'SOP Generator',
+        description: 'Generuj SOP z AI na podstawie opisu procesu',
+        defaultSize: { w: 4, h: 4, minW: 3, minH: 3 },
+        component: SOPGeneratorWidget,
     },
 };
 

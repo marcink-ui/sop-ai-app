@@ -24,7 +24,10 @@ interface ChatState {
     messages: Message[];
     panelWidth: number;
     sessionId: string | null;
+    dockSide: DockSide;
 }
+
+type DockSide = 'left' | 'right';
 
 interface ChatContextValue {
     // Legacy API (backwards compatible)
@@ -49,9 +52,11 @@ interface ChatContextValue {
     addMessage: (message: Message) => void;
     clearMessages: () => void;
 
-    // Panel sizing
+    // Panel sizing & docking
     panelWidth: number;
     setPanelWidth: (width: number) => void;
+    dockSide: DockSide;
+    toggleDock: () => void;
 
     // Page context
     pageContext: PageContext;
@@ -60,7 +65,7 @@ interface ChatContextValue {
 const STORAGE_KEY = 'vantage-chat-state';
 const DEFAULT_WIDTH = 400;
 const MIN_WIDTH = 320;
-const MAX_WIDTH = 600;
+const MAX_WIDTH = 800;
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
@@ -107,6 +112,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const [messages, setMessagesState] = useState<Message[]>([]);
     const [panelWidth, setPanelWidthState] = useState(DEFAULT_WIDTH);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [dockSide, setDockSide] = useState<DockSide>('right');
     const [legacyContext, setLegacyContext] = useState<Partial<PageContext>>({});
 
     // Get live page context from bridge
@@ -119,6 +125,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         if (stored.messages) setMessagesState(stored.messages);
         if (stored.panelWidth) setPanelWidthState(stored.panelWidth);
         if (stored.sessionId) setSessionId(stored.sessionId);
+        if (stored.dockSide) setDockSide(stored.dockSide);
         setInitialized(true);
     }, []);
 
@@ -130,8 +137,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             messages,
             panelWidth,
             sessionId,
+            dockSide,
         });
-    }, [mode, messages, panelWidth, sessionId, initialized]);
+    }, [mode, messages, panelWidth, sessionId, dockSide, initialized]);
 
     // Mode setters
     const setMode = useCallback((newMode: ChatOverlayMode) => {
@@ -161,6 +169,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const setPanelWidth = useCallback((width: number) => {
         const bounded = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
         setPanelWidthState(bounded);
+    }, []);
+
+    const toggleDock = useCallback(() => {
+        setDockSide(prev => prev === 'right' ? 'left' : 'right');
     }, []);
 
     // Legacy API compatibility
@@ -206,9 +218,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 addMessage,
                 clearMessages,
 
-                // Panel
+                // Panel & docking
                 panelWidth,
                 setPanelWidth,
+                dockSide,
+                toggleDock,
 
                 // Context
                 pageContext,

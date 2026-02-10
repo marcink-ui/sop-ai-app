@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
+import { resolveApiKey, isRealAIAvailable } from './api-key-resolver';
 
 // =====================================
 // VantageOS Headless Chat Agent Service
@@ -136,29 +137,114 @@ export const PREDEFINED_FLOWS: Record<string, AgentFlow> = {
     },
 };
 
-// Generate AI response (simulated - replace with actual LLM call)
+// =====================================
+// AI Response Generator — Multi-Provider
+// =====================================
+// Uses the resolveApiKey system for multi-tier key resolution:
+//   TIER 1: Platform keys (PLATFORM_OPENAI_API_KEY, etc.)
+//   TIER 2: Organization keys (OPENAI_API_KEY, etc.)
+//   TIER 3: Simulated fallback (no keys available)
+
 async function generateResponse(
     prompt: string,
     context: Record<string, unknown>,
-    _config: HeadlessAgentConfig
+    config: HeadlessAgentConfig
 ): Promise<string> {
-    // This is a placeholder - in production, call actual LLM API
-    // e.g., OpenAI, Anthropic, or Google AI
+    const resolvedKey = resolveApiKey({
+        userRole: 'META_ADMIN', // headless agent uses platform keys
+        preferredProvider: 'openai',
+    });
 
-    const systemContext = context.flowName
-        ? `Wykonuję flow: ${context.flowName}. Krok: ${context.stepId}`
-        : 'VantageOS Headless Agent';
+    if (!isRealAIAvailable(resolvedKey)) {
+        // Simulated fallback when no API keys configured
+        const systemContext = context.flowName
+            ? `Wykonuję flow: ${context.flowName}. Krok: ${context.stepId}`
+            : 'VantageOS Headless Agent';
 
-    // Simulated response based on step type
-    if (context.expectedOutput === 'json') {
-        return JSON.stringify({
-            status: 'generated',
-            context: systemContext,
-            data: { prompt, timestamp: new Date().toISOString() }
-        }, null, 2);
+        if (context.expectedOutput === 'json') {
+            return JSON.stringify({
+                status: 'generated',
+                context: systemContext,
+                data: { prompt, timestamp: new Date().toISOString() }
+            }, null, 2);
+        }
+
+        return `[Headless Agent — tryb symulowany] ${systemContext}\n\nPrompt: ${prompt}\n\nUstaw klucz API (OPENAI_API_KEY lub PLATFORM_OPENAI_API_KEY) aby włączyć prawdziwe AI.`;
     }
 
-    return `[Headless Agent Response] ${systemContext}\n\nPrompt: ${prompt}\n\nTo jest symulowana odpowiedź. W produkcji, połącz z prawdziwym LLM API.`;
+    // Build system prompt
+    const flowContext = context.flowName
+        ? `\nWykonujesz flow: ${context.flowName}. Krok: ${context.stepId}.`
+        : '';
+    const jsonInstruction = context.expectedOutput === 'json'
+        ? '\nOdpowiadaj WYŁĄCZNIE w formacie JSON.'
+        : '';
+    const systemPrompt = config.systemPrompt
+        || `Jesteś VantageOS AI Assistant. Odpowiadaj po polsku, konkretnie i profesjonalnie.${flowContext}${jsonInstruction}`;
+
+    try {
+        if (resolvedKey.provider === 'openai') {
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${resolvedKey.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: resolvedKey.model || 'gpt-4o',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: prompt },
+                    ],
+                    max_tokens: config.maxTokens || 2048,
+                    temperature: config.temperature ?? 0.7,
+                }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                console.error('[HeadlessAgent] OpenAI error:', res.status, err);
+                throw new Error(`OpenAI API error: ${res.status}`);
+            }
+
+            const completion = await res.json();
+            return completion.choices?.[0]?.message?.content || 'Brak odpowiedzi z API.';
+
+        } else if (resolvedKey.provider === 'anthropic') {
+            const res = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': resolvedKey.apiKey,
+                    'anthropic-version': '2023-06-01',
+                },
+                body: JSON.stringify({
+                    model: resolvedKey.model || 'claude-3-sonnet-20240229',
+                    max_tokens: config.maxTokens || 2048,
+                    system: systemPrompt,
+                    messages: [
+                        { role: 'user', content: prompt },
+                    ],
+                }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                console.error('[HeadlessAgent] Anthropic error:', res.status, err);
+                throw new Error(`Anthropic API error: ${res.status}`);
+            }
+
+            const completion = await res.json();
+            return completion.content?.[0]?.text || 'Brak odpowiedzi z API.';
+        }
+
+        // Google or unknown provider — fallback
+        return `[HeadlessAgent] Provider ${resolvedKey.provider} nie jest jeszcze wspierany. Ustaw OPENAI_API_KEY lub ANTHROPIC_API_KEY.`;
+
+    } catch (error) {
+        console.error('[HeadlessAgent] AI call failed:', error);
+        return `[HeadlessAgent — błąd API] ${error instanceof Error ? error.message : 'Nieznany błąd'}. Prompt: ${prompt}`;
+    }
 }
 
 // Main Headless Agent class

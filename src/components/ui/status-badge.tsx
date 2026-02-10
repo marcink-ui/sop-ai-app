@@ -72,7 +72,7 @@ export function StatusBadge({ status, size = 'md', showDot = true }: StatusBadge
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
         >
-            <Badge className={cn(config.bg, config.text, 'border-0', size === 'sm' && 'text-xs px-2 py-0.5')}>
+            <Badge variant="outline" className={cn(config.bg, config.text, 'border-0 font-medium', size === 'sm' && 'text-xs px-2 py-0.5')}>
                 {showDot && (
                     <motion.span
                         className={cn('mr-1.5 h-1.5 w-1.5 rounded-full inline-block', config.dot)}

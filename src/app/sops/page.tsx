@@ -285,7 +285,7 @@ export default function SOPsPage() {
                                 <tr
                                     key={sop.id}
                                     className="border-b border-border transition-colors hover:bg-muted/50 last:border-0 cursor-pointer"
-                                    onClick={() => openSheet(sop)}
+                                    onClick={() => router.push(`/sops/${sop.id}`)}
                                 >
                                     <td className="px-4 py-4">
                                         <div className="flex items-center gap-2">

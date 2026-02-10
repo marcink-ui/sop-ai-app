@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useSession, signOut } from '@/lib/auth-client';
 import {
     Info,
     Bell,
@@ -161,6 +161,7 @@ interface HeaderBarProps {
 
 export function HeaderBar({ onOpenChat }: HeaderBarProps) {
     const pathname = usePathname();
+    const router = useRouter();
     const { data: session } = useSession();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -558,7 +559,7 @@ export function HeaderBar({ onOpenChat }: HeaderBarProps) {
 
                             {/* Logout */}
                             <DropdownMenuItem
-                                onClick={() => signOut({ callbackUrl: '/auth/login' })}
+                                onClick={async () => { await signOut(); router.push('/auth/login'); }}
                                 className="text-red-600 focus:text-red-600 cursor-pointer"
                             >
                                 <LogOut className="mr-2 h-4 w-4" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import { redirect } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -37,18 +37,9 @@ const adminModules = [
         color: 'from-violet-500 to-fuchsia-600',
     },
     {
-        id: 'newsletters',
-        title: 'Newslettery',
-        description: 'Wysyłaj komunikaty globalnie lub do wybranych firm',
-        icon: Send,
-        href: '/admin-panel/newsletters',
-        stats: '3 drafty',
-        color: 'from-blue-500 to-cyan-600',
-    },
-    {
         id: 'resources',
         title: 'Resources Hub',
-        description: 'Zarządzaj zasobami i pushuj content do organizacji',
+        description: 'Zasoby, prompty, agenci, skille i newslettery w jednym miejscu',
         icon: Library,
         href: '/resources',
         stats: '47 zasobów',
@@ -99,6 +90,15 @@ const adminModules = [
         stats: '2 aktywne',
         color: 'from-indigo-500 to-violet-600',
     },
+    {
+        id: 'ux-analysis',
+        title: 'UX Analysis',
+        description: 'Heatmapy, predykcje użytkowników i nagrania sesji',
+        icon: Activity,
+        href: '/admin-panel/ux-analysis',
+        stats: 'Beta',
+        color: 'from-pink-500 to-rose-600',
+    },
 ];
 
 const platformStats = [
@@ -109,9 +109,9 @@ const platformStats = [
 ];
 
 export default function AdminPanelPage() {
-    const { data: session, status } = useSession();
+    const { data: session, isPending } = useSession();
 
-    if (status === 'loading') {
+    if (isPending) {
         return (
             <div className="flex items-center justify-center h-64">
                 <Shield className="h-8 w-8 animate-pulse text-red-500" />

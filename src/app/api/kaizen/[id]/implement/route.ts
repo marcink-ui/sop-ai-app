@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 
 // POST /api/kaizen/[id]/implement - mark suggestion as implemented and award bonus
@@ -9,7 +8,7 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
         if (!session?.user?.id || !session?.user?.organizationId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }

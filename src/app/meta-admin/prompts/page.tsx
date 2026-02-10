@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -65,7 +65,7 @@ const AI_MODELS = [
 ];
 
 export default function SystemPromptsPage() {
-    const { data: session, status } = useSession();
+    const { data: session, isPending } = useSession();
     const [agents, setAgents] = useState<Agent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [editingAgent, setEditingAgent] = useState<string | null>(null);
@@ -88,13 +88,13 @@ export default function SystemPromptsPage() {
     }, []);
 
     useEffect(() => {
-        if (status === 'authenticated' && session?.user?.role === 'SPONSOR') {
+        if (!isPending && session?.user?.role === 'SPONSOR') {
             fetchAgents();
         }
-    }, [fetchAgents, status, session?.user?.role]);
+    }, [fetchAgents, isPending, session?.user?.role]);
 
     // Access checks - after all hooks
-    if (status === 'loading') {
+    if (isPending) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />

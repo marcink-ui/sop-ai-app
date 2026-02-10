@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth-server';
 import { searchWiki, buildWikiContext } from '@/lib/ai/wiki-knowledge';
 import { resolveApiKey, getTierLabel, isRealAIAvailable } from '@/lib/ai/api-key-resolver';
 
@@ -37,17 +38,20 @@ export async function POST(request: NextRequest) {
         const { messages, context, sessionId } = await request.json();
         const latestMessage = messages[messages.length - 1];
 
-        // 1. Identify User (with role for API key resolution)
-        const user = await prisma.user.findFirst({
-            select: { id: true, role: true, organizationId: true }
-        });
-
-        if (!user) {
+        // 1. Identify User via session
+        const authSession = await getSession();
+        if (!authSession?.user) {
             return NextResponse.json(
-                { error: 'User not found. Component requires at least one user in DB.' },
+                { error: 'Unauthorized' },
                 { status: 401 }
             );
         }
+
+        const user = {
+            id: authSession.user.id,
+            role: authSession.user.role as string,
+            organizationId: authSession.user.organizationId as string | null,
+        };
 
         // 2. Resolve API Key based on user role
         //    META_ADMIN / PARTNER → platform keys (SYHI-owned, PLATFORM_OPENAI_API_KEY etc.)

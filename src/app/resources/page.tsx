@@ -26,9 +26,12 @@ import {
     Target,
     ArrowRight,
     Globe,
+    X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 // ============================================================================
 // TYPES
@@ -182,6 +185,51 @@ export default function ResourcesPage() {
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('prompts');
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [addOpen, setAddOpen] = useState(false);
+    const [newResource, setNewResource] = useState({ name: '', category: '', description: '', prompt: '' });
+    const [saving, setSaving] = useState(false);
+
+    const handleAddResource = async () => {
+        if (!newResource.name.trim()) { toast.error('Podaj nazwę zasobu'); return; }
+        setSaving(true);
+        try {
+            if (activeTab === 'prompts') {
+                // Try API first, fall back to localStorage
+                try {
+                    const res = await fetch('/api/prompts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: newResource.name,
+                            category: newResource.category || 'General',
+                            description: newResource.description,
+                            content: newResource.prompt,
+                        }),
+                    });
+                    if (res.ok) {
+                        toast.success(`Prompt "${newResource.name}" zapisany`);
+                        setNewResource({ name: '', category: '', description: '', prompt: '' });
+                        setAddOpen(false);
+                        return;
+                    }
+                } catch { /* API unavailable */ }
+                // Fallback: localStorage
+                const stored = JSON.parse(localStorage.getItem('vos-custom-prompts') || '[]');
+                stored.push({ id: `custom-${Date.now()}`, ...newResource, rating: 0, uses: 0, isGlobal: false });
+                localStorage.setItem('vos-custom-prompts', JSON.stringify(stored));
+                toast.success(`Prompt "${newResource.name}" zapisany lokalnie`);
+            } else {
+                const stored = JSON.parse(localStorage.getItem(`vos-custom-${activeTab}`) || '[]');
+                stored.push({ id: `custom-${Date.now()}`, name: newResource.name, description: newResource.description, category: newResource.category || 'General', isGlobal: false });
+                localStorage.setItem(`vos-custom-${activeTab}`, JSON.stringify(stored));
+                toast.success(`Zasób "${newResource.name}" zapisany`);
+            }
+            setNewResource({ name: '', category: '', description: '', prompt: '' });
+            setAddOpen(false);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const copyPrompt = (prompt: SystemPrompt) => {
         navigator.clipboard.writeText(prompt.prompt);
@@ -238,10 +286,43 @@ export default function ResourcesPage() {
                             className="pl-10"
                         />
                     </div>
-                    <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Dodaj
-                    </Button>
+                    <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Dodaj
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>Dodaj nowy zasób</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 pt-2">
+                                <div>
+                                    <Label htmlFor="res-name">Nazwa</Label>
+                                    <Input id="res-name" placeholder="np. Prompt do analizy SOP" value={newResource.name} onChange={e => setNewResource(p => ({ ...p, name: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="res-cat">Kategoria</Label>
+                                    <Input id="res-cat" placeholder="np. Lean, AI, HR" value={newResource.category} onChange={e => setNewResource(p => ({ ...p, category: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="res-desc">Opis</Label>
+                                    <Input id="res-desc" placeholder="Krótki opis zasobu" value={newResource.description} onChange={e => setNewResource(p => ({ ...p, description: e.target.value }))} />
+                                </div>
+                                {activeTab === 'prompts' && (
+                                    <div>
+                                        <Label htmlFor="res-prompt">Treść promptu</Label>
+                                        <textarea id="res-prompt" rows={4} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Wpisz treść promptu systemu..." value={newResource.prompt} onChange={e => setNewResource(p => ({ ...p, prompt: e.target.value }))} />
+                                    </div>
+                                )}
+                                <Button onClick={handleAddResource} disabled={saving} className="w-full bg-gradient-to-r from-violet-600 to-purple-600">
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                                    Zapisz zasób
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </motion.div>
 

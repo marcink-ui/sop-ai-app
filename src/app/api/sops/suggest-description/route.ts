@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 
 // Lazy OpenAI initialization - only create client when API key is available
 const getOpenAIClient = () => {
@@ -38,7 +37,7 @@ interface SuggestDescriptionRequest {
 
 export async function POST(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json(

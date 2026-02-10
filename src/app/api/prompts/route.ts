@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 
 // Get all agents with their prompts
 export async function GET() {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user || session.user.role !== 'SPONSOR') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -47,7 +46,7 @@ export async function GET() {
 // Update agent prompt
 export async function PATCH(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user || session.user.role !== 'SPONSOR') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

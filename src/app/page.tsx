@@ -1,5 +1,4 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import { DashboardClient } from './dashboard-client';
@@ -50,7 +49,7 @@ async function getDashboardData(organizationId: string) {
 }
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getSession();
 
   if (!session?.user) {
     redirect('/auth/login');

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -76,7 +76,7 @@ const SAMPLE_NEWSLETTERS: NewsItem[] = [
 ];
 
 export default function NewsletterPublisherPage() {
-    const { data: session, status } = useSession();
+    const { data: session, isPending } = useSession();
     const [newsletters, setNewsletters] = useState<NewsItem[]>(SAMPLE_NEWSLETTERS);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -87,7 +87,7 @@ export default function NewsletterPublisherPage() {
         link: '',
     });
 
-    if (status === 'loading') {
+    if (isPending) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />

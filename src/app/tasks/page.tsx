@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
-import { getServerSession } from 'next-auth';
+import { getSession } from '@/lib/auth-server';
 import { redirect } from 'next/navigation';
-import { authOptions } from '@/lib/auth';
 import { TaskBoard } from '@/components/tasks/task-board';
 import { ClipboardList } from 'lucide-react';
 
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TasksPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
 
     if (!session) {
         redirect('/auth/login');

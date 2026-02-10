@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
+import { validateBody, createAgentVersionSchema, activateVersionSchema } from '@/lib/validations';
 
 // GET /api/agents/[id]/versions - Get agent's version history
 export async function GET(
@@ -9,7 +9,7 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -63,7 +63,7 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -83,20 +83,10 @@ export async function POST(
             return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
         }
 
-        const body = await request.json();
-        const {
-            version,
-            changelog,
-            masterPrompt,
-            model,
-            temperature,
-            tools,
-            isActive
-        } = body;
+        const { data, error } = await validateBody(request, createAgentVersionSchema);
+        if (error) return error;
 
-        if (!version) {
-            return NextResponse.json({ error: 'Version is required' }, { status: 400 });
-        }
+        const { version, changelog, masterPrompt, model, temperature, tools, isActive } = data;
 
         // Check if version already exists for this agent
         const existingVersion = await prisma.agentVersion.findFirst({
@@ -150,7 +140,7 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getSession();
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -170,12 +160,10 @@ export async function PATCH(
             return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
         }
 
-        const body = await request.json();
-        const { versionId } = body;
+        const { data, error } = await validateBody(request, activateVersionSchema);
+        if (error) return error;
 
-        if (!versionId) {
-            return NextResponse.json({ error: 'versionId is required' }, { status: 400 });
-        }
+        const { versionId } = data;
 
         // Verify version belongs to this agent
         const version = await prisma.agentVersion.findFirst({

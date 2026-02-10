@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -20,12 +20,13 @@ import {
     ChevronUp,
     Brain,
     Cpu,
-    MessageSquare
+    MessageSquare,
+    Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { mockAgents } from '@/lib/sample-data';
+import { mockAgents, type AgentDisplay } from '@/lib/sample-data';
 
 export default function AgentDetailPage() {
     const params = useParams();
@@ -34,8 +35,63 @@ export default function AgentDetailPage() {
 
     const [expandedSection, setExpandedSection] = useState<string | null>('prompt');
     const [copiedPrompt, setCopiedPrompt] = useState(false);
+    const [agent, setAgent] = useState<AgentDisplay | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const agent = mockAgents.find(a => a.id === agentId);
+    // Fetch agent from multiple sources: API → localStorage → mockAgents
+    useEffect(() => {
+        async function loadAgent() {
+            setLoading(true);
+
+            // 1. Try API first
+            try {
+                const res = await fetch(`/api/agents/${agentId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.agent) {
+                        setAgent({
+                            id: data.agent.id,
+                            name: data.agent.name,
+                            role: data.agent.description || data.agent.code || 'Agent',
+                            model: data.agent.model || 'GPT-4o',
+                            sops: data.agent.sopConnections?.map((c: { sopId: string }) => c.sopId) || [],
+                            integrations: data.agent.integrations || [],
+                            prompt: data.agent.systemPrompt ? { system: data.agent.systemPrompt } : undefined,
+                        });
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch { /* API not available, continue */ }
+
+            // 2. Try localStorage (agents created via /agents/new)
+            try {
+                const stored = JSON.parse(localStorage.getItem('sop-ai-agents') || '[]');
+                const localAgent = stored.find((a: { id: string }) => a.id === agentId);
+                if (localAgent) {
+                    const firstMicroAgent = localAgent.agents?.[0];
+                    setAgent({
+                        id: localAgent.id,
+                        name: firstMicroAgent?.name || localAgent.meta?.sop_name || 'Agent',
+                        role: firstMicroAgent?.role || 'Agent',
+                        model: localAgent._model || 'GPT-4o',
+                        sops: localAgent.sop_id ? [localAgent.sop_id] : [],
+                        integrations: firstMicroAgent?.integrations || [],
+                        prompt: localAgent._masterPrompt ? { system: localAgent._masterPrompt } : undefined,
+                    });
+                    setLoading(false);
+                    return;
+                }
+            } catch { /* localStorage error, continue */ }
+
+            // 3. Fallback to mock data
+            const mock = mockAgents.find(a => a.id === agentId);
+            setAgent(mock || null);
+            setLoading(false);
+        }
+
+        loadAgent();
+    }, [agentId]);
 
     const copyPrompt = async () => {
         if (!agent) return;
@@ -46,9 +102,23 @@ export default function AgentDetailPage() {
     };
 
     const handleDelete = async () => {
+        // Try removing from localStorage
+        try {
+            const stored = JSON.parse(localStorage.getItem('sop-ai-agents') || '[]');
+            const filtered = stored.filter((a: { id: string }) => a.id !== agentId);
+            localStorage.setItem('sop-ai-agents', JSON.stringify(filtered));
+        } catch { /* ignore */ }
         toast.success('Agent usunięty');
         router.push('/agents');
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
     if (!agent) {
         return (
