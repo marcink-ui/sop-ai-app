@@ -66,7 +66,7 @@ import { useChat } from '@/components/ai-chat';
 // EXTERNAL: PARTNER (separate axis — only Partner Portal)
 // PLATFORM: META_ADMIN (sees everything)
 const INTERNAL_LEVELS: Record<string, number> = {
-    CITIZEN_DEV: 1, EXPERT: 2, MANAGER: 3, PILOT: 4, SPONSOR: 5,
+    EXPLORER: 0, CITIZEN_DEV: 1, EXPERT: 2, MANAGER: 3, PILOT: 4, SPONSOR: 5,
     PARTNER: -1, META_ADMIN: 99,
 };
 
@@ -164,7 +164,7 @@ export function Sidebar() {
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
     const { toggleChat, isOpen: isChatOpen } = useChat();
-    const { data: session } = useSession();
+    const { data: session, isPending } = useSession();
     const userRole = session?.user?.role;
     const [orgName, setOrgName] = useState<string>('Business OS');
 
@@ -250,7 +250,10 @@ export function Sidebar() {
 
                         {/* Collapsible Categories */}
                         {Object.entries(SIDEBAR_CATEGORIES).map(([key, category]) => {
-                            const visibleItems = category.items.filter(item => hasMinRole(userRole, item.minRole));
+                            // While session is loading, show all items to avoid flash of empty sidebar
+                            const visibleItems = (!userRole && isPending)
+                                ? category.items
+                                : category.items.filter(item => hasMinRole(userRole, item.minRole));
                             if (visibleItems.length === 0) return null;
 
                             // Collapsed mode: flat icon list
