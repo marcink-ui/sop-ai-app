@@ -163,7 +163,8 @@ export function MudaStackedBarChart({ data, height = 300, onBarClick }: StackedB
                         stackId="a"
                         fill={muda.color}
                         className={onBarClick ? 'cursor-pointer' : ''}
-                        onClick={(barData: Record<string, unknown>) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        onClick={(barData: any) => {
                             if (onBarClick && barData?.department) {
                                 onBarClick(barData.department as string, muda.key);
                             }
