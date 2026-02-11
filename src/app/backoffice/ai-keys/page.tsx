@@ -22,6 +22,11 @@ import {
     Send,
     Loader2,
     RefreshCw,
+    Server,
+    HardDrive,
+    Cloud,
+    Wifi,
+    WifiOff,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,10 +68,13 @@ interface OrgSummary {
 
 // ── Provider Config ────────────────────────────────
 
-const providerConfig: Record<string, { name: string; icon: typeof Sparkles; color: string; bgColor: string; placeholder: string }> = {
+const providerConfig: Record<string, { name: string; icon: typeof Sparkles; color: string; bgColor: string; placeholder: string; needsEndpoint?: boolean; keyOptional?: boolean }> = {
     OPENAI: { name: 'OpenAI', icon: Sparkles, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10', placeholder: 'sk-proj-...' },
     ANTHROPIC: { name: 'Anthropic', icon: Bot, color: 'text-orange-500', bgColor: 'bg-orange-500/10', placeholder: 'sk-ant-api03-...' },
     GOOGLE: { name: 'Google AI', icon: Zap, color: 'text-blue-500', bgColor: 'bg-blue-500/10', placeholder: 'AIza...' },
+    OLLAMA: { name: 'Ollama', icon: Server, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10', placeholder: '(opcjonalnie)', needsEndpoint: true, keyOptional: true },
+    LOCAL_LLM: { name: 'Local LLM', icon: HardDrive, color: 'text-purple-500', bgColor: 'bg-purple-500/10', placeholder: '(opcjonalnie)', needsEndpoint: true, keyOptional: true },
+    AZURE_OPENAI: { name: 'Azure OpenAI', icon: Cloud, color: 'text-sky-500', bgColor: 'bg-sky-500/10', placeholder: 'azure-key-...', needsEndpoint: true },
 };
 
 // ── Fallback Demo Data ─────────────────────────────
@@ -120,7 +128,8 @@ export default function AdminAiKeysPage() {
     const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
     const [showAddForm, setShowAddForm] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    const [newKey, setNewKey] = useState({ label: '', provider: 'OPENAI', apiKey: '', monthlyBudget: '' });
+    const [newKey, setNewKey] = useState({ label: '', provider: 'OPENAI', apiKey: '', monthlyBudget: '', apiEndpoint: '' });
+    const [testingConnection, setTestingConnection] = useState(false);
 
     // ── Fetch organizations from API ──
     const fetchOrgs = useCallback(async () => {
@@ -156,8 +165,14 @@ export default function AdminAiKeysPage() {
 
     // ── Add Key (real API) ──
     const handleAddKey = async (orgId: string) => {
-        if (!newKey.label || !newKey.apiKey) {
-            toast.error('Wypełnij nazwę i klucz API');
+        const currentConfig = providerConfig[newKey.provider];
+        const needsKey = !currentConfig?.keyOptional;
+        if (!newKey.label || (needsKey && !newKey.apiKey)) {
+            toast.error(needsKey ? 'Wypełnij nazwę i klucz API' : 'Wypełnij nazwę');
+            return;
+        }
+        if (currentConfig?.needsEndpoint && !newKey.apiEndpoint) {
+            toast.error('Podaj URL endpointu');
             return;
         }
         setSaving(true);
@@ -169,14 +184,15 @@ export default function AdminAiKeysPage() {
                     organizationId: orgId,
                     provider: newKey.provider,
                     label: newKey.label,
-                    apiKey: newKey.apiKey,
+                    apiKey: newKey.apiKey || null,
+                    apiEndpoint: newKey.apiEndpoint || null,
                     monthlyBudget: newKey.monthlyBudget ? parseFloat(newKey.monthlyBudget) : null,
                 }),
             });
             if (!res.ok) throw new Error('Failed to add key');
             toast.success(`Klucz "${newKey.label}" dodany pomyślnie`);
             setShowAddForm(null);
-            setNewKey({ label: '', provider: 'OPENAI', apiKey: '', monthlyBudget: '' });
+            setNewKey({ label: '', provider: 'OPENAI', apiKey: '', monthlyBudget: '', apiEndpoint: '' });
             fetchOrgs(); // Refresh data
         } catch {
             toast.error('Nie udało się dodać klucza');
@@ -407,8 +423,8 @@ export default function AdminAiKeysPage() {
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-3">
-                                                        <div className="col-span-2 space-y-1">
-                                                            <Label className="text-xs">Klucz API</Label>
+                                                        <div className={cn('space-y-1', providerConfig[newKey.provider]?.needsEndpoint ? 'col-span-1' : 'col-span-2')}>
+                                                            <Label className="text-xs">{providerConfig[newKey.provider]?.keyOptional ? 'Klucz API (opcjonalnie)' : 'Klucz API'}</Label>
                                                             <Input
                                                                 type="password"
                                                                 value={newKey.apiKey}
@@ -417,6 +433,17 @@ export default function AdminAiKeysPage() {
                                                                 className="h-8 text-sm font-mono bg-muted/30"
                                                             />
                                                         </div>
+                                                        {providerConfig[newKey.provider]?.needsEndpoint && (
+                                                            <div className="space-y-1">
+                                                                <Label className="text-xs">Endpoint URL</Label>
+                                                                <Input
+                                                                    value={newKey.apiEndpoint}
+                                                                    onChange={(e) => setNewKey({ ...newKey, apiEndpoint: e.target.value })}
+                                                                    placeholder={newKey.provider === 'OLLAMA' ? 'http://localhost:11434' : newKey.provider === 'AZURE_OPENAI' ? 'https://xxx.openai.azure.com' : 'http://localhost:8080'}
+                                                                    className="h-8 text-sm font-mono bg-muted/30"
+                                                                />
+                                                            </div>
+                                                        )}
                                                         <div className="space-y-1">
                                                             <Label className="text-xs">Budżet mies. ($)</Label>
                                                             <Input
@@ -429,6 +456,36 @@ export default function AdminAiKeysPage() {
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2 justify-end">
+                                                        {providerConfig[newKey.provider]?.needsEndpoint && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-7 text-xs"
+                                                                disabled={testingConnection || !newKey.apiEndpoint}
+                                                                onClick={async () => {
+                                                                    setTestingConnection(true);
+                                                                    try {
+                                                                        const res = await fetch('/api/admin/ai-keys/test', {
+                                                                            method: 'POST',
+                                                                            headers: { 'Content-Type': 'application/json' },
+                                                                            body: JSON.stringify({ provider: newKey.provider, apiEndpoint: newKey.apiEndpoint, apiKey: newKey.apiKey || null }),
+                                                                        });
+                                                                        if (res.ok) {
+                                                                            toast.success('Połączenie OK ✓');
+                                                                        } else {
+                                                                            toast.error('Nie udało się połączyć');
+                                                                        }
+                                                                    } catch {
+                                                                        toast.error('Błąd połączenia');
+                                                                    } finally {
+                                                                        setTestingConnection(false);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {testingConnection ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Wifi className="h-3 w-3 mr-1" />}
+                                                                Test
+                                                            </Button>
+                                                        )}
                                                         <Button size="sm" variant="ghost" onClick={() => setShowAddForm(null)} className="h-7 text-xs">
                                                             Anuluj
                                                         </Button>

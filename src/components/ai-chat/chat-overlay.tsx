@@ -33,13 +33,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
 import { useChat, type ChatOverlayMode, type Message } from './chat-provider';
-import { formatContextForPrompt } from '@/lib/ai/context-bridge';
-import { ContextProgressBar } from './context-progress-bar';
 import { useTokenTracker } from './token-tracker-provider';
 import { estimateTokens } from '@/lib/ai/token-tracker';
 import { ChatFileUpload, AttachmentPreviewList, useAttachments } from './chat-file-upload';
 import { useModelSelector } from './model-selector';
-import { AssistantPicker, useAssistantPicker } from './assistant-picker';
 import { ChatHistorySidebar } from './chat-history-sidebar';
 
 // Suggested prompts for empty state
@@ -108,7 +105,6 @@ export function ChatOverlay({ inline = false }: ChatOverlayProps) {
     const userRole = 'CITIZEN_DEV';
     const { clearAttachments } = useAttachments();
     const { currentModel } = useModelSelector(userRole);
-    const { getSystemPrompt } = useAssistantPicker(userRole);
     const { track } = useTokenTracker();
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -198,67 +194,48 @@ export function ChatOverlay({ inline = false }: ChatOverlayProps) {
         setIsLoading(true);
 
         try {
-            // Build context-aware system message
-            const contextInfo = formatContextForPrompt(pageContext);
-            const systemMessage = contextInfo
-                ? `${getSystemPrompt()}\n\nKontekst strony:\n${contextInfo}`
-                : getSystemPrompt();
+            // Build page context for the API
+            const contextPayload = {
+                currentPage: pageContext.pathname,
+                sopTitle: pageContext.sopTitle,
+                agentName: undefined as string | undefined,
+                pageType: pageContext.pageType,
+            };
 
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: [
-                        { role: 'system', content: systemMessage },
                         ...messages.map((m) => ({ role: m.role, content: m.content })),
                         { role: 'user', content },
                     ],
+                    context: contextPayload,
                     model: currentModel,
                 }),
             });
 
             if (!response.ok) throw new Error('Failed to get AI response');
 
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let assistantContent = '';
+            const data = await response.json();
+            const assistantContent = data.content || 'Brak odpowiedzi.';
+
+            // Build response with source badges
+            let displayContent = assistantContent;
+            if (data.wikiSources && data.wikiSources.length > 0) {
+                const sourceBadges = data.wikiSources
+                    .map((s: { title: string; link: string }) => `[📚 ${s.title}](${s.link})`)
+                    .join(' • ');
+                displayContent += `\n\n---\n🔗 Źródła: ${sourceBadges}`;
+            }
 
             const assistantMessage: Message = {
                 id: `assistant-${Date.now()}`,
                 role: 'assistant',
-                content: '',
+                content: displayContent,
                 timestamp: new Date(),
             };
             addMessage(assistantMessage);
-
-            while (reader) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        try {
-                            const parsed = JSON.parse(data);
-                            const delta = parsed.choices?.[0]?.delta?.content || '';
-                            assistantContent += delta;
-                            setMessages((prev) =>
-                                prev.map((m) =>
-                                    m.id === assistantMessage.id
-                                        ? { ...m, content: assistantContent }
-                                        : m
-                                )
-                            );
-                        } catch {
-                            // Skip invalid JSON
-                        }
-                    }
-                }
-            }
 
             // Track tokens
             const inputTokens = estimateTokens(content);
@@ -313,8 +290,14 @@ export function ChatOverlay({ inline = false }: ChatOverlayProps) {
         );
     }
 
-    // ── Inline mode: Compact bar ──
+    // ── Inline mode: Compact bar with predefined areas ──
     if (mode === 'compact') {
+        const quickAreas = [
+            { icon: '📋', label: 'SOPs', prompt: 'Pokaż listę SOPów w mojej organizacji' },
+            { icon: '📚', label: 'Wiki', prompt: 'Pokaż artykuły z Wiki' },
+            { icon: '🤖', label: 'Agenci', prompt: 'Pokaż agentów AI' },
+            { icon: '📦', label: 'Zasoby', prompt: 'Pokaż zasoby organizacji' },
+        ];
         return (
             <div
                 className={cn(
@@ -329,20 +312,38 @@ export function ChatOverlay({ inline = false }: ChatOverlayProps) {
                     variant="ghost"
                     size="icon"
                     onClick={expand}
-                    className="mb-4"
+                    className="mb-3"
                     title="Rozwiń czat"
                 >
                     <ChevronRight className={cn('h-5 w-5', dockSide === 'right' && 'rotate-180')} />
                 </Button>
-                <div className="flex-1 flex flex-col items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                <div className="flex-1 flex flex-col items-center gap-2">
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 cursor-pointer hover:shadow-lg hover:shadow-blue-500/30 transition-shadow" onClick={expand}>
                         <Sparkles className="h-5 w-5 text-white" />
+                        {messages.length > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm">
+                                {messages.filter(m => m.role === 'assistant').length}
+                            </span>
+                        )}
                     </div>
-                    {messages.length > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                            {messages.length}
-                        </Badge>
-                    )}
+                    <div className="w-8 h-px bg-neutral-200 dark:bg-neutral-800 my-1" />
+                    {quickAreas.map((area) => (
+                        <button
+                            key={area.label}
+                            onClick={() => {
+                                expand();
+                                // Small delay to let panel expand before sending
+                                setTimeout(() => {
+                                    const event = new CustomEvent('chat:quick-prompt', { detail: area.prompt });
+                                    window.dispatchEvent(event);
+                                }, 300);
+                            }}
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                            title={area.label}
+                        >
+                            {area.icon}
+                        </button>
+                    ))}
                 </div>
                 <Button
                     variant="ghost"
@@ -531,7 +532,33 @@ export function ChatOverlay({ inline = false }: ChatOverlayProps) {
                                 >
                                     {message.role === 'assistant' ? (
                                         <div className="prose prose-sm dark:prose-invert max-w-none">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                components={{
+                                                    a: ({ href, children }) => {
+                                                        const isInternal = href?.startsWith('/');
+                                                        return (
+                                                            <a
+                                                                href={href}
+                                                                onClick={(e) => {
+                                                                    if (isInternal && href) {
+                                                                        e.preventDefault();
+                                                                        window.location.href = href;
+                                                                    }
+                                                                }}
+                                                                target={isInternal ? undefined : '_blank'}
+                                                                rel={isInternal ? undefined : 'noopener noreferrer'}
+                                                                className="text-violet-500 hover:text-violet-400 underline underline-offset-2 decoration-violet-500/30 hover:decoration-violet-400/60 transition-colors font-medium"
+                                                            >
+                                                                {children}
+                                                                {!isInternal && (
+                                                                    <span className="inline-block ml-0.5 text-[0.65em] align-super">↗</span>
+                                                                )}
+                                                            </a>
+                                                        );
+                                                    },
+                                                }}
+                                            >
                                                 {message.content || '...'}
                                             </ReactMarkdown>
                                         </div>

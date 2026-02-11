@@ -80,3 +80,46 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Failed to fetch value chains' }, { status: 500 });
     }
 }
+
+export async function POST(request: Request) {
+    try {
+        const session = await getSession();
+
+        if (!session?.user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const organizationId = session.user.organizationId;
+        if (!organizationId) {
+            return NextResponse.json({ error: 'No organization' }, { status: 400 });
+        }
+
+        const body = await request.json();
+        const { name, description, segment } = body;
+
+        if (!name?.trim()) {
+            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+        }
+
+        const map = await prisma.valueChainMap.create({
+            data: {
+                name: name.trim(),
+                description: description?.trim() || null,
+                segment: segment || null,
+                organizationId,
+            },
+        });
+
+        return NextResponse.json({
+            id: map.id,
+            name: map.name,
+            description: map.description,
+            segment: (map as unknown as { segment?: string }).segment,
+            createdAt: map.createdAt,
+        }, { status: 201 });
+
+    } catch (error) {
+        console.error('Error creating value chain map:', error);
+        return NextResponse.json({ error: 'Failed to create map' }, { status: 500 });
+    }
+}

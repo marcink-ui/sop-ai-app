@@ -10,6 +10,7 @@ import {
     Shield, Zap, ChevronRight, Plus, Download,
     RefreshCw, Search, Edit3, Eye, MoreHorizontal,
     Activity, Layers, Brain, Settings2,
+    ArrowUpDown, Filter, UserCheck, Mail,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -245,28 +246,83 @@ export default function CompanyDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
     const [sopSearch, setSopSearch] = useState('');
     const [notes, setNotes] = useState('');
+    // Team filtering/sorting state
+    const [teamSearch, setTeamSearch] = useState('');
+    const [teamRoleFilter, setTeamRoleFilter] = useState('ALL');
+    const [teamDeptFilter, setTeamDeptFilter] = useState('ALL');
+    const [teamSort, setTeamSort] = useState<'name' | 'role' | 'department' | 'aiUsage'>('name');
 
-    // Load per-company data from localStorage
+    // Load data: try real API first, fall back to demo data
     useEffect(() => {
-        const storageKey = `vos_company_${slug}`;
-        const saved = localStorage.getItem(storageKey);
-
-        if (saved) {
+        async function loadCompanyData() {
             try {
-                const parsed = JSON.parse(saved);
-                setCompany(parsed);
-                setNotes(parsed._partnerNotes || '');
-            } catch {
+                // Try real API first
+                const res = await fetch(`/api/partner/company/${slug}`);
+                if (res.ok) {
+                    const apiData = await res.json();
+                    // Merge real data into CompanyData shape (fill gaps with demo)
+                    if (apiData.team && apiData.team.length > 0) {
+                        const demo = generateDemoData(slug);
+                        const merged: CompanyData = {
+                            ...demo,
+                            id: apiData.id || demo.id,
+                            name: apiData.name || demo.name,
+                            slug: apiData.slug || demo.slug,
+                            stats: {
+                                ...demo.stats,
+                                totalSOPs: apiData.stats?.totalSOPs ?? demo.stats.totalSOPs,
+                                aiAgents: apiData.stats?.totalAgents ?? demo.stats.aiAgents,
+                            },
+                            team: apiData.team.map((u: { id: string; name: string; role: string; department: string; avatar: string | null; aiUsage: number }) => ({
+                                id: u.id,
+                                name: u.name,
+                                role: u.role,
+                                department: u.department || '—',
+                                avatar: u.avatar || u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+                                sopCount: 0,
+                                aiUsage: u.aiUsage || 0,
+                            })),
+                            sops: apiData.sops?.length > 0 ? apiData.sops.map((s: { id: string; name: string; code: string; status: string; version: string; lastUpdated: string; department: string }) => ({
+                                ...s,
+                                aiEnhanced: false,
+                                steps: 0,
+                            })) : demo.sops,
+                            agents: apiData.agents?.length > 0 ? apiData.agents.map((a: { id: string; name: string; type: string; status: string }) => ({
+                                ...a,
+                                sopsUsed: 0,
+                                interactions: 0,
+                                satisfaction: 0,
+                            })) : demo.agents,
+                        };
+                        setCompany(merged);
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn('[CompanyDashboard] API unavailable, using demo data:', err);
+            }
+
+            // Fallback to demo data
+            const storageKey = `vos_company_${slug}`;
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    setCompany(parsed);
+                    setNotes(parsed._partnerNotes || '');
+                } catch {
+                    const demo = generateDemoData(slug);
+                    setCompany(demo);
+                }
+            } else {
                 const demo = generateDemoData(slug);
                 setCompany(demo);
+                localStorage.setItem(storageKey, JSON.stringify(demo));
             }
-        } else {
-            // First visit — generate blind demo data
-            const demo = generateDemoData(slug);
-            setCompany(demo);
-            localStorage.setItem(storageKey, JSON.stringify(demo));
+            setLoading(false);
         }
-        setLoading(false);
+        loadCompanyData();
     }, [slug]);
 
     // Save to per-company localStorage on changes
@@ -599,39 +655,152 @@ export default function CompanyDashboard() {
 
                 {/* ===== TEAM TAB ===== */}
                 <TabsContent value="team" className="space-y-4 mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {company.team.map((member, i) => (
-                            <motion.div key={member.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
-                                <Card className="hover:shadow-md transition-all">
-                                    <CardContent className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
-                                                {member.avatar}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <span className="font-medium text-sm text-neutral-900 dark:text-white block truncate">{member.name}</span>
-                                                <span className="text-xs text-neutral-500">{member.role}</span>
-                                            </div>
+                    {/* Team Filters */}
+                    {(() => {
+                        const departments = [...new Set(company.team.map(m => m.department))];
+                        const roles = [...new Set(company.team.map(m => m.role))];
+                        const filteredTeam = company.team
+                            .filter(m => {
+                                if (teamSearch && !m.name.toLowerCase().includes(teamSearch.toLowerCase()) && !m.role.toLowerCase().includes(teamSearch.toLowerCase())) return false;
+                                if (teamRoleFilter !== 'ALL' && m.role !== teamRoleFilter) return false;
+                                if (teamDeptFilter !== 'ALL' && m.department !== teamDeptFilter) return false;
+                                return true;
+                            })
+                            .sort((a, b) => {
+                                if (teamSort === 'name') return a.name.localeCompare(b.name);
+                                if (teamSort === 'role') return a.role.localeCompare(b.role);
+                                if (teamSort === 'department') return a.department.localeCompare(b.department);
+                                if (teamSort === 'aiUsage') return b.aiUsage - a.aiUsage;
+                                return 0;
+                            });
+
+                        return (
+                            <>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="relative flex-1 min-w-[200px] max-w-sm">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                                        <Input
+                                            placeholder="Szukaj po imieniu lub roli..."
+                                            value={teamSearch}
+                                            onChange={(e) => setTeamSearch(e.target.value)}
+                                            className="pl-10"
+                                        />
+                                    </div>
+                                    <select
+                                        value={teamRoleFilter}
+                                        onChange={(e) => setTeamRoleFilter(e.target.value)}
+                                        className="h-9 px-3 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white"
+                                    >
+                                        <option value="ALL">Wszystkie role</option>
+                                        {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                    <select
+                                        value={teamDeptFilter}
+                                        onChange={(e) => setTeamDeptFilter(e.target.value)}
+                                        className="h-9 px-3 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white"
+                                    >
+                                        <option value="ALL">Wszystkie działy</option>
+                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                    <select
+                                        value={teamSort}
+                                        onChange={(e) => setTeamSort(e.target.value as 'name' | 'role' | 'department' | 'aiUsage')}
+                                        className="h-9 px-3 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white"
+                                    >
+                                        <option value="name">Sortuj: Imię</option>
+                                        <option value="role">Sortuj: Rola</option>
+                                        <option value="department">Sortuj: Dział</option>
+                                        <option value="aiUsage">Sortuj: AI Usage ↓</option>
+                                    </select>
+                                    <Badge variant="outline" className="text-xs">
+                                        {filteredTeam.length} / {company.team.length}
+                                    </Badge>
+                                </div>
+
+                                {/* Team Table */}
+                                <Card>
+                                    <CardContent className="p-0">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30">
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Użytkownik</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Rola</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Dział</th>
+                                                        <th className="px-4 py-3 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">SOPs</th>
+                                                        <th className="px-4 py-3 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">AI Usage</th>
+                                                        <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Akcje</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                                                    {filteredTeam.map((member, i) => (
+                                                        <motion.tr
+                                                            key={member.id}
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            transition={{ delay: i * 0.02 }}
+                                                            className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors"
+                                                        >
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white font-medium text-xs shrink-0">
+                                                                        {member.avatar}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <span className="font-medium text-sm text-neutral-900 dark:text-white block truncate">{member.name}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <Badge className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400">
+                                                                    {member.role}
+                                                                </Badge>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span className="text-sm text-neutral-600 dark:text-neutral-300">{member.department}</span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{member.sopCount}</span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <div className="w-16 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                                                                        <div
+                                                                            className={cn('h-full rounded-full transition-all',
+                                                                                member.aiUsage > 70 ? 'bg-emerald-500' :
+                                                                                    member.aiUsage > 40 ? 'bg-amber-500' : 'bg-red-500'
+                                                                            )}
+                                                                            style={{ width: `${Math.min(member.aiUsage, 100)}%` }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className={cn('text-xs font-medium',
+                                                                        member.aiUsage > 70 ? 'text-emerald-600 dark:text-emerald-400' :
+                                                                            member.aiUsage > 40 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500'
+                                                                    )}>{member.aiUsage}%</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <Button variant="ghost" size="sm" className="h-7 text-xs">
+                                                                    <Eye className="h-3.5 w-3.5 mr-1" />
+                                                                    Profil
+                                                                </Button>
+                                                            </td>
+                                                        </motion.tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
-                                        <div className="mt-3 grid grid-cols-3 gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-center">
-                                            <div>
-                                                <div className="text-sm font-semibold text-neutral-900 dark:text-white">{member.department}</div>
-                                                <div className="text-xs text-neutral-400">Dział</div>
+                                        {filteredTeam.length === 0 && (
+                                            <div className="py-12 text-center text-sm text-neutral-500 dark:text-neutral-400">
+                                                <UserCheck className="h-8 w-8 mx-auto mb-2 text-neutral-300 dark:text-neutral-600" />
+                                                Brak użytkowników pasujących do filtrów
                                             </div>
-                                            <div>
-                                                <div className="text-sm font-semibold text-blue-600">{member.sopCount}</div>
-                                                <div className="text-xs text-neutral-400">SOPs</div>
-                                            </div>
-                                            <div>
-                                                <div className={cn('text-sm font-semibold', member.aiUsage > 70 ? 'text-emerald-600' : member.aiUsage > 40 ? 'text-amber-600' : 'text-red-500')}>{member.aiUsage}%</div>
-                                                <div className="text-xs text-neutral-400">AI Usage</div>
-                                            </div>
-                                        </div>
+                                        )}
                                     </CardContent>
                                 </Card>
-                            </motion.div>
-                        ))}
-                    </div>
+                            </>
+                        );
+                    })()}
                 </TabsContent>
 
                 {/* ===== NOTES TAB ===== */}

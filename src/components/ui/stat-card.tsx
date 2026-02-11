@@ -76,7 +76,7 @@ export function StatCard({ title, value, icon: Icon, trend, description, color, 
                 ease: [0.25, 0.1, 0.25, 1],
             }}
             whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="group relative overflow-hidden rounded-2xl border p-6 transition-all hover:shadow-xl border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900/80"
+            className="group relative overflow-hidden theme-card p-6 hover:shadow-xl"
         >
             {/* Animated gradient background on hover */}
             <motion.div
@@ -114,9 +114,9 @@ export function StatCard({ title, value, icon: Icon, trend, description, color, 
                             transition={{ delay: delay + 0.2 }}
                             className={cn(
                                 'flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full',
-                                trend.direction === 'up' && 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-500/10',
-                                trend.direction === 'down' && 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/10',
-                                trend.direction === 'neutral' && 'text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-500/10'
+                                trend.direction === 'up' && 'text-green-600 bg-green-500/10',
+                                trend.direction === 'down' && 'text-red-600 bg-red-500/10',
+                                trend.direction === 'neutral' && 'theme-text-muted bg-[var(--bg-secondary)]'
                             )}
                         >
                             {trend.direction === 'up' && <TrendingUp className="h-3 w-3" />}
@@ -132,16 +132,16 @@ export function StatCard({ title, value, icon: Icon, trend, description, color, 
                         key={String(value)}
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-4xl font-bold text-neutral-900 dark:text-white mb-1 tracking-tight"
+                        className="text-4xl font-bold theme-text mb-1 tracking-tight"
                     >
                         {value}
                     </motion.p>
                 </AnimatePresence>
 
-                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{title}</p>
+                <p className="text-sm font-medium theme-text-secondary">{title}</p>
 
                 {description && (
-                    <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-2">{description}</p>
+                    <p className="text-xs theme-text-muted mt-2">{description}</p>
                 )}
             </div>
         </motion.div>

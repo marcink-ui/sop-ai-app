@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
     BarChart3,
@@ -15,7 +16,10 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     Activity,
-    PieChart as PieChartIcon
+    PieChart as PieChartIcon,
+    Loader2,
+    RefreshCw,
+    Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,31 +29,52 @@ import {
     DonutChart,
     KpiStatCard
 } from '@/components/charts/kpi-charts';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Mock data for charts
-const trendData = [
-    { name: 'Sty', sops: 12, agents: 2 },
-    { name: 'Lut', sops: 18, agents: 3 },
-    { name: 'Mar', sops: 25, agents: 4 },
-    { name: 'Kwi', sops: 31, agents: 5 },
-    { name: 'Maj', sops: 42, agents: 7 },
-    { name: 'Cze', sops: 48, agents: 8 },
-    { name: 'Lip', sops: 55, agents: 10 }
-];
+// Types for API response
+interface AnalyticsData {
+    counters: {
+        activeUsers: number;
+        totalSOPs: number;
+        totalAgents: number;
+        aiCallsToday: number;
+        pendingCouncil: number;
+        sopsThisWeek: number;
+    };
+    trends: {
+        usersChange: string;
+        aiCallsChange: string;
+        sopsChange: string;
+    };
+    engagement: {
+        score: number;
+        level: 'high' | 'medium' | 'low';
+    };
+    lastUpdated: string;
+}
 
-const mudaData = [
-    { department: 'Sprzedaż', transport: 4, inventory: 2, motion: 3, waiting: 5, overproduction: 2, overprocessing: 1, defects: 1 },
-    { department: 'Produkcja', transport: 6, inventory: 8, motion: 4, waiting: 3, overproduction: 5, overprocessing: 2, defects: 3 },
-    { department: 'Logistyka', transport: 8, inventory: 4, motion: 6, waiting: 7, overproduction: 1, overprocessing: 3, defects: 2 },
-    { department: 'HR', transport: 1, inventory: 1, motion: 2, waiting: 4, overproduction: 1, overprocessing: 2, defects: 1 },
-    { department: 'IT', transport: 2, inventory: 2, motion: 3, waiting: 6, overproduction: 2, overprocessing: 4, defects: 2 }
-];
+interface TrendPoint {
+    name: string;
+    sops: number;
+    agents: number;
+}
 
-const distributionData = [
-    { name: 'Aktywne', value: 35 },
-    { name: 'W przeglądzie', value: 12 },
-    { name: 'Szkice', value: 8 },
-    { name: 'Zarchiwizowane', value: 5 }
+interface MudaPoint {
+    department: string;
+    transport: number;
+    inventory: number;
+    motion: number;
+    waiting: number;
+    overproduction: number;
+    overprocessing: number;
+    defects: number;
+}
+
+// Fallback data (used only if API returns empty)
+const fallbackTrendData: TrendPoint[] = [
+    { name: 'Sty', sops: 0, agents: 0 },
+    { name: 'Lut', sops: 0, agents: 0 },
+    { name: 'Mar', sops: 0, agents: 0 },
 ];
 
 const sparklineData = [
@@ -69,8 +94,86 @@ const timeRanges = [
     { label: '1R', value: '1y' }
 ];
 
+function formatTimeAgo(isoString: string): string {
+    const diff = Date.now() - new Date(isoString).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'Właśnie teraz';
+    if (minutes < 60) return `${minutes} min temu`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h temu`;
+    return `${Math.floor(hours / 24)}d temu`;
+}
+
 export default function AnalyticsPage() {
+    const router = useRouter();
     const [timeRange, setTimeRange] = useState('30d');
+    const [data, setData] = useState<AnalyticsData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [trendData, setTrendData] = useState<TrendPoint[]>(fallbackTrendData);
+    const [trendGrowth, setTrendGrowth] = useState(0);
+    const [mudaData, setMudaData] = useState<MudaPoint[]>([]);
+    const [chartsLoading, setChartsLoading] = useState(true);
+
+    const fetchAnalytics = useCallback(async (isRefresh = false) => {
+        if (isRefresh) setRefreshing(true);
+        try {
+            const res = await fetch('/api/analytics/stats');
+            if (res.ok) {
+                const json = await res.json();
+                setData(json);
+            }
+        } catch (err) {
+            console.error('Failed to fetch analytics:', err);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    const fetchChartData = useCallback(async () => {
+        setChartsLoading(true);
+        try {
+            const [trendRes, mudaRes] = await Promise.all([
+                fetch(`/api/analytics/trends?range=${timeRange}`),
+                fetch('/api/analytics/muda'),
+            ]);
+            if (trendRes.ok) {
+                const trendJson = await trendRes.json();
+                if (trendJson.data?.length > 0) setTrendData(trendJson.data);
+                setTrendGrowth(trendJson.growth || 0);
+            }
+            if (mudaRes.ok) {
+                const mudaJson = await mudaRes.json();
+                if (mudaJson.data?.length > 0) setMudaData(mudaJson.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch chart data:', err);
+        } finally {
+            setChartsLoading(false);
+        }
+    }, [timeRange]);
+
+    useEffect(() => {
+        fetchAnalytics();
+    }, [fetchAnalytics]);
+
+    useEffect(() => {
+        fetchChartData();
+    }, [fetchChartData]);
+
+    // Derived values from real data
+    const counters = data?.counters;
+    const engagement = data?.engagement;
+
+    // Build SOP distribution from real counts
+    const distributionData = counters ? [
+        { name: 'Aktywne', value: Math.max(counters.totalSOPs - counters.sopsThisWeek, 0) },
+        { name: 'Nowe (7d)', value: counters.sopsThisWeek },
+    ] : [
+        { name: 'Aktywne', value: 35 },
+        { name: 'Nowe (7d)', value: 8 },
+    ];
 
     return (
         <div className="space-y-6">
@@ -87,70 +190,102 @@ export default function AnalyticsPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
-                        <p className="text-sm text-muted-foreground">Monitoruj postępy transformacji AI</p>
+                        <p className="text-sm text-muted-foreground">
+                            Monitoruj postępy transformacji AI
+                            {data && <span className="ml-2 text-emerald-500">● Live</span>}
+                        </p>
                     </div>
                 </div>
 
-                {/* Time Range Selector */}
-                <div className="flex items-center gap-1 rounded-lg border border-border bg-card/50 p-1">
-                    {timeRanges.map((range) => (
-                        <button
-                            key={range.value}
-                            onClick={() => setTimeRange(range.value)}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${timeRange === range.value
-                                ? 'bg-violet-500/20 text-violet-400'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            {range.label}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-2">
+                    {/* Refresh */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchAnalytics(true)}
+                        disabled={refreshing}
+                        className="gap-1.5"
+                    >
+                        <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                        {refreshing ? 'Odświeżam...' : 'Odśwież'}
+                    </Button>
+
+                    {/* Time Range Selector */}
+                    <div className="flex items-center gap-1 rounded-lg border border-border bg-card/50 p-1">
+                        {timeRanges.map((range) => (
+                            <button
+                                key={range.value}
+                                onClick={() => setTimeRange(range.value)}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${timeRange === range.value
+                                    ? 'bg-violet-500/20 text-violet-400'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                {range.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </motion.div>
 
-            {/* Hero KPI Cards */}
+            {/* Hero KPI Cards — now from real data */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
             >
-                <KpiStatCard
-                    title="Pokrycie SOP"
-                    value="78%"
-                    change={12}
-                    changeLabel="vs poprzedni miesiąc"
-                    sparklineData={sparklineData}
-                    color="#8B5CF6"
-                    icon={<FileText className="h-4 w-4 text-violet-400" />}
-                />
-                <KpiStatCard
-                    title="Stopień Automatyzacji"
-                    value="52%"
-                    change={8}
-                    changeLabel="vs poprzedni miesiąc"
-                    sparklineData={sparklineData}
-                    color="#06B6D4"
-                    icon={<Bot className="h-4 w-4 text-cyan-400" />}
-                />
-                <KpiStatCard
-                    title="Redukcja MUDA"
-                    value="34%"
-                    change={-5}
-                    changeLabel="marnotrawstwa wyeliminowano"
-                    sparklineData={sparklineData}
-                    color="#10B981"
-                    icon={<Trash2 className="h-4 w-4 text-emerald-400" />}
-                />
-                <KpiStatCard
-                    title="ROI Transformacji"
-                    value="2.4x"
-                    change={18}
-                    changeLabel="zwrot z inwestycji"
-                    sparklineData={sparklineData}
-                    color="#F59E0B"
-                    icon={<Target className="h-4 w-4 text-amber-400" />}
-                />
+                {loading ? (
+                    <>
+                        <Skeleton className="h-36 rounded-xl" />
+                        <Skeleton className="h-36 rounded-xl" />
+                        <Skeleton className="h-36 rounded-xl" />
+                        <Skeleton className="h-36 rounded-xl" />
+                    </>
+                ) : (
+                    <>
+                        <KpiStatCard
+                            title="SOPs ogółem"
+                            value={counters?.totalSOPs?.toString() || '0'}
+                            change={counters?.sopsThisWeek || 0}
+                            changeLabel={`${counters?.sopsThisWeek || 0} nowych w tym tyg.`}
+                            sparklineData={sparklineData}
+                            color="#8B5CF6"
+                            icon={<FileText className="h-4 w-4 text-violet-400" />}
+                            onClick={() => router.push('/sops')}
+                        />
+                        <KpiStatCard
+                            title="Aktywni Agenci AI"
+                            value={counters?.totalAgents?.toString() || '0'}
+                            change={counters?.totalAgents || 0}
+                            changeLabel="aktywnych agentów"
+                            sparklineData={sparklineData}
+                            color="#06B6D4"
+                            icon={<Bot className="h-4 w-4 text-cyan-400" />}
+                            onClick={() => router.push('/agents')}
+                        />
+                        <KpiStatCard
+                            title="Wywołania AI (dziś)"
+                            value={counters?.aiCallsToday?.toString() || '0'}
+                            change={counters?.aiCallsToday || 0}
+                            changeLabel="wiadomości AI dzisiaj"
+                            sparklineData={sparklineData}
+                            color="#10B981"
+                            icon={<Zap className="h-4 w-4 text-emerald-400" />}
+                            onClick={() => router.push('/chat-history-admin')}
+                        />
+                        <KpiStatCard
+                            title="Engagement Score"
+                            value={`${engagement?.score || 0}%`}
+                            change={engagement?.score || 0}
+                            changeLabel={`Poziom: ${engagement?.level === 'high' ? 'Wysoki' : engagement?.level === 'medium' ? 'Średni' : 'Niski'}`}
+                            sparklineData={sparklineData}
+                            color="#F59E0B"
+                            icon={<Target className="h-4 w-4 text-amber-400" />}
+                            onClick={() => router.push('/value-chain')}
+                        />
+                    </>
+                )}
             </motion.div>
 
             {/* Charts Grid */}
@@ -167,12 +302,16 @@ export default function AnalyticsPage() {
                             <h3 className="text-lg font-semibold text-foreground">Wzrost w czasie</h3>
                             <p className="text-sm text-muted-foreground">SOPs i Agenci AI</p>
                         </div>
-                        <div className="flex items-center gap-1 text-sm text-emerald-500">
-                            <ArrowUpRight className="h-4 w-4" />
-                            <span>+23% this period</span>
+                        <div className={`flex items-center gap-1 text-sm ${trendGrowth >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {trendGrowth >= 0 ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                            <span>{trendGrowth >= 0 ? '+' : ''}{trendGrowth}% w tym okresie</span>
                         </div>
                     </div>
-                    <TrendLineChart data={trendData} height={280} />
+                    {chartsLoading ? (
+                        <Skeleton className="h-[280px] w-full rounded-lg" />
+                    ) : (
+                        <TrendLineChart data={trendData} height={280} />
+                    )}
                 </motion.div>
 
                 {/* MUDA by Department */}
@@ -191,27 +330,44 @@ export default function AnalyticsPage() {
                             Eksportuj raport
                         </Button>
                     </div>
-                    <MudaStackedBarChart data={mudaData} height={280} />
+                    {chartsLoading ? (
+                        <Skeleton className="h-[280px] w-full rounded-lg" />
+                    ) : mudaData.length > 0 ? (
+                        <MudaStackedBarChart
+                            data={mudaData}
+                            height={280}
+                            onBarClick={(department) => router.push(`/muda?dept=${encodeURIComponent(department)}`)}
+                        />
+                    ) : (
+                        <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">
+                            Brak działów w organizacji — dodaj działy aby zobaczyć analizę MUDA
+                        </div>
+                    )}
                 </motion.div>
             </div>
 
             {/* Bottom Row */}
             <div className="grid gap-6 lg:grid-cols-3">
-                {/* Radial Progress */}
+                {/* Radial Progress — from real data */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.4 }}
                     className="rounded-xl border border-border bg-card/50 p-6 flex flex-col items-center justify-center"
                 >
-                    <h3 className="text-lg font-semibold text-foreground mb-4">Postęp Automatyzacji</h3>
-                    <RadialProgress value={52} label="Zautomatyzowane" color="#8B5CF6" size={180} />
+                    <h3 className="text-lg font-semibold text-foreground mb-4">Engagement Score</h3>
+                    <RadialProgress
+                        value={engagement?.score || 0}
+                        label={engagement?.level === 'high' ? 'Wysoki' : engagement?.level === 'medium' ? 'Średni' : 'Niski'}
+                        color={engagement?.level === 'high' ? '#10B981' : engagement?.level === 'medium' ? '#F59E0B' : '#EF4444'}
+                        size={180}
+                    />
                     <p className="text-sm text-muted-foreground mt-4 text-center">
-                        26 z 50 procesów zautomatyzowanych
+                        Zaangażowanie zespołu w transformację AI
                     </p>
                 </motion.div>
 
-                {/* Distribution Donut */}
+                {/* Distribution Donut — from real data */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -219,10 +375,14 @@ export default function AnalyticsPage() {
                     className="rounded-xl border border-border bg-card/50 p-6"
                 >
                     <h3 className="text-lg font-semibold text-foreground mb-4">Status SOPs</h3>
-                    <DonutChart data={distributionData} height={220} />
+                    <DonutChart
+                        data={distributionData}
+                        height={220}
+                        onSliceClick={() => router.push('/sops')}
+                    />
                 </motion.div>
 
-                {/* Quick Stats */}
+                {/* Quick Stats — from real data */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -231,33 +391,50 @@ export default function AnalyticsPage() {
                 >
                     <h3 className="text-lg font-semibold text-foreground mb-4">Szybkie statystyki</h3>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                        <div
+                            className="flex items-center justify-between p-3 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => router.push('/roles')}
+                        >
                             <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">Średni czas tworzenia SOP</span>
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">Aktywni użytkownicy</span>
                             </div>
-                            <span className="font-semibold text-foreground">12 min</span>
+                            <span className="font-semibold text-foreground">
+                                {loading ? <Skeleton className="h-4 w-8" /> : counters?.activeUsers || 0}
+                            </span>
                         </div>
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                        <div
+                            className="flex items-center justify-between p-3 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => router.push('/agents')}
+                        >
                             <div className="flex items-center gap-2">
                                 <Zap className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">Aktywni agenci AI</span>
                             </div>
-                            <span className="font-semibold text-foreground">10</span>
+                            <span className="font-semibold text-foreground">
+                                {loading ? <Skeleton className="h-4 w-8" /> : counters?.totalAgents || 0}
+                            </span>
                         </div>
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                        <div
+                            className="flex items-center justify-between p-3 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => router.push('/chat-history-admin')}
+                        >
                             <div className="flex items-center gap-2">
                                 <Activity className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">Wykonania dzisiaj</span>
+                                <span className="text-sm">Wiadomości AI (dziś)</span>
                             </div>
-                            <span className="font-semibold text-foreground">847</span>
+                            <span className="font-semibold text-foreground">
+                                {loading ? <Skeleton className="h-4 w-8" /> : counters?.aiCallsToday || 0}
+                            </span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                             <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">Ostatnia aktualizacja</span>
                             </div>
-                            <span className="font-semibold text-foreground">2 min temu</span>
+                            <span className="font-semibold text-foreground">
+                                {loading ? <Skeleton className="h-4 w-8" /> : data?.lastUpdated ? formatTimeAgo(data.lastUpdated) : '—'}
+                            </span>
                         </div>
                     </div>
                 </motion.div>

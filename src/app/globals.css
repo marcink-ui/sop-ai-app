@@ -527,6 +527,82 @@ body {
 }
 
 /* =============================================================================
+   THEME-AWARE UTILITY CLASSES
+   Use these instead of hardcoded Tailwind color pairs (bg-white dark:bg-x)
+   ============================================================================= */
+
+/* Card container — replaces: bg-white dark:bg-neutral-900/80 border-neutral-200 dark:border-neutral-800 rounded-2xl */
+.theme-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.theme-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Accent-colored icon container — replaces: bg-gradient-to-br from-blue-500 to-blue-600 */
+.theme-accent-icon {
+  background: var(--accent);
+  color: white;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Surface — like card but without border, for sections/wrappers */
+.theme-surface {
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+}
+
+/* Text utilities — replaces dark:text-x pairs */
+.theme-text { color: var(--text-primary); }
+.theme-text-secondary { color: var(--text-secondary); }
+.theme-text-muted { color: var(--text-muted); }
+
+/* Border — replaces border-neutral-200 dark:border-neutral-800 */
+.theme-border { border-color: var(--border-glass); }
+
+/* Table row hover */
+.theme-row:hover {
+  background: var(--bg-secondary);
+}
+
+/* Subtle badge — for status indicators */
+.theme-badge {
+  background: var(--accent-subtle, rgba(79, 70, 229, 0.1));
+  color: var(--accent);
+  border-radius: 9999px;
+  font-size: var(--text-xs, 11px);
+  font-weight: 500;
+  padding: 2px 10px;
+}
+
+/* Input field — replaces bg-white dark:bg-neutral-800 border pairs */
+.theme-input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: var(--text-sm, 13px);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.theme-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle, rgba(79, 70, 229, 0.1));
+}
+
+.theme-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* =============================================================================
    THEME STYLE OVERRIDES - Linear / Notion / Hero
    Full Design System: Typography, Spacing, Shadows, Components
    ============================================================================= */

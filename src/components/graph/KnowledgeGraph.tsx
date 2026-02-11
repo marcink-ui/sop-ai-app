@@ -88,6 +88,10 @@ export default function KnowledgeGraph3D() {
             case 'agent': return `/agents/${id}`;
             case 'process': return `/value-chain`;
             case 'ontology': return `/ontology`;
+            case 'user': return `/settings/profile`;
+            case 'tag': return `/knowledge-graph`;
+            case 'category': return `/knowledge-graph`;
+            case 'department': return `/roles`;
             default: return undefined;
         }
     };
@@ -491,6 +495,7 @@ export default function KnowledgeGraph3D() {
                         label: link.label,
                     }))}
                     onNodeHover={setHoveredNode}
+                    onNodeClick={(node) => setSelectedNode(node)}
                 />
             ) : (
                 <ForceGraph3D
@@ -518,9 +523,15 @@ export default function KnowledgeGraph3D() {
                     enableNavigationControls={true}
                     showNavInfo={false}
                     warmupTicks={100}
-                    cooldownTime={5000}
-                    d3AlphaDecay={0.03}
+                    cooldownTime={3000}
+                    d3AlphaDecay={0.04}
                     d3VelocityDecay={0.4}
+                    onEngineStop={() => {
+                        // Center the 3D graph after layout stabilizes
+                        if (graphRef.current) {
+                            graphRef.current.zoomToFit(600, 60);
+                        }
+                    }}
                 />
             )}
 

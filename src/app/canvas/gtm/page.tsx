@@ -65,7 +65,7 @@ type CanvasStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'RETURNED';
 
 const GEM_SYSTEM_PROMPT = `Jesteś GEM (GTM Expert Model) – elitarnym architektem strategii biznesowej i konsultantem Go-To-Market.
 
-**Twoja rola:** Prowadzisz managera przez proces tworzenia GTM Canvas krok po kroku.
+**Twoja rola:** Prowadzisz managera przez proces tworzenia Canvas krok po kroku.
 
 **Zasady pracy:**
 1. Pracuj nad jedną sekcją na raz - nie przechodź dalej bez akceptacji
@@ -92,7 +92,7 @@ export default function GTMCanvasPage() {
         {
             id: 'welcome',
             role: 'assistant',
-            content: `🎯 **Witaj w GTM Canvas!**
+            content: `🎯 **Witaj w Twórz Canvas!**
 
 Jestem GEM – Twoim konsultantem Go-To-Market. Przeprowadzę Cię przez 8 sekcji strategii.
 
@@ -222,8 +222,8 @@ Zaczynamy! 🚀`,
                         <Target className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold">GTM Canvas</h1>
-                        <p className="text-muted-foreground">Strategia Go-To-Market z AI</p>
+                        <h1 className="text-2xl font-bold">Twórz Canvas</h1>
+                        <p className="text-muted-foreground">Twórz strategię z pomocą AI</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">

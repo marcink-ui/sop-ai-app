@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from '@/lib/auth-client';
+import { redirect } from 'next/navigation';
 import {
     BookOpen,
     Plus,
@@ -125,6 +127,7 @@ const defaultOntology: OntologyTerm[] = [
 const categories = ['Procesy', 'Lean', 'Strategia', 'AI', 'Governance', 'HR', 'Finanse', 'IT', 'Inne'];
 
 export default function OntologyPage() {
+    const { data: session, isPending } = useSession();
     const [terms, setTerms] = useState<OntologyTerm[]>([]);
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -154,6 +157,18 @@ export default function OntologyPage() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultOntology));
         }
     }, []);
+
+    if (isPending) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+            </div>
+        );
+    }
+
+    if (!session) {
+        redirect('/auth/login');
+    }
 
     const saveTerms = (newTerms: OntologyTerm[]) => {
         setTerms(newTerms);

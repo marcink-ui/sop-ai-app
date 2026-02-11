@@ -4,9 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSession } from '@/lib/auth-client';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import {
-    ArrowLeft,
     Database,
     Sparkles,
     Search,
@@ -108,6 +106,12 @@ export default function DataEnrichmentPage() {
     }
 
     if (!session) {
+        redirect('/auth/login');
+    }
+
+    // Data Enrichment is a Partner/Meta Admin feature
+    const userRole = (session.user as any)?.role;
+    if (userRole !== 'PARTNER' && userRole !== 'META_ADMIN' && userRole !== 'SPONSOR') {
         redirect('/');
     }
 
@@ -141,16 +145,11 @@ export default function DataEnrichmentPage() {
                 className="flex items-center justify-between"
             >
                 <div className="flex items-center gap-4">
-                    <Link href="/dashboard">
-                        <Button variant="ghost" size="icon" className="h-10 w-10">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
                         <Database className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold">Data Enrichment</h1>
+                        <h1 className="text-2xl font-semibold">Wzbogacanie Danych</h1>
                         <p className="text-sm text-muted-foreground">
                             Wzbogacanie danych firm i kontaktów
                         </p>

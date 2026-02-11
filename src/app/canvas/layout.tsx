@@ -7,7 +7,7 @@ import { ClipboardList, Target, FolderKanban } from 'lucide-react';
 
 const canvasTabs = [
     { name: 'AI Canvas', href: '/canvas', icon: ClipboardList },
-    { name: 'GTM Canvas', href: '/canvas/gtm', icon: Target },
+    { name: 'Twórz Canvas', href: '/canvas/gtm', icon: Target },
     { name: 'Baza Canvas', href: '/canvas/base', icon: FolderKanban },
 ];
 

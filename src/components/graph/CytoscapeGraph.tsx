@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback } from 'react';
-import cytoscape, { Core, NodeSingular } from 'cytoscape';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import cytoscape, { Core } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import { useRouter } from 'next/navigation';
 
-// Register cola layout
+// Register cola layout once
 if (typeof window !== 'undefined') {
-    cytoscape.use(cola);
+    try { cytoscape.use(cola); } catch { /* already registered */ }
 }
 
 interface GraphNode {
@@ -28,19 +28,20 @@ interface CytoscapeGraphProps {
     nodes: GraphNode[];
     links: GraphLink[];
     onNodeHover?: (node: GraphNode | null) => void;
+    onNodeClick?: (node: GraphNode) => void;
 }
 
-// Professional color scheme (indigo-based, matching new globals.css)
+// Color scheme
 const NODE_COLORS: Record<string, string> = {
-    sop: '#f59e0b',      // amber
-    agent: '#6366f1',     // indigo
-    department: '#3b82f6', // blue
-    process: '#10b981',   // emerald
-    user: '#8b5cf6',      // violet
-    ontology: '#ec4899',  // pink
-    tag: '#22c55e',       // green
-    category: '#f97316',  // orange
-    panda: '#fbbf24',     // gold
+    sop: '#f59e0b',
+    agent: '#6366f1',
+    department: '#3b82f6',
+    process: '#10b981',
+    user: '#8b5cf6',
+    ontology: '#ec4899',
+    tag: '#22c55e',
+    category: '#f97316',
+    panda: '#fbbf24',
 };
 
 const NODE_SIZES: Record<string, number> = {
@@ -55,27 +56,58 @@ const NODE_SIZES: Record<string, number> = {
     panda: 22,
 };
 
-export function CytoscapeGraph({ nodes, links, onNodeHover }: CytoscapeGraphProps) {
+// Build URL for navigation — expanded to cover all modules
+function getNodeUrl(id: string, type: string): string | undefined {
+    switch (type) {
+        case 'sop': return `/sops/${id}`;
+        case 'agent': return `/agents/${id}`;
+        case 'process': return `/value-chain`;
+        case 'ontology': return `/ontology`;
+        case 'user': return `/settings/profile`;
+        case 'tag': return `/knowledge-graph`;
+        case 'category': return `/knowledge-graph`;
+        case 'department': return `/roles`;
+        default: return undefined;
+    }
+}
+
+export function CytoscapeGraph({ nodes, links, onNodeHover, onNodeClick }: CytoscapeGraphProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const cyRef = useRef<Core | null>(null);
-    const router = useRouter();
+    const routerRef = useRef(useRouter());
+    const onNodeHoverRef = useRef(onNodeHover);
+    const onNodeClickRef = useRef(onNodeClick);
 
-    // Build URL for navigation
-    const getNodeUrl = useCallback((id: string, type: string): string | undefined => {
-        switch (type) {
-            case 'sop': return `/sops/${id}`;
-            case 'agent': return `/agents/${id}`;
-            case 'process': return `/value-chain`;
-            case 'ontology': return `/ontology`;
-            default: return undefined;
-        }
-    }, []);
+    // Keep refs in sync without triggering re-renders
+    useEffect(() => { onNodeHoverRef.current = onNodeHover; }, [onNodeHover]);
+    useEffect(() => { onNodeClickRef.current = onNodeClick; }, [onNodeClick]);
 
-    // Keyboard navigation handler
+    // Memoize elements to avoid unnecessary re-initialization
+    const elements = useMemo(() => [
+        ...nodes.map(node => ({
+            data: {
+                id: node.id,
+                label: node.label,
+                type: node.type,
+                color: NODE_COLORS[node.type] || '#666',
+                size: NODE_SIZES[node.type] || 28,
+                url: getNodeUrl(node.id, node.type),
+            },
+        })),
+        ...links.map((link, index) => ({
+            data: {
+                id: `edge-${link.source}-${link.target}-${index}`,
+                source: link.source,
+                target: link.target,
+                label: link.label || '',
+            },
+        })),
+    ], [nodes, links]);
+
+    // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!cyRef.current) return;
-
             const panAmount = 50;
             const zoomAmount = 0.15;
 
@@ -117,34 +149,17 @@ export function CytoscapeGraph({ nodes, links, onNodeHover }: CytoscapeGraphProp
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // Initialize Cytoscape
+    // Initialize Cytoscape — only when elements actually change
     useEffect(() => {
         if (!containerRef.current) return;
 
-        // Convert data to Cytoscape format
-        const elements = [
-            ...nodes.map(node => ({
-                data: {
-                    id: node.id,
-                    label: node.label,
-                    type: node.type,
-                    color: NODE_COLORS[node.type] || '#666',
-                    size: NODE_SIZES[node.type] || 28,
-                    url: getNodeUrl(node.id, node.type),
-                },
-            })),
-            ...links.map((link, index) => ({
-                data: {
-                    id: `edge-${index}`,
-                    source: link.source,
-                    target: link.target,
-                    label: link.label || '',
-                },
-            })),
-        ];
+        // Destroy any existing instance
+        if (cyRef.current) {
+            cyRef.current.destroy();
+            cyRef.current = null;
+        }
 
-        // Create Cytoscape instance
-        cyRef.current = cytoscape({
+        const cy = cytoscape({
             container: containerRef.current,
             elements,
             style: [
@@ -164,15 +179,16 @@ export function CytoscapeGraph({ nodes, links, onNodeHover }: CytoscapeGraphProp
                         'text-outline-width': 1.5,
                         'border-width': 2,
                         'border-color': '#334155',
-                        'transition-property': 'border-color, border-width, background-opacity',
-                        'transition-duration': 150,
+                        'cursor-color': '#fff',
+                        // Disable CSS transitions on node props to reduce lag
                     } as cytoscape.Css.Node,
                 },
                 {
-                    selector: 'node:hover',
+                    selector: 'node:active',
                     style: {
                         'border-color': '#4f46e5',
-                        'border-width': 3,
+                        'border-width': 4,
+                        'overlay-opacity': 0,
                     },
                 },
                 {
@@ -194,18 +210,10 @@ export function CytoscapeGraph({ nodes, links, onNodeHover }: CytoscapeGraphProp
                         'arrow-scale': 0.5,
                     },
                 },
-                {
-                    selector: 'edge:hover',
-                    style: {
-                        'line-color': 'rgba(148, 163, 184, 0.5)',
-                        'target-arrow-color': 'rgba(148, 163, 184, 0.5)',
-                    },
-                },
             ],
             layout: {
                 name: 'cola',
-                animate: true,
-                animationDuration: 800,
+                animate: false,  // <-- Disable animation to prevent interaction lag
                 nodeSpacing: 35,
                 edgeLength: 120,
                 randomize: false,
@@ -218,7 +226,6 @@ export function CytoscapeGraph({ nodes, links, onNodeHover }: CytoscapeGraphProp
             minZoom: 0.2,
             maxZoom: 3,
             wheelSensitivity: 0.25,
-            // Disable auto-panning on hover - stabilize the view
             autoungrabify: false,
             autounselectify: false,
             boxSelectionEnabled: false,
@@ -228,25 +235,34 @@ export function CytoscapeGraph({ nodes, links, onNodeHover }: CytoscapeGraphProp
             userZoomingEnabled: true,
         });
 
-        // Click event - navigate directly to element URL
-        cyRef.current.on('tap', 'node', (event) => {
+        cyRef.current = cy;
+
+        // Click : open detail panel in parent component, or navigate
+        cy.on('tap', 'node', (event) => {
             const node = event.target;
-            const url = node.data('url');
-            if (url) {
-                // Prevent any auto-centering or animation
-                event.stopPropagation();
-                router.push(url);
+            const graphNode: GraphNode = {
+                id: node.data('id'),
+                label: node.data('label'),
+                type: node.data('type'),
+                color: node.data('color'),
+                url: node.data('url'),
+            };
+
+            // If parent provided onNodeClick, use it (parent handles detail panel)
+            if (onNodeClickRef.current) {
+                onNodeClickRef.current(graphNode);
+            } else if (graphNode.url) {
+                // Fallback: navigate directly
+                routerRef.current.push(graphNode.url);
             }
         });
 
-        // Hover events - stable, no auto-centering
-        cyRef.current.on('mouseover', 'node', (event) => {
+        // Hover events — use refs to avoid re-initialization
+        cy.on('mouseover', 'node', (event) => {
             const node = event.target;
-            // Prevent graph from auto-centering/panning on hover
-            event.stopPropagation();
-
-            if (onNodeHover) {
-                onNodeHover({
+            containerRef.current!.style.cursor = 'pointer';
+            if (onNodeHoverRef.current) {
+                onNodeHoverRef.current({
                     id: node.data('id'),
                     label: node.data('label'),
                     type: node.data('type'),
@@ -256,32 +272,32 @@ export function CytoscapeGraph({ nodes, links, onNodeHover }: CytoscapeGraphProp
             }
         });
 
-        cyRef.current.on('mouseout', 'node', (event) => {
-            event.stopPropagation();
-            if (onNodeHover) {
-                onNodeHover(null);
+        cy.on('mouseout', 'node', () => {
+            containerRef.current!.style.cursor = 'default';
+            if (onNodeHoverRef.current) {
+                onNodeHoverRef.current(null);
             }
         });
 
-        // Cleanup
+        // Fit and center after layout completes
+        cy.one('layoutstop', () => {
+            cy.fit(undefined, 40);
+            cy.center();
+        });
+
         return () => {
-            if (cyRef.current) {
-                cyRef.current.destroy();
-            }
+            cy.destroy();
+            cyRef.current = null;
         };
-    }, [nodes, links, router, onNodeHover, getNodeUrl]);
+    }, [elements]);
 
     // Expose zoom controls
     const zoomIn = useCallback(() => {
-        if (cyRef.current) {
-            cyRef.current.zoom(cyRef.current.zoom() * 1.25);
-        }
+        cyRef.current?.zoom(cyRef.current.zoom() * 1.25);
     }, []);
 
     const zoomOut = useCallback(() => {
-        if (cyRef.current) {
-            cyRef.current.zoom(cyRef.current.zoom() * 0.75);
-        }
+        cyRef.current?.zoom(cyRef.current.zoom() * 0.75);
     }, []);
 
     const resetView = useCallback(() => {
@@ -294,9 +310,7 @@ export function CytoscapeGraph({ nodes, links, onNodeHover }: CytoscapeGraphProp
     // Expose methods via window for external controls
     useEffect(() => {
         (window as any).__cytoscapeControls = { zoomIn, zoomOut, resetView };
-        return () => {
-            delete (window as any).__cytoscapeControls;
-        };
+        return () => { delete (window as any).__cytoscapeControls; };
     }, [zoomIn, zoomOut, resetView]);
 
     return (

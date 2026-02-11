@@ -12,8 +12,8 @@ interface StatusBadgeProps {
 
 const statusConfig = {
     draft: {
-        bg: 'bg-neutral-100 dark:bg-neutral-800',
-        text: 'text-neutral-600 dark:text-neutral-400',
+        bg: 'bg-muted',
+        text: 'text-muted-foreground',
         dot: 'bg-neutral-500',
     },
     active: {
@@ -22,8 +22,8 @@ const statusConfig = {
         dot: 'bg-green-500',
     },
     archived: {
-        bg: 'bg-neutral-100 dark:bg-neutral-800',
-        text: 'text-neutral-500 dark:text-neutral-500',
+        bg: 'bg-muted',
+        text: 'text-muted-foreground',
         dot: 'bg-neutral-400',
     },
     pending: {
@@ -63,8 +63,22 @@ const statusConfig = {
     },
 };
 
+const statusLabels: Record<string, string> = {
+    draft: 'Wersja robocza',
+    active: 'Aktywny',
+    archived: 'Zarchiwizowany',
+    pending: 'Oczekujący',
+    approved: 'Zatwierdzony',
+    rejected: 'Odrzucony',
+    review: 'Do przeglądu',
+    generated: 'Wygenerowany',
+    audited: 'Audytowany',
+    completed: 'Ukończony',
+};
+
 export function StatusBadge({ status, size = 'md', showDot = true }: StatusBadgeProps) {
     const config = statusConfig[status] || statusConfig.draft;
+    const label = statusLabels[status] || status.charAt(0).toUpperCase() + status.slice(1);
 
     return (
         <motion.div
@@ -80,7 +94,7 @@ export function StatusBadge({ status, size = 'md', showDot = true }: StatusBadge
                         transition={{ duration: 2, repeat: Infinity }}
                     />
                 )}
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {label}
             </Badge>
         </motion.div>
     );

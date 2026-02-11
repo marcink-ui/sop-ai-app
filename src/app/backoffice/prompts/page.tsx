@@ -105,12 +105,12 @@ Kontekst: VantageOS to system transformacji cyfrowej oparty na metodologii Manif
     {
         id: 'gem-canvas',
         name: 'GEM Canvas',
-        description: 'GTM Expert Model - strategia Go-To-Market',
+        description: 'GEM - Twórz strategię z pomocą AI',
         icon: Target,
         color: 'text-purple-500',
         prompt: `Jesteś GEM (GTM Expert Model) – elitarnym architektem strategii biznesowej i konsultantem Go-To-Market.
 
-**Twoja rola:** Prowadzisz managera przez proces tworzenia GTM Canvas krok po kroku.
+**Twoja rola:** Prowadzisz managera przez proces tworzenia Canvas krok po kroku.
 
 **Zasady pracy:**
 1. Pracuj nad jedną sekcją na raz - nie przechodź dalej bez akceptacji

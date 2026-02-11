@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 
+const PROFILE_FIELDS = [
+    'bio', 'cv', 'phone', 'linkedin',
+    'mbti', 'disc', 'strengthsFinder', 'enneagram', 'personalityNotes',
+    'communicationStyle', 'workingHours', 'preferredLanguage',
+    'certifications', 'skills', 'interests', 'goals', 'values',
+] as const;
+
 export async function GET() {
     try {
         const session = await getSession();
@@ -42,28 +49,42 @@ export async function GET() {
             }
         });
 
-        // Build context response
-        // Note: bio, cv, mbti, disc, certifications, communicationStyle are extended fields
-        // that may be added to the User model in the future
-        const extUser = user as Record<string, unknown>;
+        // Build context response with all profile fields
+        // Cast to any — profile fields exist in Prisma schema but local client types may be stale
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const u = user as any;
         const context = {
-            name: user.name || '',
-            email: user.email || '',
-            role: user.role || 'EMPLOYEE',
-            organization: user.organization?.name || 'VantageOS',
-            department: user.department?.name || null,
-            avatar: user.image || null,
-            // AI Context fields from user profile (extended fields)
-            bio: (extUser.bio as string) || '',
-            cv: (extUser.cv as string) || '',
-            mbti: (extUser.mbti as string) || '',
-            disc: (extUser.disc as string) || '',
-            certifications: (extUser.certifications as string) || '',
-            communicationStyle: (extUser.communicationStyle as string) || 'direct',
+            name: u.name || '',
+            email: u.email || '',
+            role: u.role || 'CITIZEN_DEV',
+            organization: u.organization?.name || 'VantageOS',
+            department: u.department?.name || null,
+            avatar: u.image || null,
+            // Profile fields
+            bio: u.bio || '',
+            cv: u.cv || '',
+            phone: u.phone || '',
+            linkedin: u.linkedin || '',
+            // Personality tests
+            mbti: u.mbti || '',
+            disc: u.disc || '',
+            strengthsFinder: u.strengthsFinder || '',
+            enneagram: u.enneagram || '',
+            personalityNotes: u.personalityNotes || '',
+            // Communication
+            communicationStyle: u.communicationStyle || '',
+            workingHours: u.workingHours || '',
+            preferredLanguage: u.preferredLanguage || 'pl',
+            // Career
+            certifications: u.certifications || '',
+            skills: u.skills || '',
+            interests: u.interests || '',
+            goals: u.goals || '',
+            values: u.values || '',
             // Metrics
-            contextCompleteness: calculateCompleteness(extUser),
+            contextCompleteness: calculateCompleteness(u),
             aiInteractions,
-            lastActive: user.updatedAt?.toISOString() || new Date().toISOString(),
+            lastActive: u.updatedAt?.toISOString() || new Date().toISOString(),
         };
 
         return NextResponse.json(context);
@@ -78,13 +99,21 @@ export async function GET() {
 
 // Calculate context completeness percentage
 function calculateCompleteness(user: Record<string, unknown>): number {
-    let score = 20; // Base for having an account
-    if (user.name) score += 10;
-    if (user.bio) score += 15;
-    if (user.cv) score += 20;
-    if (user.mbti) score += 10;
-    if (user.disc) score += 10;
-    if (user.certifications) score += 15;
+    let score = 10; // Base for having an account
+    if (user.name) score += 8;
+    if (user.image) score += 7;
+    if (user.bio) score += 10;
+    if (user.cv) score += 10;
+    if (user.phone) score += 5;
+    if (user.linkedin) score += 5;
+    if (user.mbti) score += 8;
+    if (user.disc) score += 8;
+    if (user.strengthsFinder) score += 5;
+    if (user.enneagram) score += 4;
+    if (user.communicationStyle) score += 5;
+    if (user.certifications) score += 5;
+    if (user.skills) score += 5;
+    if (user.goals) score += 5;
     return Math.min(score, 100);
 }
 
@@ -100,20 +129,35 @@ export async function PUT(request: Request) {
         }
 
         const body = await request.json();
-        // These fields will be used when User model is extended with context fields
-        const { bio: _bio, cv: _cv, mbti: _mbti, disc: _disc, certifications: _certs, communicationStyle: _style } = body;
-        void [_bio, _cv, _mbti, _disc, _certs, _style]; // Reference to suppress unused warnings
+
+        // Build update data from allowed profile fields only
+        const updateData: Record<string, string | null> = {};
+
+        // Allow updating name and image too
+        if (body.name !== undefined) updateData.name = body.name;
+        if (body.image !== undefined) updateData.image = body.image;
+
+        // Profile fields
+        for (const field of PROFILE_FIELDS) {
+            if (body[field] !== undefined) {
+                updateData[field] = body[field];
+            }
+        }
 
         // Update user profile
-        await prisma.user.update({
+        const updated = await prisma.user.update({
             where: { email: session.user.email },
-            data: {
-                // These fields need to be added to the User model in Prisma schema
-                // For now, we'll just return success
-            }
+            data: updateData,
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            user: {
+                id: updated.id,
+                name: updated.name,
+                email: updated.email,
+            }
+        });
     } catch (error) {
         console.error('Failed to update user context:', error);
         return NextResponse.json(

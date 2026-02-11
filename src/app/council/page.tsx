@@ -11,7 +11,6 @@ import {
     XCircle,
     AlertTriangle,
     User,
-    Calendar,
     ThumbsUp,
     ThumbsDown,
     Shield,
@@ -28,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedCard } from '@/components/ui/animated-card';
+import { L10Meeting } from '@/components/council/L10Meeting';
 import { RoleBadge } from '@/components/ui/status-badge';
 import {
     Select,
@@ -88,6 +88,16 @@ const priorityStyles = {
     medium: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30',
     low: 'bg-neutral-500/20 text-neutral-600 dark:text-neutral-400 border-neutral-500/30',
 };
+
+const typeCategories = [
+    { key: 'all', label: 'Wszystkie', icon: MessageSquare },
+    { key: 'AGENT', label: 'Agenci AI', icon: Activity },
+    { key: 'SOP', label: 'SOP', icon: FileText },
+    { key: 'MUDA', label: 'MUDA', icon: AlertTriangle },
+    { key: 'KAIZEN', label: 'Kaizen', icon: Lightbulb },
+    { key: 'AUTOMATION', label: 'Automatyzacje', icon: Gavel },
+    { key: 'TASK', label: 'Zadania', icon: CheckCircle2 },
+];
 
 // Role-specific header components
 function SponsorHeader() {
@@ -228,6 +238,8 @@ export default function CouncilPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [requests, setRequests] = useState<CouncilRequestAPI[]>([]);
     const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, voting: 0 });
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [activeView, setActiveView] = useState<'requests' | 'l10'>('requests');
 
     // Fetch requests from API
     const loadRequests = async () => {
@@ -274,7 +286,11 @@ export default function CouncilPage() {
         createdAt: new Date(req.createdAt).toLocaleDateString('pl-PL'),
         votes: req.voteCounts,
         estimatedImpact: req.labels.length > 0 ? req.labels.join(', ') : 'Not specified',
-    }));
+    })).filter(req => {
+        if (typeFilter === 'all') return true;
+        const originalReq = requests.find(r => r.id === req.id);
+        return originalReq?.type === typeFilter;
+    });
 
 
     // Determine if user can approve/reject (Sponsor, Pilot)
@@ -308,178 +324,233 @@ export default function CouncilPage() {
                         <MessageSquare className="h-6 w-6 text-pink-500 dark:text-pink-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground">Council Requests</h1>
-                        <p className="text-sm text-muted-foreground">Wnioski o zmianę procedur i propozycje</p>
+                        <h1 className="text-2xl font-bold text-foreground">Rada Transformacji</h1>
+                        <p className="text-sm text-muted-foreground">Wnioski, decyzje i spotkania Level 10</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <RoleBadge role={role as 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV'} />
-                    <Button className="bg-pink-600 hover:bg-pink-700">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Nowy wniosek
-                    </Button>
+                    {activeView === 'requests' && (
+                        <Button className="bg-pink-600 hover:bg-pink-700">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Nowy wniosek
+                        </Button>
+                    )}
                 </div>
             </div>
 
-            {/* Role-specific Header */}
-            {renderHeader()}
-
-            {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <AnimatedCard delay={0.1} className="p-4">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <MessageSquare className="h-4 w-4" />
-                        <span className="text-sm">Wszystkie wnioski</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-foreground">{stats.total}</p>
-                </AnimatedCard>
-                <AnimatedCard delay={0.2} className="p-4">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        <span className="text-sm">Oczekujące</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-yellow-500 dark:text-yellow-400">{stats.pending}</p>
-                </AnimatedCard>
-                <AnimatedCard delay={0.3} className="p-4">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span className="text-sm">Zatwierdzone</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-green-500 dark:text-green-400">{stats.approved}</p>
-                </AnimatedCard>
-                <AnimatedCard delay={0.4} className="p-4">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <XCircle className="h-4 w-4" />
-                        <span className="text-sm">Odrzucone</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-red-500 dark:text-red-400">{stats.rejected}</p>
-                </AnimatedCard>
+            {/* View Tabs */}
+            <div className="flex items-center gap-1 p-1 bg-muted/30 rounded-xl w-fit">
+                <button
+                    onClick={() => setActiveView('requests')}
+                    className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeView === 'requests'
+                            ? 'bg-card shadow-sm text-foreground border border-border'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                >
+                    <MessageSquare className="h-4 w-4 inline-block mr-2" />
+                    Wnioski
+                </button>
+                <button
+                    onClick={() => setActiveView('l10')}
+                    className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeView === 'l10'
+                            ? 'bg-card shadow-sm text-foreground border border-border'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                >
+                    <Clock className="h-4 w-4 inline-block mr-2" />
+                    Level 10
+                </button>
             </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-sm">
-                    <MessageSquare className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        placeholder="Szukaj wniosków..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9 bg-card border-border"
-                    />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-40 bg-card border-border">
-                        <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Wszystkie</SelectItem>
-                        <SelectItem value="pending">Oczekujące</SelectItem>
-                        <SelectItem value="in-review">W przeglądzie</SelectItem>
-                        <SelectItem value="approved">Zatwierdzone</SelectItem>
-                        <SelectItem value="rejected">Odrzucone</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+            {activeView === 'l10' ? (
+                <L10Meeting />
+            ) : (
+                <>
+                    {/* Role-specific Header */}
+                    {renderHeader()}
 
-            {/* Requests List */}
-            <div className="space-y-4">
-                {filteredRequests.length === 0 ? (
-                    <div className="rounded-xl border border-border bg-card/50 p-12 text-center">
-                        <MessageSquare className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
-                        <p className="text-muted-foreground">Nie znaleziono wniosków</p>
+                    {/* Stats */}
+                    <div className="grid gap-4 md:grid-cols-4">
+                        <AnimatedCard delay={0.1} className="p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <MessageSquare className="h-4 w-4" />
+                                <span className="text-sm">Wszystkie wnioski</span>
+                            </div>
+                            <p className="mt-2 text-2xl font-bold text-foreground">{stats.total}</p>
+                        </AnimatedCard>
+                        <AnimatedCard delay={0.2} className="p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <Clock className="h-4 w-4" />
+                                <span className="text-sm">Oczekujące</span>
+                            </div>
+                            <p className="mt-2 text-2xl font-bold text-yellow-500 dark:text-yellow-400">{stats.pending}</p>
+                        </AnimatedCard>
+                        <AnimatedCard delay={0.3} className="p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <CheckCircle2 className="h-4 w-4" />
+                                <span className="text-sm">Zatwierdzone</span>
+                            </div>
+                            <p className="mt-2 text-2xl font-bold text-green-500 dark:text-green-400">{stats.approved}</p>
+                        </AnimatedCard>
+                        <AnimatedCard delay={0.4} className="p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <XCircle className="h-4 w-4" />
+                                <span className="text-sm">Odrzucone</span>
+                            </div>
+                            <p className="mt-2 text-2xl font-bold text-red-500 dark:text-red-400">{stats.rejected}</p>
+                        </AnimatedCard>
                     </div>
-                ) : (
-                    filteredRequests.map((request, index) => {
-                        const StatusIcon = statusStyles[request.status as keyof typeof statusStyles].icon;
-                        return (
-                            <motion.div
-                                key={request.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 * index }}
-                                className="rounded-xl border border-border bg-card/50 p-5 transition-colors hover:bg-muted/30"
-                            >
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <h3 className="font-medium text-foreground">{request.title}</h3>
-                                            <Badge
-                                                variant="outline"
-                                                className={priorityStyles[request.priority as keyof typeof priorityStyles]}
-                                            >
-                                                {request.priority === 'high' ? 'wysoki' : request.priority === 'medium' ? 'średni' : 'niski'}
-                                            </Badge>
+
+                    {/* Type Category Tabs */}
+                    <div className="flex items-center gap-1 overflow-x-auto pb-1 -mb-px">
+                        {typeCategories.map((cat) => {
+                            const Icon = cat.icon;
+                            const isActive = typeFilter === cat.key;
+                            return (
+                                <button
+                                    key={cat.key}
+                                    onClick={() => setTypeFilter(cat.key)}
+                                    className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all whitespace-nowrap ${isActive
+                                        ? 'bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-500/30'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent'
+                                        }`}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    {cat.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex items-center gap-4">
+                        <div className="relative flex-1 max-w-sm">
+                            <MessageSquare className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="Szukaj wniosków..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9 bg-card border-border"
+                            />
+                        </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-40 bg-card border-border">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszystkie</SelectItem>
+                                <SelectItem value="pending">Oczekujące</SelectItem>
+                                <SelectItem value="in-review">W przeglądzie</SelectItem>
+                                <SelectItem value="approved">Zatwierdzone</SelectItem>
+                                <SelectItem value="rejected">Odrzucone</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Requests Table */}
+                    <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
+                        {/* Table Header */}
+                        <div className="grid grid-cols-[1fr_140px_100px_120px_80px_auto] gap-4 px-5 py-3 bg-muted/30 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            <span>Wniosek</span>
+                            <span>Wnioskodawca</span>
+                            <span>Dział</span>
+                            <span>Status</span>
+                            <span>Głosy</span>
+                            <span>Akcje</span>
+                        </div>
+
+                        {filteredRequests.length === 0 ? (
+                            <div className="p-12 text-center">
+                                <MessageSquare className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
+                                <p className="text-muted-foreground">Nie znaleziono wniosków</p>
+                            </div>
+                        ) : (
+                            filteredRequests.map((request, index) => {
+                                const StatusIcon = statusStyles[request.status as keyof typeof statusStyles].icon;
+                                return (
+                                    <motion.div
+                                        key={request.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.05 * index }}
+                                        className="grid grid-cols-[1fr_140px_100px_120px_80px_auto] gap-4 px-5 py-4 border-b border-border/50 last:border-0 items-center transition-colors hover:bg-muted/20 cursor-pointer"
+                                    >
+                                        {/* Title + Priority */}
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-medium text-foreground text-sm truncate">{request.title}</h3>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`shrink-0 text-[10px] px-1.5 py-0 ${priorityStyles[request.priority as keyof typeof priorityStyles]}`}
+                                                >
+                                                    {request.priority === 'high' ? 'H' : request.priority === 'medium' ? 'M' : 'L'}
+                                                </Badge>
+                                            </div>
+                                            {request.description && (
+                                                <p className="text-xs text-muted-foreground truncate">{request.description}</p>
+                                            )}
                                         </div>
-                                        <p className="text-sm text-muted-foreground mb-4">{request.description}</p>
-                                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                            <div className="flex items-center gap-1">
-                                                <User className="h-4 w-4" />
-                                                {request.requester}
-                                            </div>
-                                            <RoleBadge role={request.requesterRole as 'SPONSOR' | 'PILOT' | 'MANAGER' | 'EXPERT' | 'CITIZEN_DEV'} size="sm" />
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="h-4 w-4" />
-                                                {request.createdAt}
-                                            </div>
-                                            <Badge variant="outline" className="border-border">
-                                                {request.department}
-                                            </Badge>
+
+                                        {/* Requester */}
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span className="text-sm text-muted-foreground truncate">{request.requester}</span>
                                         </div>
-                                        {/* Show impact for Sponsors and Pilots */}
-                                        {(role === 'SPONSOR' || role === 'PILOT') && (
-                                            <div className="mt-3 p-2 rounded-lg bg-muted/30 text-sm">
-                                                <span className="text-muted-foreground">Wpływ: </span>
-                                                <span className="text-foreground font-medium">{request.estimatedImpact}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col items-end gap-3">
-                                        <Badge className={statusStyles[request.status as keyof typeof statusStyles].class}>
+
+                                        {/* Department */}
+                                        <Badge variant="outline" className="border-border text-xs justify-center">
+                                            {request.department}
+                                        </Badge>
+
+                                        {/* Status */}
+                                        <Badge className={`text-xs justify-center ${statusStyles[request.status as keyof typeof statusStyles].class}`}>
                                             <StatusIcon className="mr-1 h-3 w-3" />
                                             {statusStyles[request.status as keyof typeof statusStyles].label}
                                         </Badge>
-                                        <div className="flex items-center gap-3">
-                                            <button className="flex items-center gap-1 text-green-500 dark:text-green-400 hover:text-green-600 dark:hover:text-green-300">
-                                                <ThumbsUp className="h-4 w-4" />
-                                                <span className="text-sm">{request.votes.up}</span>
+
+                                        {/* Votes */}
+                                        <div className="flex items-center gap-2">
+                                            <button className="flex items-center gap-0.5 text-green-500 dark:text-green-400 hover:text-green-600">
+                                                <ThumbsUp className="h-3.5 w-3.5" />
+                                                <span className="text-xs">{request.votes.up}</span>
                                             </button>
-                                            <button className="flex items-center gap-1 text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300">
-                                                <ThumbsDown className="h-4 w-4" />
-                                                <span className="text-sm">{request.votes.down}</span>
+                                            <button className="flex items-center gap-0.5 text-red-500 dark:text-red-400 hover:text-red-600">
+                                                <ThumbsDown className="h-3.5 w-3.5" />
+                                                <span className="text-xs">{request.votes.down}</span>
                                             </button>
                                         </div>
-                                        {/* Role-based actions */}
-                                        {canApprove && request.status === 'pending' && (
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <Button size="sm" variant="outline" className="text-green-500 border-green-500/30 hover:bg-green-500/10">
-                                                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                    Zatwierdź
-                                                </Button>
-                                                <Button size="sm" variant="outline" className="text-red-500 border-red-500/30 hover:bg-red-500/10">
-                                                    <XCircle className="mr-1 h-3 w-3" />
-                                                    Odrzuć
-                                                </Button>
-                                            </div>
-                                        )}
-                                        {canEdit && (
-                                            <div className="flex items-center gap-2">
-                                                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
-                                                    <Edit3 className="h-3 w-3" />
-                                                </Button>
-                                                {role === 'SPONSOR' && (
-                                                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-400 hover:bg-red-500/10">
-                                                        <Trash2 className="h-3 w-3" />
+
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-1">
+                                            {canApprove && request.status === 'pending' && (
+                                                <>
+                                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-500 hover:bg-green-500/10">
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
                                                     </Button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        );
-                    })
-                )}
-            </div>
+                                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-500/10">
+                                                        <XCircle className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </>
+                                            )}
+                                            {canEdit && (
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
+                                                    <Edit3 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            )}
+                                            {role === 'SPONSOR' && (
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-500/10">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                );
+                            })
+                        )}
+                    </div>
+                </>
+            )}
         </div>
     );
 }

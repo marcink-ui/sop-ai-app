@@ -75,8 +75,7 @@ export function AISummaryCard({ user, stats, onOpenChat, className }: AISummaryC
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className={cn(
-                'relative overflow-hidden rounded-2xl border p-6',
-                'border-neutral-200 dark:border-neutral-800',
+                'relative overflow-hidden rounded-[var(--radius)] border theme-border p-6',
                 `bg-gradient-to-br ${gradientClass}`,
                 className
             )}
@@ -113,12 +112,12 @@ export function AISummaryCard({ user, stats, onOpenChat, className }: AISummaryC
                         </motion.div>
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <TimeIcon className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
-                                <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                                <TimeIcon className="h-4 w-4 theme-text-secondary" />
+                                <span className="text-sm theme-text-secondary">
                                     {greeting}
                                 </span>
                             </div>
-                            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                            <h1 className="text-2xl font-bold theme-text">
                                 {user.name}
                             </h1>
                         </div>

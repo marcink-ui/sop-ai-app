@@ -4,6 +4,105 @@ import { getSession } from '@/lib/auth-server';
 import { searchWiki, buildWikiContext } from '@/lib/ai/wiki-knowledge';
 import { resolveApiKey, getTierLabel, isRealAIAvailable } from '@/lib/ai/api-key-resolver';
 
+// ── Organization-scoped knowledge fetcher ──
+async function buildOrganizationContext(userId: string, organizationId: string | null): Promise<string> {
+    const parts: string[] = [];
+
+    try {
+        // 1. User Profile & Context
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                organization: { select: { name: true } },
+                department: { select: { name: true } },
+            },
+        });
+
+        if (user) {
+            // Cast to any — profile fields exist in Prisma schema but local client types may be stale
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const u = user as any;
+            parts.push(`\n## Profil użytkownika`);
+            parts.push(`Imię: ${u.name || 'Nie podano'}`);
+            parts.push(`Rola: ${u.role}`);
+            if (u.organization?.name) parts.push(`Organizacja: ${u.organization.name}`);
+            if (u.department?.name) parts.push(`Dział: ${u.department.name}`);
+            if (u.bio) parts.push(`Bio: ${u.bio}`);
+            if (u.skills) parts.push(`Umiejętności: ${u.skills}`);
+            if (u.goals) parts.push(`Cele: ${u.goals}`);
+            if (u.mbti) parts.push(`MBTI: ${u.mbti}`);
+            if (u.disc) parts.push(`DISC: ${u.disc}`);
+            if (u.strengthsFinder) parts.push(`StrengthsFinder: ${u.strengthsFinder}`);
+            if (u.enneagram) parts.push(`Enneagram: ${u.enneagram}`);
+            if (u.personalityNotes) parts.push(`Notatki osobowości: ${u.personalityNotes}`);
+            if (u.communicationStyle) parts.push(`Styl komunikacji: ${u.communicationStyle}`);
+            if (u.preferredLanguage) parts.push(`Preferowany język: ${u.preferredLanguage}`);
+            if (u.certifications) parts.push(`Certyfikaty: ${u.certifications}`);
+            if (u.interests) parts.push(`Zainteresowania: ${u.interests}`);
+            if (u.values) parts.push(`Wartości: ${u.values}`);
+            if (u.cv) parts.push(`CV / Doświadczenie: ${u.cv}`);
+        }
+
+        if (!organizationId) return parts.join('\n');
+
+        // 2. SOPs (org-scoped) — titles and purposes for context
+        const sops = await prisma.sOP.findMany({
+            where: { organizationId },
+            select: { id: true, title: true, code: true, status: true, purpose: true },
+            take: 30,
+            orderBy: { updatedAt: 'desc' },
+        });
+
+        if (sops.length > 0) {
+            parts.push(`\n## Procedury SOP w organizacji (${sops.length})`);
+            parts.push(`(Użyj linków: [Nazwa SOPu](/sops/{id}))`);
+            sops.forEach(s => {
+                parts.push(`- id:${s.id} | ${s.code ? s.code + ' — ' : ''}${s.title} (${s.status})${s.purpose ? ': ' + s.purpose.slice(0, 100) : ''}`);
+            });
+        }
+
+        // 3. Tasks — skipped (no Task model in current Prisma schema)
+        // TODO: Add task context when Task model is added
+
+        // 4. Resources (org-scoped)
+        const resources = await prisma.resource.findMany({
+            where: { organizationId },
+            select: { id: true, title: true, category: true, status: true },
+            take: 20,
+            orderBy: { updatedAt: 'desc' },
+        });
+
+        if (resources.length > 0) {
+            parts.push(`\n## Zasoby (${resources.length})`);
+            parts.push(`(Użyj linków: [Tytuł](/resources/{id}))`);
+            resources.forEach(r => {
+                parts.push(`- id:${r.id} | ${r.title} (${r.category}, ${r.status})`);
+            });
+        }
+
+        // 5. Agents (org-scoped)
+        const agents = await prisma.agent.findMany({
+            where: { organizationId },
+            select: { id: true, name: true, type: true, status: true, description: true },
+            take: 15,
+            orderBy: { updatedAt: 'desc' },
+        });
+
+        if (agents.length > 0) {
+            parts.push(`\n## Agenci AI (${agents.length})`);
+            parts.push(`(Użyj linków: [Nazwa agenta](/agents/{id}))`);
+            agents.forEach(a => {
+                parts.push(`- id:${a.id} | ${a.name} (${a.type}, ${a.status})${a.description ? ': ' + a.description.slice(0, 80) : ''}`);
+            });
+        }
+
+    } catch (err) {
+        console.error('[Chat API] Failed to build org context:', err);
+    }
+
+    return parts.join('\n');
+}
+
 // VantageOS System Context - injected into every conversation
 const VANTAGEOS_CONTEXT = `
 Jesteś VantageOS AI Assistant - ekspertem w metodologii Lean AI i transformacji cyfrowej.
@@ -29,6 +128,18 @@ Jesteś VantageOS AI Assistant - ekspertem w metodologii Lean AI i transformacji
 - Bądź konkretny i praktyczny
 - Używaj przykładów z kontekstu VantageOS
 - Przy tworzeniu SOPów, proponuj strukturę zgodną z formatem VantageOS
+
+### Linki do elementów
+Gdy wspominasz konkretne elementy systemu (SOPy, agentów, zasoby, artykuły wiki), ZAWSZE dodawaj do nich klikalny link w formacie markdown:
+- SOP: [Nazwa SOPu](/sops/{id})
+- Agent AI: [Nazwa agenta](/agents/{id})  
+- Zasób: [Tytuł zasobu](/resources/{slug})
+- Wiki: [Tytuł artykułu](/wiki/{slug})
+- Użytkownik: [Imię](/admin-panel/users)
+- Rola: [Nazwa roli](/roles)
+- Canvas AI: [Nazwa canvasu](/canvas)
+
+Przykład: "Polecam przejrzeć SOP [Obsługa klienta](/sops/clx123abc) oraz skonfigurować agenta [Customer Support Bot](/agents/cly456def)."
 
 ## Kontekst aktualnej strony (jeśli dostępny):
 `;
@@ -102,8 +213,18 @@ export async function POST(request: NextRequest) {
         const wikiContext = buildWikiContext(wikiArticles);
         const wikiSources = wikiArticles.map(a => ({ title: a.title, link: a.link, category: a.category }));
 
+        // 5b. Build organization-scoped knowledge context (SOPs, Tasks, Resources, User Profile)
+        const orgContext = await buildOrganizationContext(user.id, user.organizationId);
+
         // 6. Build full context string
         let contextString = VANTAGEOS_CONTEXT;
+
+        // Inject organization knowledge
+        if (orgContext) {
+            contextString += `\n\n## Wiedza organizacji\n${orgContext}`;
+            contextString += `\n\n> WAŻNE: Odpowiadaj TYLKO na podstawie danych z organizacji tego użytkownika. NIE używaj danych z innych organizacji.`;
+        }
+
         if (context?.currentPage) {
             contextString += `\nAktualna strona: ${context.currentPage}`;
         }

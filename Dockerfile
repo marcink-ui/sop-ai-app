@@ -20,13 +20,23 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# DATABASE_URL from Railway env (available at build time)
+ARG DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Generate Prisma client (schema is now available)
 RUN npx prisma generate
 
+# Sync database schema (skip if placeholder URL)
+RUN if echo "$DATABASE_URL" | grep -qv "placeholder"; then \
+    echo "📦 Syncing database schema..." && \
+    npx prisma db push --accept-data-loss 2>&1 || true; \
+    else \
+    echo "⏭️  Skipping db push (placeholder DATABASE_URL)"; \
+    fi
+
 # Build Next.js application
-# Placeholder DATABASE_URL needed for build-time page data collection
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 RUN npm run build
 
 # Production image, copy all the files and run next
@@ -62,4 +72,3 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["sh", "start.sh"]
-

@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { Loader2, Maximize2, Minimize2, Sparkles, X, Lightbulb, Send, ChevronRight } from 'lucide-react';
+import { useSession } from '@/lib/auth-client';
+import { redirect } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Node, Edge } from 'reactflow';
 import {
@@ -36,6 +39,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 // Stats from sample data
 const stats = {
@@ -63,6 +74,7 @@ interface WorkflowSnapshot {
 }
 
 export default function ValueChainPage() {
+    const { data: session, isPending } = useSession();
     const [view, setView] = useState<'whiteboard' | 'list' | 'compare'>('whiteboard');
     const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
     const [libraryOpen, setLibraryOpen] = useState(true);
@@ -79,6 +91,13 @@ export default function ValueChainPage() {
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
     const [snapshotName, setSnapshotName] = useState('');
 
+    // New Map dialog
+    const [newMapDialogOpen, setNewMapDialogOpen] = useState(false);
+    const [newMapName, setNewMapName] = useState('');
+    const [newMapDescription, setNewMapDescription] = useState('');
+    const [newMapSegment, setNewMapSegment] = useState('');
+    const [creatingMap, setCreatingMap] = useState(false);
+
     // Areas state
     const [areas, setAreas] = useState<Area[]>(SAMPLE_AREAS);
     const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
@@ -86,6 +105,33 @@ export default function ValueChainPage() {
 
     // Optimization panel state
     const [optimizationOpen, setOptimizationOpen] = useState(false);
+
+    // Fullscreen mode
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Agent assistant panel
+    const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+    const [agentMessages, setAgentMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+    const [agentInput, setAgentInput] = useState('');
+    const [agentSuggestions] = useState([
+        { icon: '📋', text: 'Brakujący SOP w etapie "Lead Qualification"', action: 'request-sop', stage: 'Lead Qualification' },
+        { icon: '🤖', text: 'Dodaj agenta AI do procesu "Nurture Campaign"', action: 'request-agent', stage: 'Nurture Campaign' },
+        { icon: '⚠️', text: 'MUDA wykryta: przekazanie Sales→Support bez SOP', action: 'fix-muda', stage: 'Handoff' },
+        { icon: '🔗', text: 'Automatyzuj połączenie między Lead Gen a Qualification', action: 'automate', stage: 'Connection' },
+    ]);
+    const [processingAgent, setProcessingAgent] = useState(false);
+
+    if (isPending) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600" />
+            </div>
+        );
+    }
+
+    if (!session) {
+        redirect('/auth/login');
+    }
 
     const handleSave = useCallback((nodes: Node[], edges: Edge[]) => {
         setCurrentNodes(nodes);
@@ -154,121 +200,253 @@ export default function ValueChainPage() {
         toast.success('Obszar usunięty');
     }, [selectedAreaId]);
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="flex items-center justify-between"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 p-3 border border-cyan-500/20">
-                        <GitBranch className="h-6 w-6 text-cyan-400" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">Value Chain</h1>
-                        <p className="text-sm text-muted-foreground">Interactive process whiteboard</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    {/* View Toggle */}
-                    <div className="flex items-center rounded-lg border border-border bg-card/50 p-1">
-                        <button
-                            onClick={() => setView('whiteboard')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'whiteboard'
-                                ? 'bg-cyan-500/20 text-cyan-400'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <Map className="h-4 w-4" />
-                            Whiteboard
-                        </button>
-                        <button
-                            onClick={() => setView('compare')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'compare'
-                                ? 'bg-cyan-500/20 text-cyan-400'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <GitCompare className="h-4 w-4" />
-                            Porównaj
-                        </button>
-                        <button
-                            onClick={() => setView('list')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'list'
-                                ? 'bg-cyan-500/20 text-cyan-400'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <LayoutGrid className="h-4 w-4" />
-                            Lista
-                        </button>
-                    </div>
+    const handleCreateMap = async () => {
+        if (!newMapName.trim()) {
+            toast.error('Podaj nazwę mapy');
+            return;
+        }
+        setCreatingMap(true);
+        try {
+            const res = await fetch('/api/value-chain/maps', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newMapName.trim(),
+                    description: newMapDescription.trim() || null,
+                    segment: newMapSegment || null,
+                }),
+            });
+            if (!res.ok) throw new Error('Failed to create map');
+            const data = await res.json();
+            toast.success(`Mapa "${data.name}" została utworzona`);
+            setNewMapDialogOpen(false);
+            setNewMapName('');
+            setNewMapDescription('');
+            setNewMapSegment('');
+            setView('list'); // Switch to list to see the new map
+        } catch (error) {
+            console.error('Failed to create map:', error);
+            toast.error('Nie udało się utworzyć mapy');
+        } finally {
+            setCreatingMap(false);
+        }
+    };
 
-                    {/* Save Snapshot Button */}
-                    {view === 'whiteboard' && currentNodes.length > 0 && (
+    const openNewMapDialog = useCallback(() => {
+        setNewMapDialogOpen(true);
+    }, []);
+
+    // Agent chat handler
+    const handleAgentSend = useCallback(async () => {
+        if (!agentInput.trim()) return;
+        const userMsg = agentInput.trim();
+        setAgentMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        setAgentInput('');
+        setProcessingAgent(true);
+
+        // Simulate AI response
+        setTimeout(() => {
+            const responses = [
+                `Analizuję Twój łańcuch wartości... Widzę ${stats.processes} procesów w ${stats.stages} etapach. Sugeruję dodanie SOP do procesów, które jeszcze go nie mają.`,
+                `Na podstawie analizy, etap "Lead Qualification" ma wysoki potencjał automatyzacji (80%). Mogę zaproponować agenta AI, który przejmie scoring leadów.`,
+                `Wykryłem lukę w procesie: brak formalnego handoffu między Marketing a Sprzedażą. Rekomenduję dodanie noda Handoff z przypisanym SOP.`,
+            ];
+            setAgentMessages(prev => [...prev, { role: 'assistant', content: responses[Math.floor(Math.random() * responses.length)] }]);
+            setProcessingAgent(false);
+        }, 1500);
+    }, [agentInput]);
+
+    const handleSuggestionClick = useCallback((suggestion: typeof agentSuggestions[0]) => {
+        setAgentMessages(prev => [...prev,
+        { role: 'user', content: `Wykonaj: ${suggestion.text}` },
+        ]);
+        setProcessingAgent(true);
+        setTimeout(() => {
+            let response = '';
+            switch (suggestion.action) {
+                case 'request-sop':
+                    response = `✅ Utworzono CouncilRequest o nowy SOP dla etapu "${suggestion.stage}". Rada zostanie powiadomiona i może zatwierdzić lub odrzucić propozycję.`;
+                    break;
+                case 'request-agent':
+                    response = `✅ Zaproponowano nowego Agenta AI dla "${suggestion.stage}". Agent będzie monitorował lead score i automatycznie przydzielał follow-upy.`;
+                    break;
+                case 'fix-muda':
+                    response = `✅ Zidentyfikowano MUDA (marnotrawstwo). Dodano do raportu MUDA jako "Brak SOP w punkcie przekazania". Priorytet: WYSOKI.`;
+                    break;
+                case 'automate':
+                    response = `✅ Przeanalizowano ${suggestion.stage}. Rekomendacja: webhook z CRM → automatyczna kwalifikacja → routing. Szacowany wzrost efektywności: +35%.`;
+                    break;
+            }
+            setAgentMessages(prev => [...prev, { role: 'assistant', content: response }]);
+            setProcessingAgent(false);
+        }, 2000);
+    }, []);
+
+    return (
+        <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-background p-4 overflow-auto' : 'space-y-6'}`}>
+            {/* Fullscreen floating bar */}
+            {isFullscreen && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute top-4 right-4 z-[60] flex items-center gap-2"
+                >
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-card/90 backdrop-blur-sm border-border shadow-lg gap-2"
+                        onClick={() => setAgentPanelOpen(!agentPanelOpen)}
+                    >
+                        <Sparkles className="h-4 w-4 text-purple-400" />
+                        Asystent AI
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="bg-card/90 backdrop-blur-sm border-border shadow-lg"
+                        onClick={() => setIsFullscreen(false)}
+                    >
+                        <Minimize2 className="h-4 w-4" />
+                    </Button>
+                </motion.div>
+            )}
+            {/* Header */}
+            {!isFullscreen && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="flex items-center justify-between"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 p-3 border border-cyan-500/20">
+                            <GitBranch className="h-6 w-6 text-cyan-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-foreground">Łańcuch Wartości</h1>
+                            <p className="text-sm text-muted-foreground">Interaktywna mapa procesów</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {/* View Toggle */}
+                        <div className="flex items-center rounded-lg border border-border bg-card/50 p-1">
+                            <button
+                                onClick={() => setView('whiteboard')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'whiteboard'
+                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                <Map className="h-4 w-4" />
+                                Whiteboard
+                            </button>
+                            <button
+                                onClick={() => setView('compare')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'compare'
+                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                <GitCompare className="h-4 w-4" />
+                                Porównaj
+                            </button>
+                            <button
+                                onClick={() => setView('list')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all ${view === 'list'
+                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                <LayoutGrid className="h-4 w-4" />
+                                Lista
+                            </button>
+                        </div>
+
+                        {/* Save Snapshot Button */}
+                        {view === 'whiteboard' && currentNodes.length > 0 && (
+                            <Button
+                                variant="outline"
+                                onClick={() => setSaveDialogOpen(true)}
+                                className="gap-2"
+                            >
+                                <Save className="h-4 w-4" />
+                                Zapisz Snapshot
+                            </Button>
+                        )}
+
+                        <Button
+                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                            onClick={() => setNewMapDialogOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Nowa Mapa
+                        </Button>
                         <Button
                             variant="outline"
-                            onClick={() => setSaveDialogOpen(true)}
-                            className="gap-2"
+                            size="icon"
+                            onClick={() => setIsFullscreen(true)}
+                            title="Fullscreen"
                         >
-                            <Save className="h-4 w-4" />
-                            Zapisz Snapshot
+                            <Maximize2 className="h-4 w-4" />
                         </Button>
-                    )}
-
-                    <Button className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Nowa Mapa
-                    </Button>
-                </div>
-            </motion.div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => setAgentPanelOpen(!agentPanelOpen)}
+                        >
+                            <Sparkles className="h-4 w-4 text-purple-400" />
+                            Asystent
+                        </Button>
+                    </div>
+                </motion.div>
+            )}
 
             {/* Stats */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="grid gap-4 md:grid-cols-5"
-            >
-                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-cyan-500/30 transition-colors">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Layers className="h-4 w-4" />
-                        <span className="text-sm">Etapy</span>
+            {!isFullscreen && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="grid gap-4 md:grid-cols-5"
+                >
+                    <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-cyan-500/30 transition-colors">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Layers className="h-4 w-4" />
+                            <span className="text-sm">Etapy</span>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-foreground">{stats.stages}</p>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-foreground">{stats.stages}</p>
-                </div>
-                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-blue-500/30 transition-colors">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <FileText className="h-4 w-4" />
-                        <span className="text-sm">Procesy</span>
+                    <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-blue-500/30 transition-colors">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <FileText className="h-4 w-4" />
+                            <span className="text-sm">Procesy</span>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-foreground">{stats.processes}</p>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-foreground">{stats.processes}</p>
-                </div>
-                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-purple-500/30 transition-colors">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Bot className="h-4 w-4" />
-                        <span className="text-sm">Agenci AI</span>
+                    <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-purple-500/30 transition-colors">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Bot className="h-4 w-4" />
+                            <span className="text-sm">Agenci AI</span>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-purple-400">{stats.agents}</p>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-purple-400">{stats.agents}</p>
-                </div>
-                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-emerald-500/30 transition-colors">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <ArrowRightLeft className="h-4 w-4" />
-                        <span className="text-sm">Automatyzacja</span>
+                    <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-emerald-500/30 transition-colors">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <ArrowRightLeft className="h-4 w-4" />
+                            <span className="text-sm">Automatyzacja</span>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-emerald-400">{stats.automation}%</p>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-emerald-400">{stats.automation}%</p>
-                </div>
-                <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-indigo-500/30 transition-colors">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Layers className="h-4 w-4" />
-                        <span className="text-sm">Obszary</span>
+                    <div className="rounded-xl border border-border bg-card/50 p-4 hover:border-indigo-500/30 transition-colors">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Layers className="h-4 w-4" />
+                            <span className="text-sm">Obszary</span>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-indigo-400">{areas.length}</p>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-indigo-400">{areas.length}</p>
-                </div>
-            </motion.div>
+                </motion.div>
+            )}
 
             {/* Content */}
             {view === 'whiteboard' && (
@@ -414,7 +592,7 @@ export default function ValueChainPage() {
                     animate={{ opacity: 1 }}
                     className="rounded-xl border border-border bg-card/50 p-6"
                 >
-                    <ValueChainTable />
+                    <ValueChainTable onCreateNew={openNewMapDialog} />
                 </motion.div>
             )}
 
@@ -482,6 +660,68 @@ export default function ValueChainPage() {
                 </DialogContent>
             </Dialog>
 
+            {/* New Map Dialog */}
+            <Dialog open={newMapDialogOpen} onOpenChange={setNewMapDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Nowa Mapa Łańcucha Wartości</DialogTitle>
+                        <DialogDescription>
+                            Utwórz nową mapę procesów. Możesz ją wypełnić elementami z Whiteboard.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="map-name">Nazwa *</Label>
+                            <Input
+                                id="map-name"
+                                placeholder="np. Łańcuch wartości — Sprzedaż B2B"
+                                value={newMapName}
+                                onChange={(e) => setNewMapName(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="map-desc">Opis</Label>
+                            <Textarea
+                                id="map-desc"
+                                placeholder="Krótki opis mapy procesów..."
+                                value={newMapDescription}
+                                onChange={(e) => setNewMapDescription(e.target.value)}
+                                rows={3}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="map-segment">Segment</Label>
+                            <Select value={newMapSegment} onValueChange={setNewMapSegment}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Wybierz segment..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="B2B">B2B</SelectItem>
+                                    <SelectItem value="B2C">B2C</SelectItem>
+                                    <SelectItem value="MSP">MSP</SelectItem>
+                                    <SelectItem value="Enterprise">Enterprise</SelectItem>
+                                    <SelectItem value="SMB">SMB</SelectItem>
+                                    <SelectItem value="Internal">Wewnętrzny</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setNewMapDialogOpen(false)}>
+                            Anuluj
+                        </Button>
+                        <Button onClick={handleCreateMap} disabled={creatingMap}>
+                            {creatingMap ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Plus className="h-4 w-4 mr-2" />
+                            )}
+                            Utwórz
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Selecting Workflow Info */}
             {selectingSlot && (
                 <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg">
@@ -496,6 +736,99 @@ export default function ValueChainPage() {
                 isOpen={optimizationOpen}
                 onToggle={() => setOptimizationOpen(false)}
             />
+
+            {/* Agent Assistant Panel */}
+            {agentPanelOpen && (
+                <motion.div
+                    initial={{ opacity: 0, x: 300 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 300 }}
+                    className={`${isFullscreen
+                        ? 'fixed top-4 right-4 bottom-4 w-96 z-[55]'
+                        : 'fixed top-20 right-4 bottom-4 w-96 z-40'
+                        } rounded-xl border border-border bg-card/95 backdrop-blur-lg shadow-2xl flex flex-col overflow-hidden`}
+                >
+                    {/* Agent Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-purple-500/10 to-cyan-500/10">
+                        <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-purple-500/20">
+                                <Sparkles className="h-4 w-4 text-purple-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold">Asystent Value Chain</h3>
+                                <p className="text-[10px] text-muted-foreground">Analiza • Sugestie • Automatyzacja</p>
+                            </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAgentPanelOpen(false)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+
+                    {/* Suggestions */}
+                    {agentMessages.length === 0 && (
+                        <div className="p-4 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                                <Lightbulb className="h-3 w-3 inline mr-1" /> Sugestie
+                            </p>
+                            {agentSuggestions.map((s, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => handleSuggestionClick(s)}
+                                    className="w-full text-left p-3 rounded-lg border border-border hover:border-purple-500/30 hover:bg-purple-500/5 transition-all text-sm flex items-start gap-2 group"
+                                >
+                                    <span className="text-base">{s.icon}</span>
+                                    <span className="flex-1">{s.text}</span>
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Chat Messages */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {agentMessages.map((msg, i) => (
+                            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${msg.role === 'user'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted border border-border'
+                                    }`}>
+                                    {msg.content}
+                                </div>
+                            </div>
+                        ))}
+                        {processingAgent && (
+                            <div className="flex justify-start">
+                                <div className="bg-muted border border-border px-3 py-2 rounded-xl text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex gap-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">Analizuję...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Input */}
+                    <div className="p-3 border-t border-border">
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="Zapytaj o łańcuch wartości..."
+                                value={agentInput}
+                                onChange={(e) => setAgentInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleAgentSend()}
+                                className="text-sm"
+                            />
+                            <Button size="icon" onClick={handleAgentSend} disabled={processingAgent || !agentInput.trim()}>
+                                <Send className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
         </div>
     );
 }

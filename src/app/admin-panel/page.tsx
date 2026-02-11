@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useSession } from '@/lib/auth-client';
-import { redirect } from 'next/navigation';
+import { redirect, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -101,15 +102,33 @@ const adminModules = [
     },
 ];
 
-const platformStats = [
-    { label: 'Organizacje', value: '12', change: '+2 ten miesiąc', color: 'text-blue-500' },
-    { label: 'Aktywni Użytkownicy', value: '156', change: '+18 ten tydzień', color: 'text-emerald-500' },
-    { label: 'Tokeny AI (MTD)', value: '$847', change: '-12% vs prev', color: 'text-violet-500' },
-    { label: 'Uptime', value: '99.9%', change: '30d rolling', color: 'text-green-500' },
+const defaultPlatformStats = [
+    { label: 'Organizacje', value: '—', change: 'ładowanie...', color: 'text-blue-500', key: 'organizations' },
+    { label: 'Użytkownicy', value: '—', change: '', color: 'text-emerald-500', key: 'users' },
+    { label: 'SOPs', value: '—', change: '', color: 'text-violet-500', key: 'sops' },
+    { label: 'Agenci AI', value: '—', change: '', color: 'text-green-500', key: 'agents' },
 ];
 
 export default function AdminPanelPage() {
     const { data: session, isPending } = useSession();
+    const router = useRouter();
+    const [platformStats, setPlatformStats] = useState(defaultPlatformStats);
+
+    useEffect(() => {
+        fetch('/api/admin/stats')
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data) {
+                    setPlatformStats([
+                        { label: 'Organizacje', value: String(data.organizations), change: 'aktywne', color: 'text-blue-500', key: 'organizations' },
+                        { label: 'Użytkownicy', value: String(data.users), change: 'zarejestrowanych', color: 'text-emerald-500', key: 'users' },
+                        { label: 'SOPs', value: String(data.sops), change: 'procedur', color: 'text-violet-500', key: 'sops' },
+                        { label: 'Agenci AI', value: String(data.agents), change: 'aktywnych', color: 'text-green-500', key: 'agents' },
+                    ]);
+                }
+            })
+            .catch(() => { }); // fallback to defaults
+    }, []);
 
     if (isPending) {
         return (
@@ -234,21 +253,21 @@ export default function AdminPanelPage() {
                 </CardHeader>
                 <CardContent className="pt-0">
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
+                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400" onClick={() => router.push('/meta-admin/newsletter')}>
                             <Send className="h-4 w-4 mr-2" />
                             Nowy Newsletter
                         </Button>
-                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
+                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400" onClick={() => router.push('/backoffice/companies')}>
                             <Building2 className="h-4 w-4 mr-2" />
                             Dodaj Organizację
                         </Button>
-                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
+                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400" onClick={() => router.push('/backoffice/ai-keys')}>
                             <Key className="h-4 w-4 mr-2" />
                             Generuj API Key
                         </Button>
-                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400">
+                        <Button variant="outline" size="sm" className="text-neutral-600 dark:text-neutral-400" onClick={() => router.push('/admin-panel/audit')}>
                             <BarChart3 className="h-4 w-4 mr-2" />
-                            Raport Zużycia AI
+                            Audit Log
                         </Button>
                     </div>
                 </CardContent>

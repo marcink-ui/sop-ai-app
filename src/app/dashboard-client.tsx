@@ -93,7 +93,7 @@ const QUICK_ACTIONS = [
 // Database modules
 const MODULES = [
     { name: 'SOPs', href: '/sops', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10', hoverBg: 'hover:bg-blue-500/5' },
-    { name: 'AI Agents', href: '/agents', icon: Bot, color: 'text-purple-500', bg: 'bg-purple-500/10', hoverBg: 'hover:bg-purple-500/5' },
+    { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-500', bg: 'bg-purple-500/10', hoverBg: 'hover:bg-purple-500/5' },
     { name: 'MUDA', href: '/muda', icon: Search, color: 'text-orange-500', bg: 'bg-orange-500/10', hoverBg: 'hover:bg-orange-500/5' },
     { name: 'Zespół', href: '/roles', icon: Users, color: 'text-green-500', bg: 'bg-green-500/10', hoverBg: 'hover:bg-green-500/5' },
     { name: 'Łańcuch', href: '/value-chain', icon: GitBranch, color: 'text-cyan-500', bg: 'bg-cyan-500/10', hoverBg: 'hover:bg-cyan-500/5' },
@@ -158,7 +158,7 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                 <div className="lg:col-span-2">
                     <div className="flex items-center gap-2 mb-4">
                         <Zap className="h-4 w-4 text-amber-500" />
-                        <h2 className="text-sm font-semibold text-neutral-900 dark:text-white uppercase tracking-wide">
+                        <h2 className="text-sm font-semibold theme-text uppercase tracking-wide">
                             Szybkie akcje
                         </h2>
                     </div>
@@ -171,7 +171,7 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                                 transition={{ delay: 0.3 + i * 0.05 }}
                             >
                                 <Link href={action.href}>
-                                    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 p-4 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer">
+                                    <div className="group relative overflow-hidden theme-card p-4 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
                                         <div className={cn(
                                             'flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br shadow-md mb-3',
                                             action.gradient,
@@ -179,9 +179,9 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                                         )}>
                                             <action.icon className="h-5 w-5 text-white" />
                                         </div>
-                                        <p className="font-semibold text-sm text-neutral-900 dark:text-white">{action.label}</p>
-                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{action.description}</p>
-                                        <ArrowRight className="absolute top-4 right-4 h-4 w-4 text-neutral-300 dark:text-neutral-700 group-hover:text-neutral-500 dark:group-hover:text-neutral-400 transition-colors" />
+                                        <p className="font-semibold text-sm theme-text">{action.label}</p>
+                                        <p className="text-xs theme-text-muted mt-0.5">{action.description}</p>
+                                        <ArrowRight className="absolute top-4 right-4 h-4 w-4 theme-text-muted group-hover:theme-text-secondary transition-colors" />
                                     </div>
                                 </Link>
                             </motion.div>
@@ -194,22 +194,22 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4 }}
-                    className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-950/30 dark:via-purple-950/20 dark:to-indigo-950/20 p-5 flex flex-col"
+                    className="rounded-[var(--radius)] border theme-border bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-950/30 dark:via-purple-950/20 dark:to-indigo-950/20 p-5 flex flex-col"
                 >
                     <div className="flex items-center gap-2 mb-4">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 shadow-md">
                             <Sparkles className="h-4 w-4 text-white" />
                         </div>
-                        <h3 className="font-semibold text-neutral-900 dark:text-white text-sm">AI Insights</h3>
+                        <h3 className="font-semibold theme-text text-sm">Wskazówki AI</h3>
                     </div>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 flex-1 leading-relaxed">
+                    <p className="text-sm theme-text-secondary mb-4 flex-1 leading-relaxed">
                         Masz <span className="font-semibold text-violet-600 dark:text-violet-400">{stats.sops} procedur</span> i{' '}
                         <span className="font-semibold text-purple-600 dark:text-purple-400">{stats.agents} agentów AI</span>.
                         Zapytaj AI o rekomendacje optymalizacji procesów lub analizę strat MUDA.
                     </p>
                     <Button
                         onClick={toggleChat}
-                        className="w-full gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:opacity-90 shadow-lg"
+                        className="w-full gap-2 btn-primary"
                     >
                         <Sparkles className="h-4 w-4" />
                         Zapytaj AI
@@ -224,14 +224,14 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
-                    className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 p-5"
+                    className="theme-card p-5"
                 >
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <Activity className="h-4 w-4 text-neutral-500" />
-                            <h3 className="font-semibold text-sm text-neutral-900 dark:text-white uppercase tracking-wide">Moduły</h3>
+                            <Activity className="h-4 w-4 theme-text-muted" />
+                            <h3 className="font-semibold text-sm theme-text uppercase tracking-wide">Moduły</h3>
                         </div>
-                        <span className="text-xs text-neutral-400">{MODULES.length} aktywnych</span>
+                        <span className="text-xs theme-text-muted">{MODULES.length} aktywnych</span>
                     </div>
                     <div className="space-y-1">
                         {MODULES.map((mod, i) => (
@@ -245,17 +245,17 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                                     href={mod.href}
                                     className={cn(
                                         'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all',
-                                        'hover:bg-neutral-50 dark:hover:bg-neutral-800/50',
+                                        'hover:bg-[var(--bg-secondary)]',
                                         'group'
                                     )}
                                 >
                                     <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', mod.bg)}>
                                         <mod.icon className={cn('h-4 w-4', mod.color)} />
                                     </div>
-                                    <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">
+                                    <span className="text-sm font-medium theme-text-secondary group-hover:theme-text transition-colors">
                                         {mod.name}
                                     </span>
-                                    <ArrowUpRight className="ml-auto h-3.5 w-3.5 text-neutral-300 dark:text-neutral-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <ArrowUpRight className="ml-auto h-3.5 w-3.5 theme-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </Link>
                             </motion.div>
                         ))}
@@ -267,18 +267,18 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 }}
-                    className="lg:col-span-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 overflow-hidden"
+                    className="lg:col-span-2 theme-card overflow-hidden"
                 >
                     <div className="flex items-center justify-between p-5 pb-0">
                         <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-neutral-500" />
-                            <h3 className="font-semibold text-sm text-neutral-900 dark:text-white uppercase tracking-wide">
+                            <Clock className="h-4 w-4 theme-text-muted" />
+                            <h3 className="font-semibold text-sm theme-text uppercase tracking-wide">
                                 Ostatnia aktywność
                             </h3>
                         </div>
                         <Link
                             href="/sops"
-                            className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            className="flex items-center gap-1 text-xs theme-text-muted hover:text-[var(--accent)] transition-colors"
                         >
                             Zobacz wszystkie
                             <ArrowUpRight className="h-3 w-3" />
@@ -287,14 +287,14 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
 
                     {recentSops.length > 0 ? (
                         <div className="p-5">
-                            <div className="rounded-lg border border-neutral-100 dark:border-neutral-800/50 overflow-hidden">
+                            <div className="rounded-lg border theme-border overflow-hidden">
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Tytuł</th>
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider hidden sm:table-cell">Dział</th>
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Status</th>
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider hidden md:table-cell">Data</th>
+                                        <tr className="border-b theme-border bg-[var(--bg-secondary)]">
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold theme-text-muted uppercase tracking-wider">Tytuł</th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold theme-text-muted uppercase tracking-wider hidden sm:table-cell">Dział</th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold theme-text-muted uppercase tracking-wider">Status</th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold theme-text-muted uppercase tracking-wider hidden md:table-cell">Data</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -304,22 +304,22 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                                                 initial={{ opacity: 0, x: -10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: 0.6 + index * 0.05 }}
-                                                className="border-b last:border-0 transition-colors cursor-pointer border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20"
+                                                className="border-b last:border-0 transition-colors cursor-pointer theme-border hover:bg-[var(--bg-secondary)]"
                                             >
                                                 <td className="px-4 py-3">
                                                     <Link href={`/sops/${sop.id}`}>
-                                                        <span className="font-medium text-sm text-neutral-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                                        <span className="font-medium text-sm theme-text hover:text-[var(--accent)] transition-colors">
                                                             {sop.title}
                                                         </span>
                                                     </Link>
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-neutral-500 dark:text-neutral-400 hidden sm:table-cell">
+                                                <td className="px-4 py-3 text-sm theme-text-secondary hidden sm:table-cell">
                                                     {sop.department?.name || '—'}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <StatusBadge status={sop.status as 'draft' | 'active' | 'approved' | 'generated'} size="sm" />
                                                 </td>
-                                                <td className="px-4 py-3 text-xs text-neutral-400 hidden md:table-cell">
+                                                <td className="px-4 py-3 text-xs theme-text-muted hidden md:table-cell">
                                                     {new Date(sop.createdAt).toLocaleDateString('pl-PL')}
                                                 </td>
                                             </motion.tr>
@@ -335,14 +335,14 @@ export function DashboardClient({ user, stats, recentSops }: DashboardClientProp
                                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                                 className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 mb-4"
                             >
-                                <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                                <FileText className="h-8 w-8" style={{ color: 'var(--accent)' }} />
                             </motion.div>
-                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">Brak procedur SOP</h3>
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-sm mx-auto">
+                            <h3 className="text-lg font-semibold theme-text mb-2">Brak procedur SOP</h3>
+                            <p className="text-sm theme-text-secondary mb-6 max-w-sm mx-auto">
                                 Utwórz pierwszą procedurę, aby rozpocząć transformację.
                             </p>
                             <Link href="/sops/new">
-                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/25 gap-2">
+                                <Button size="sm" className="btn-primary gap-2">
                                     <Plus className="h-4 w-4" />
                                     Utwórz pierwszy SOP
                                 </Button>

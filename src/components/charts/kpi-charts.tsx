@@ -129,9 +129,10 @@ interface StackedBarChartProps {
         defects: number;
     }>;
     height?: number;
+    onBarClick?: (department: string, mudaType: string) => void;
 }
 
-export function MudaStackedBarChart({ data, height = 300 }: StackedBarChartProps) {
+export function MudaStackedBarChart({ data, height = 300, onBarClick }: StackedBarChartProps) {
     const mudaTypes = [
         { key: 'transport', name: 'Transport', color: COLORS.violet },
         { key: 'inventory', name: 'Zapasy', color: COLORS.cyan },
@@ -161,6 +162,12 @@ export function MudaStackedBarChart({ data, height = 300 }: StackedBarChartProps
                         name={muda.name}
                         stackId="a"
                         fill={muda.color}
+                        className={onBarClick ? 'cursor-pointer' : ''}
+                        onClick={(barData: Record<string, unknown>) => {
+                            if (onBarClick && barData?.department) {
+                                onBarClick(barData.department as string, muda.key);
+                            }
+                        }}
                     />
                 ))}
             </BarChart>
@@ -222,9 +229,10 @@ export function RadialProgress({
 interface DonutChartProps {
     data: Array<{ name: string; value: number }>;
     height?: number;
+    onSliceClick?: (name: string) => void;
 }
 
-export function DonutChart({ data, height = 250 }: DonutChartProps) {
+export function DonutChart({ data, height = 250, onSliceClick }: DonutChartProps) {
     return (
         <ResponsiveContainer width="100%" height={height}>
             <PieChart>
@@ -236,6 +244,12 @@ export function DonutChart({ data, height = 250 }: DonutChartProps) {
                     outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
+                    className={onSliceClick ? 'cursor-pointer' : ''}
+                    onClick={(sliceData: { name?: string }) => {
+                        if (onSliceClick && sliceData?.name) {
+                            onSliceClick(sliceData.name);
+                        }
+                    }}
                 >
                     {data.map((_, index) => (
                         <Cell
@@ -291,6 +305,7 @@ interface KpiStatCardProps {
     sparklineData?: Array<{ name: string; value: number }>;
     color?: string;
     icon?: React.ReactNode;
+    onClick?: () => void;
 }
 
 export function KpiStatCard({
@@ -300,13 +315,20 @@ export function KpiStatCard({
     changeLabel = 'vs last month',
     sparklineData,
     color = COLORS.violet,
-    icon
+    icon,
+    onClick
 }: KpiStatCardProps) {
     const isPositive = change && change > 0;
     const isNegative = change && change < 0;
 
     return (
-        <div className="rounded-xl border border-border bg-card/50 p-5 hover:border-violet-500/30 transition-all duration-300 group">
+        <div
+            className={`rounded-xl border border-border bg-card/50 p-5 hover:border-violet-500/30 transition-all duration-300 group ${onClick ? 'cursor-pointer hover:shadow-md hover:scale-[1.02]' : ''}`}
+            onClick={onClick}
+            role={onClick ? 'button' : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            onKeyDown={onClick ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+        >
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
                     {icon && (

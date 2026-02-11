@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import {
@@ -95,16 +95,16 @@ const SIDEBAR_CATEGORIES = {
         icon: Home,
         defaultOpen: true,
         items: [
+            { name: 'Moje Zadania', href: '/tasks', icon: ClipboardList, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Pandy', href: '/pandas', icon: PandaIcon, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-500/20', minRole: 'EXPLORER' },
             { name: 'Kaizen', href: '/kaizen', icon: Lightbulb, color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Historia AI', href: '/chat-library', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Mój kontekst', href: '/my-context', icon: User, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
     procesy: {
         label: 'Procesy',
         icon: FileText,
-        defaultOpen: true,
+        defaultOpen: false,
         items: [
             { name: 'SOP', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'CITIZEN_DEV' },
@@ -119,7 +119,6 @@ const SIDEBAR_CATEGORIES = {
         items: [
             { name: 'Resources Hub', href: '/resources', icon: Library, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Graf Wiedzy', href: '/knowledge-graph', icon: Network, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-100 dark:bg-pink-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'Automatyzacje', href: '/automations', icon: Cog, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'MANAGER' },
             { name: 'Kursy', href: '/courses', icon: GraduationCap, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
@@ -129,7 +128,7 @@ const SIDEBAR_CATEGORIES = {
         defaultOpen: false,
         items: [
             { name: 'AI Canvas', href: '/canvas', icon: ClipboardList, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'CITIZEN_DEV' },
-            { name: 'GTM Canvas', href: '/canvas/gtm', icon: Target, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Twórz Canvas', href: '/canvas/gtm', icon: Target, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-500/20', minRole: 'CITIZEN_DEV' },
         ] as NavItemData[],
     },
     zarzadzanie: {
@@ -167,6 +166,17 @@ export function Sidebar() {
     const { toggleChat, isOpen: isChatOpen } = useChat();
     const { data: session } = useSession();
     const userRole = session?.user?.role;
+    const [orgName, setOrgName] = useState<string>('Business OS');
+
+    // Fetch organization name dynamically
+    useEffect(() => {
+        if (session?.user) {
+            fetch('/api/user/organization')
+                .then(res => res.json())
+                .then(data => { if (data.name) setOrgName(data.name); })
+                .catch(() => { /* keep fallback */ });
+        }
+    }, [session?.user]);
 
     // State for category expansion
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
@@ -208,7 +218,7 @@ export function Sidebar() {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-white/95">VantageOS</span>
-                                    <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 tracking-[0.08em] uppercase">{(session?.user as Record<string, unknown>)?.organizationName as string || 'Business OS'}</span>
+                                    <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 tracking-[0.08em] uppercase truncate max-w-[140px] block">{orgName}</span>
                                 </div>
                             </Link>
                         )}
@@ -234,17 +244,6 @@ export function Sidebar() {
                             label="Pulpit"
                             active={pathname === '/'}
                             collapsed={collapsed}
-                        />
-
-                        {/* Moje Zadania - top level, directly under Pulpit */}
-                        <NavItem
-                            href="/tasks"
-                            icon={ClipboardList}
-                            label="Moje Zadania"
-                            active={pathname === '/tasks' || pathname.startsWith('/tasks/')}
-                            collapsed={collapsed}
-                            iconColor="text-rose-600 dark:text-rose-400"
-                            iconBgColor="bg-rose-100 dark:bg-rose-500/20"
                         />
 
                         <Separator className="my-3 bg-neutral-200 dark:bg-neutral-800/50" />
@@ -339,34 +338,37 @@ export function Sidebar() {
                                     size="sm"
                                     onClick={toggleChat}
                                     className={cn(
-                                        'w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium transition-all',
+                                        'w-full justify-start gap-3 px-3 py-2.5 text-sm font-semibold transition-all relative overflow-hidden',
                                         isChatOpen
-                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
-                                            : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800/50 dark:hover:text-white',
+                                            ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:from-blue-500 hover:to-violet-500 dark:shadow-blue-500/20'
+                                            : 'bg-gradient-to-r from-blue-50 to-violet-50 text-blue-700 hover:from-blue-100 hover:to-violet-100 border border-blue-200/60 dark:from-blue-500/10 dark:to-violet-500/10 dark:text-blue-300 dark:border-blue-500/20 dark:hover:from-blue-500/20 dark:hover:to-violet-500/20',
                                         collapsed && 'justify-center px-0'
                                     )}
                                 >
                                     <div className={cn(
-                                        'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                                        'flex h-7 w-7 items-center justify-center rounded-lg transition-colors shrink-0',
                                         isChatOpen
-                                            ? 'bg-blue-200 dark:bg-blue-500/30'
-                                            : 'bg-neutral-100 dark:bg-neutral-800/50'
+                                            ? 'bg-white/20'
+                                            : 'bg-gradient-to-br from-blue-500 to-violet-600 shadow-sm'
                                     )}>
                                         <Sparkles className={cn(
                                             'h-4 w-4',
                                             isChatOpen
-                                                ? 'text-blue-600 dark:text-blue-400'
-                                                : 'text-neutral-500 dark:text-neutral-400'
+                                                ? 'text-white'
+                                                : 'text-white'
                                         )} />
                                     </div>
                                     {!collapsed && <span>Czat AI</span>}
                                     {!collapsed && isChatOpen && (
-                                        <div className="ml-auto h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                        <div className="ml-auto h-2 w-2 rounded-full bg-white animate-pulse shadow-sm shadow-white/50" />
+                                    )}
+                                    {!collapsed && !isChatOpen && (
+                                        <span className="ml-auto text-[10px] font-medium opacity-60 tracking-wider">⌘/</span>
                                     )}
                                 </Button>
                             </TooltipTrigger>
                             {collapsed && (
-                                <TooltipContent side="right">Czat AI</TooltipContent>
+                                <TooltipContent side="right">Czat AI (⌘/)</TooltipContent>
                             )}
                         </Tooltip>
 

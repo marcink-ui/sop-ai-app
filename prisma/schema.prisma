@@ -51,6 +51,10 @@ model Organization {
   // Partner assignments (for PARTNER role users)
   partnerAssignments  PartnerOrganization[]
   
+  // Transcripts & Canvas (Sprint 22)
+  transcripts         Transcript[]
+  canvases            Canvas[]
+  
   @@index([slug])
 }
 
@@ -68,6 +72,31 @@ model User {
   
   departmentId   String?
   department     Department? @relation(fields: [departmentId], references: [id])
+  
+  // Profile & Context fields (Task 1 Sprint 19)
+  bio                String?   @db.Text     // Short bio / about me
+  cv                 String?   @db.Text     // Career summary / CV
+  phone              String?                // Phone number
+  linkedin           String?                // LinkedIn URL
+  
+  // Personality & Character Tests
+  mbti               String?                // e.g. "ENTJ"
+  disc               String?                // e.g. "D/I"
+  strengthsFinder    String?   @db.Text     // CliftonStrengths results
+  enneagram          String?                // e.g. "Type 3 - The Achiever"
+  personalityNotes   String?   @db.Text     // Other tests / free-form notes
+  
+  // Communication & Work style  
+  communicationStyle String?                // e.g. "direct", "analytical", "expressive"
+  workingHours       String?                // e.g. "9:00-17:00 CET"
+  preferredLanguage  String?   @default("pl") // UI/AI language preference
+  
+  // Career & Professional  
+  certifications     String?   @db.Text     // Comma-separated or JSON
+  skills             String?   @db.Text     // Key skills
+  interests          String?   @db.Text     // Professional interests
+  goals              String?   @db.Text     // Career / personal goals
+  values             String?   @db.Text     // Core values
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -98,6 +127,10 @@ model User {
   
   // Partner: companies assigned to this user (when role = PARTNER)
   partnerOrganizations     PartnerOrganization[]
+  
+  // Transcripts & Canvas (Sprint 22)
+  uploadedTranscripts      Transcript[]
+  createdCanvases          Canvas[]
   
   @@index([organizationId])
   @@index([email])
@@ -270,6 +303,7 @@ model Department {
   sops                SOP[]
   agents              Agent[]              @relation("AgentDepartment")
   organizationalRoles OrganizationalRole[] @relation("RoleDepartment")
+  canvases            Canvas[]
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -1463,4 +1497,100 @@ model CustomColumnValue {
   @@unique([columnId, entityId])
   @@index([columnId])
   @@index([entityId])
+}
+
+// ============================================================================
+// TRANSCRIPT & CANVAS (Sprint 22)
+// ============================================================================
+
+enum TranscriptStatus {
+  PENDING
+  PROCESSING
+  DONE
+  ERROR
+}
+
+enum TranscriptSource {
+  UPLOAD
+  FIREFLIES
+  RECORDING
+  PASTE
+}
+
+model Transcript {
+  id              String            @id @default(cuid())
+  title           String
+  source          TranscriptSource  @default(UPLOAD)
+  status          TranscriptStatus  @default(PENDING)
+  
+  // Raw content
+  rawContent      String?           @db.Text
+  rawFileUrl      String?           // URL if file-based
+  
+  // Processed/extracted data
+  processedData   Json?             // { summary, keyPoints, actionItems, entities }
+  extractedSops   Json?             // AI-extracted SOP candidates
+  extractedMuda   Json?             // AI-extracted MUDA findings
+  extractedAgents Json?             // AI-extracted agent suggestions
+  
+  // Metadata
+  durationMinutes Int?
+  speakerCount    Int?
+  language        String?           @default("pl")
+  tags            String[]          // Array of tag strings
+  
+  // Error handling
+  errorMessage    String?           @db.Text
+  processedAt     DateTime?
+  
+  // Multi-tenant
+  organizationId  String
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Who uploaded
+  uploadedById    String
+  uploadedBy      User              @relation(fields: [uploadedById], references: [id])
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([organizationId])
+  @@index([status])
+  @@index([uploadedById])
+}
+
+enum CanvasStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Canvas {
+  id              String        @id @default(cuid())
+  title           String
+  subtitle        String?
+  status          CanvasStatus  @default(DRAFT)
+  
+  // Canvas content — JSON sections (flexible schema)
+  sections        Json?         // Array of { id, title, content, order, type }
+  metadata        Json?         // { lastEditedBy, version, template }
+  
+  // Multi-tenant
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Department scope (optional — null = org-wide)
+  departmentId    String?
+  department      Department?   @relation(fields: [departmentId], references: [id])
+  
+  // Who created
+  createdById     String
+  createdBy       User          @relation(fields: [createdById], references: [id])
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([status])
 }

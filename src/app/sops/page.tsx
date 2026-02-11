@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import {
     FileText,
     Plus,
@@ -174,32 +175,41 @@ export default function SOPsPage() {
         });
 
     const statusOptions = [
-        { value: 'all', label: 'All Status' },
-        { value: 'draft', label: 'Draft' },
-        { value: 'generated', label: 'Generated' },
-        { value: 'audited', label: 'Audited' },
-        { value: 'architected', label: 'Architected' },
-        { value: 'prompt-generated', label: 'Prompt Generated' },
-        { value: 'completed', label: 'Completed' },
+        { value: 'all', label: 'Wszystkie statusy' },
+        { value: 'draft', label: 'Wersja robocza' },
+        { value: 'generated', label: 'Wygenerowany' },
+        { value: 'audited', label: 'Audytowany' },
+        { value: 'architected', label: 'Zaprojektowany' },
+        { value: 'prompt-generated', label: 'Prompt wygenerowany' },
+        { value: 'completed', label: 'Ukończony' },
     ];
 
     return (
-        <div className="space-y-6">
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+            className="space-y-6"
+        >
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-500/20 p-2">
-                        <FileText className="h-6 w-6 text-blue-400" />
-                    </div>
+                    <motion.div
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+                        className="flex h-12 w-12 items-center justify-center theme-accent-icon shadow-lg"
+                    >
+                        <FileText className="h-6 w-6 text-white" />
+                    </motion.div>
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground">SOPs</h1>
-                        <p className="text-sm text-muted-foreground">{sops.length} total records</p>
+                        <h1 className="text-2xl font-bold text-foreground">Procedury SOP</h1>
+                        <p className="text-sm text-muted-foreground">{sops.length} procedur łącznie</p>
                     </div>
                 </div>
                 <Link href="/sops/new">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Button className="btn-primary">
                         <Plus className="mr-2 h-4 w-4" />
-                        New SOP
+                        Nowy SOP
                     </Button>
                 </Link>
             </div>
@@ -209,7 +219,7 @@ export default function SOPsPage() {
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                        placeholder="Search SOPs..."
+                        placeholder="Szukaj procedur..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="pl-9 bg-card border-border"
@@ -237,35 +247,35 @@ export default function SOPsPage() {
                     className="border-border"
                 >
                     <ArrowUpDown className="mr-2 h-4 w-4" />
-                    {sortOrder === 'asc' ? 'Oldest' : 'Newest'}
+                    {sortOrder === 'asc' ? 'Najstarsze' : 'Najnowsze'}
                 </Button>
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
+            <div className="theme-card overflow-hidden">
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-border bg-card">
                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                Title
+                                Tytuł
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                Department
+                                Dział
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                Role
+                                Rola
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                 Status
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                Version
+                                Wersja
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                Date
+                                Data
                             </th>
                             <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                Actions
+                                Akcje
                             </th>
                         </tr>
                     </thead>
@@ -274,9 +284,9 @@ export default function SOPsPage() {
                             <tr>
                                 <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                                     <FileText className="mx-auto mb-3 h-12 w-12 opacity-20" />
-                                    <p>No SOPs found</p>
-                                    <Link href="/sops/new" className="mt-2 inline-block text-blue-400 hover:underline">
-                                        Create your first SOP
+                                    <p>Brak procedur</p>
+                                    <Link href="/sops/new" className="mt-2 inline-block hover:underline" style={{ color: 'var(--accent)' }}>
+                                        Utwórz pierwszą procedurę
                                     </Link>
                                 </td>
                             </tr>
@@ -326,21 +336,21 @@ export default function SOPsPage() {
                                                     onClick={() => router.push(`/sops/${sop.id}`)}
                                                 >
                                                     <Eye className="mr-2 h-4 w-4" />
-                                                    View
+                                                    Podgląd
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     className="text-popover-foreground cursor-pointer"
                                                     onClick={() => router.push(`/sops/${sop.id}/edit`)}
                                                 >
                                                     <Edit className="mr-2 h-4 w-4" />
-                                                    Edit
+                                                    Edytuj
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     className="text-popover-foreground cursor-pointer"
                                                     onClick={() => router.push(`/sops/${sop.id}/pipeline`)}
                                                 >
                                                     <Play className="mr-2 h-4 w-4" />
-                                                    Continue Pipeline
+                                                    Kontynuuj pipeline
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     className="text-red-400"
@@ -416,23 +426,40 @@ export default function SOPsPage() {
                     router.push(`/sops/${selectedSop?.id}`);
                 }}
             />
-        </div>
+        </motion.div>
     );
 }
 
+const statusLabels: Record<string, string> = {
+    draft: 'Wersja robocza',
+    generated: 'Wygenerowany',
+    audited: 'Audytowany',
+    architected: 'Zaprojektowany',
+    'prompt-generated': 'Prompt wygenerowany',
+    completed: 'Ukończony',
+    active: 'Aktywny',
+    approved: 'Zatwierdzony',
+    review: 'Do przeglądu',
+    pending: 'Oczekujący',
+};
+
 function StatusBadge({ status }: { status: string }) {
     const styles: Record<string, string> = {
-        draft: 'bg-neutral-800 text-neutral-400',
+        draft: 'bg-muted text-muted-foreground',
         generated: 'bg-blue-500/20 text-blue-400',
         audited: 'bg-orange-500/20 text-orange-400',
         architected: 'bg-cyan-500/20 text-cyan-400',
         'prompt-generated': 'bg-purple-500/20 text-purple-400',
         completed: 'bg-green-500/20 text-green-400',
+        active: 'bg-green-500/20 text-green-400',
+        approved: 'bg-emerald-500/20 text-emerald-400',
+        review: 'bg-purple-500/20 text-purple-400',
+        pending: 'bg-amber-500/20 text-amber-400',
     };
 
     return (
         <Badge className={styles[status] || styles.draft}>
-            {status}
+            {statusLabels[status] || status}
         </Badge>
     );
 }
