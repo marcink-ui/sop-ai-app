@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth-server';
+import { prisma } from '@/lib/prisma';
 import type OpenAI from 'openai';
 
 // Lazy OpenAI initialization
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
         }
 
-        const { transcript, companyName } = await request.json();
+        const { transcript, companyName, title } = await request.json();
 
         if (!transcript || typeof transcript !== 'string') {
             return NextResponse.json({ error: 'Transcript is required' }, { status: 400 });
@@ -115,6 +116,8 @@ export async function POST(request: Request) {
         if (transcript.length < 100) {
             return NextResponse.json({ error: 'Transcript too short (min 100 characters)' }, { status: 400 });
         }
+
+        const organizationId = (session.user as Record<string, unknown>).organizationId as string | null;
 
         // Call OpenAI for extraction
         const openai = await getOpenAI();
@@ -156,9 +159,79 @@ export async function POST(request: Request) {
         result.summary = result.summary || 'Brak podsumowania';
         result.confidence = result.confidence || 50;
 
+        // ── PERSIST TO DB ──────────────────────────────────────────
+        let transcriptId: string | null = null;
+
+        if (organizationId) {
+            // 1. Save Transcript record
+            const saved = await prisma.transcript.create({
+                data: {
+                    title: title || `Analiza: ${companyName || 'Transkrypcja'} — ${new Date().toISOString().slice(0, 10)}`,
+                    source: 'UPLOAD',
+                    status: 'PROCESSED',
+                    rawContent: transcript,
+                    processedData: {
+                        summary: result.summary,
+                        confidence: result.confidence,
+                        roles: result.roles,
+                        ontology: result.ontology,
+                    },
+                    extractedSops: result.sops as unknown as Record<string, unknown>[],
+                    extractedMuda: null, // MUDA comes from pipeline step 2
+                    extractedAgents: null, // Agents come from pipeline step 3-4
+                    language: 'pl',
+                    processedAt: new Date(),
+                    organizationId,
+                    uploadedById: session.user.id,
+                },
+            });
+            transcriptId = saved.id;
+
+            // 2. Merge into Organization.companyContext
+            const org = await prisma.organization.findUnique({
+                where: { id: organizationId },
+                select: { companyContext: true },
+            });
+
+            const existing = (org?.companyContext as Record<string, unknown>) || {};
+            const existingValueChains = (existing.valueChainDrafts as unknown[]) || [];
+            const existingImportedDocs = (existing.importedDocs as unknown[]) || [];
+
+            await prisma.organization.update({
+                where: { id: organizationId },
+                data: {
+                    companyContext: {
+                        ...existing,
+                        valueChainDrafts: [
+                            ...existingValueChains,
+                            ...result.valueChains.map(vc => ({
+                                ...vc,
+                                sourceTranscriptId: transcriptId,
+                                extractedAt: new Date().toISOString(),
+                            })),
+                        ],
+                        importedDocs: [
+                            ...existingImportedDocs,
+                            {
+                                transcriptId,
+                                title: title || companyName || 'Transkrypcja',
+                                summary: result.summary,
+                                sopCount: result.sops.length,
+                                roleCount: result.roles.length,
+                                importedAt: new Date().toISOString(),
+                            },
+                        ],
+                        lastAnalyzedAt: new Date().toISOString(),
+                    } as Record<string, unknown>,
+                },
+            });
+        }
+
         return NextResponse.json({
             success: true,
             result,
+            transcriptId,
+            persisted: !!organizationId,
             tokensUsed: completion.usage?.total_tokens || 0,
         });
 

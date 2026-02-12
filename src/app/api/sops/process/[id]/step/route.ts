@@ -176,7 +176,7 @@ async function buildStepContext(
     const sop = await prisma.sOP.findUnique({
         where: { id: sopId },
         include: {
-            department: { select: { name: true } },
+            department: { select: { id: true, name: true } },
             processLogs: { orderBy: { step: 'asc' }, where: { status: 'completed' } },
         },
     });
@@ -215,11 +215,51 @@ async function buildStepContext(
             parts.push(`## Canvas AI (kontekst działu)\n${JSON.stringify(relevantCanvas, null, 2)}`);
         } else {
             // Key sections only for later steps
-            parts.push(`## Canvas AI (kluczowe sekcje)\nProblemy: ${JSON.stringify(relevantCanvas?.problems || 'brak')}\nCele: ${JSON.stringify(relevantCanvas?.goals || 'brak')}`);
+            parts.push(`## Canvas AI (kluczowe sekcje)\nProblemy: ${JSON.stringify(relevantCanvas?.pain_points || relevantCanvas?.problems || 'brak')}\nCele: ${JSON.stringify(relevantCanvas?.goals_2026 || relevantCanvas?.goals || 'brak')}`);
         }
     }
 
-    // 5. Previous step outputs
+    // 5. Company context — importedDocs, valueChainDrafts (from transcript analysis)
+    if (org?.companyContext) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ctx = org.companyContext as any;
+        if (ctx.importedDocs?.length) {
+            parts.push(`## Przeanalizowane dokumenty (${ctx.importedDocs.length})`);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ctx.importedDocs.forEach((doc: any) => {
+                parts.push(`- ${doc.title}: ${doc.summary} (SOPy: ${doc.sopCount}, Role: ${doc.roleCount})`);
+            });
+        }
+        if (ctx.valueChainDrafts?.length && step >= 2) {
+            parts.push(`## Łańcuchy wartości z transkrypcji (${ctx.valueChainDrafts.length})`);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ctx.valueChainDrafts.forEach((vc: any) => {
+                parts.push(`- ${vc.name} (segment: ${vc.segment || 'N/A'}): ${vc.stages?.length || 0} etapów`);
+            });
+        }
+    }
+
+    // 6. DB Canvas records (for department-specific knowledge)
+    if (sop.department?.id) {
+        const canvasRecords = await prisma.canvas.findMany({
+            where: { organizationId, departmentId: sop.department.id, status: 'ACTIVE' },
+            select: { title: true, sections: true },
+            take: 3,
+        });
+        if (canvasRecords.length > 0) {
+            parts.push(`## Canvasy działu "${sop.department.name}" (${canvasRecords.length})`);
+            canvasRecords.forEach(c => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const sections = c.sections as any[];
+                if (sections) {
+                    const sectionSummary = sections.map(s => s.title).join(', ');
+                    parts.push(`- ${c.title}: [${sectionSummary}]`);
+                }
+            });
+        }
+    }
+
+    // 7. Previous step outputs
     for (const log of sop.processLogs) {
         if (log.step < step && log.output) {
             if (step - log.step <= 1) {
@@ -234,7 +274,7 @@ async function buildStepContext(
         }
     }
 
-    // 6. Value chain context (for steps 2+)
+    // 8. Value chain context (for steps 2+)
     if (step >= 2 && processData.sourceInput?.valueChainNodeId) {
         const vcNode = await prisma.valueChainNode.findUnique({
             where: { id: processData.sourceInput.valueChainNodeId },
@@ -248,7 +288,7 @@ async function buildStepContext(
         }
     }
 
-    // 7. Existing SOPs (for step 3 - architect needs to know what already exists)
+    // 9. Existing SOPs (for step 3 - architect needs to know what already exists)
     if (step >= 3) {
         const existingSops = await prisma.sOP.findMany({
             where: { organizationId, status: 'APPROVED', id: { not: sopId } },
