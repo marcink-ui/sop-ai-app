@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useMemo, useRef } from 'react';
+import { useCallback, useState, useMemo, useRef, useEffect } from 'react';
 import ReactFlow, {
     Node,
     Edge,
@@ -49,6 +49,7 @@ import { ElementDetailsPanel } from './element-details-panel';
 import { SimulationPanel } from './simulation-panel';
 
 interface WhiteboardProps {
+    mapId?: string;
     initialNodes?: Node[];
     initialEdges?: Edge[];
     onSave?: (nodes: Node[], edges: Edge[]) => void;
@@ -77,71 +78,33 @@ const edgeLabelStyle: React.CSSProperties = {
     color: 'var(--foreground, #111)',
 };
 
-// ── Sample Initial Data ────────────────────────────
+// ── Empty defaults (data comes from DB via props) ──
 
-const defaultNodes: Node[] = [
-    {
-        id: '1',
-        type: 'process',
-        position: { x: 60, y: 220 },
-        data: { label: 'Lead Generation', description: 'Marketing & inbound leads', automation: 0.6 },
-    },
-    {
-        id: '2',
-        type: 'sop',
-        position: { x: 360, y: 80 },
-        data: { label: 'SOP-SALES-001', status: 'approved' },
-    },
-    {
-        id: '3',
-        type: 'process',
-        position: { x: 360, y: 340 },
-        data: { label: 'Lead Qualification', description: 'Score and prioritize', automation: 0.8 },
-    },
-    {
-        id: '4',
-        type: 'agent',
-        position: { x: 660, y: 220 },
-        data: { label: 'Sales Assistant', model: 'GPT-4', active: true },
-    },
-    {
-        id: '5',
-        type: 'decision',
-        position: { x: 960, y: 220 },
-        data: { label: 'Qualified?' },
-    },
-    {
-        id: '6',
-        type: 'handoff',
-        position: { x: 1260, y: 80 },
-        data: { label: 'Sales Team', from: 'AI Agent', to: 'Account Executive' },
-    },
-    {
-        id: '7',
-        type: 'process',
-        position: { x: 1260, y: 340 },
-        data: { label: 'Nurture Campaign', description: 'Automated follow-up', automation: 0.9 },
-    },
-];
+const emptyNodes: Node[] = [];
+const emptyEdges: Edge[] = [];
 
-const defaultEdges: Edge[] = [
-    { id: 'e1-2', source: '1', target: '2', type: 'smoothstep', animated: true, style: { stroke: '#22c55e', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#22c55e', width: 16, height: 16 } },
-    { id: 'e1-3', source: '1', target: '3', type: 'smoothstep', animated: true, style: { stroke: '#3b82f6', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6', width: 16, height: 16 } },
-    { id: 'e3-4', source: '3', target: '4', type: 'smoothstep', animated: true, style: { stroke: '#a855f7', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#a855f7', width: 16, height: 16 } },
-    { id: 'e4-5', source: '4', target: '5', type: 'smoothstep', animated: true, style: { stroke: '#f59e0b', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#f59e0b', width: 16, height: 16 } },
-    { id: 'e5-6', source: '5', sourceHandle: 'yes', target: '6', type: 'smoothstep', label: 'Tak', labelStyle: edgeLabelStyle, style: { stroke: '#22c55e', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#22c55e', width: 16, height: 16 } },
-    { id: 'e5-7', source: '5', sourceHandle: 'no', target: '7', type: 'smoothstep', label: 'Nie', labelStyle: edgeLabelStyle, style: { stroke: '#ef4444', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444', width: 16, height: 16 } },
-];
+// REMOVED: hardcoded defaultNodes and defaultEdges — now loaded from DB
 
 export function ValueChainWhiteboard({
-    initialNodes = defaultNodes,
-    initialEdges = defaultEdges,
+    mapId,
+    initialNodes = emptyNodes,
+    initialEdges = emptyEdges,
     onSave,
     readOnly = false,
     onOpenOptimization,
 }: WhiteboardProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+    // Report changes to parent for auto-save
+    const changeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        if (changeTimeoutRef.current) clearTimeout(changeTimeoutRef.current);
+        changeTimeoutRef.current = setTimeout(() => {
+            onSave?.(nodes, edges);
+        }, 500);
+        return () => { if (changeTimeoutRef.current) clearTimeout(changeTimeoutRef.current); };
+    }, [nodes, edges]); // eslint-disable-line react-hooks/exhaustive-deps
     const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
     const { resolvedTheme } = useTheme();
     const { data: session } = useSession();

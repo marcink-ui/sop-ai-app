@@ -100,7 +100,7 @@ const typeCategories = [
 ];
 
 // Role-specific header components
-function SponsorHeader() {
+function SponsorHeader({ stats }: { stats: { total: number; pending: number; approved: number; rejected: number; voting: number } }) {
     return (
         <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -120,28 +120,28 @@ function SponsorHeader() {
                         <Gavel className="h-4 w-4" />
                         <span className="text-sm">Pending Decisions</span>
                     </div>
-                    <p className="text-3xl font-bold text-amber-500 dark:text-amber-400">2</p>
+                    <p className="text-3xl font-bold text-amber-500 dark:text-amber-400">{stats.pending}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-card/50 border border-border">
                     <div className="flex items-center gap-2 text-muted-foreground mb-2">
                         <CheckCircle2 className="h-4 w-4" />
-                        <span className="text-sm">Approved This Month</span>
+                        <span className="text-sm">Approved</span>
                     </div>
-                    <p className="text-3xl font-bold text-emerald-500 dark:text-emerald-400">5</p>
+                    <p className="text-3xl font-bold text-emerald-500 dark:text-emerald-400">{stats.approved}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-card/50 border border-border">
                     <div className="flex items-center gap-2 text-muted-foreground mb-2">
                         <BarChart3 className="h-4 w-4" />
-                        <span className="text-sm">Impact Score</span>
+                        <span className="text-sm">Total Requests</span>
                     </div>
-                    <p className="text-3xl font-bold text-blue-500 dark:text-blue-400">8.5</p>
+                    <p className="text-3xl font-bold text-blue-500 dark:text-blue-400">{stats.total}</p>
                 </div>
             </div>
         </motion.div>
     );
 }
 
-function PilotHeader() {
+function PilotHeader({ stats }: { stats: { total: number; pending: number; approved: number; rejected: number; voting: number } }) {
     return (
         <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -158,11 +158,11 @@ function PilotHeader() {
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
                     <Clock className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-                    <span className="text-sm font-medium text-foreground">2 requiring review</span>
+                    <span className="text-sm font-medium text-foreground">{stats.pending} requiring review</span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/20 border border-blue-500/30">
                     <Eye className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-foreground">1 in review</span>
+                    <span className="text-sm font-medium text-foreground">{stats.voting} in review</span>
                 </div>
             </div>
         </motion.div>
@@ -302,9 +302,9 @@ export default function CouncilPage() {
     const renderHeader = () => {
         switch (role) {
             case 'SPONSOR':
-                return <SponsorHeader />;
+                return <SponsorHeader stats={stats} />;
             case 'PILOT':
-                return <PilotHeader />;
+                return <PilotHeader stats={stats} />;
             case 'MANAGER':
                 return <ManagerHeader />;
             case 'EXPERT':
@@ -344,8 +344,8 @@ export default function CouncilPage() {
                 <button
                     onClick={() => setActiveView('requests')}
                     className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeView === 'requests'
-                            ? 'bg-card shadow-sm text-foreground border border-border'
-                            : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-card shadow-sm text-foreground border border-border'
+                        : 'text-muted-foreground hover:text-foreground'
                         }`}
                 >
                     <MessageSquare className="h-4 w-4 inline-block mr-2" />
@@ -354,8 +354,8 @@ export default function CouncilPage() {
                 <button
                     onClick={() => setActiveView('l10')}
                     className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeView === 'l10'
-                            ? 'bg-card shadow-sm text-foreground border border-border'
-                            : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-card shadow-sm text-foreground border border-border'
+                        : 'text-muted-foreground hover:text-foreground'
                         }`}
                 >
                     <Clock className="h-4 w-4 inline-block mr-2" />

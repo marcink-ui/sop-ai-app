@@ -34,7 +34,6 @@ const adminModules = [
         description: 'Zarządzaj kluczami API do narzędzi i providerów AI',
         icon: Key,
         href: '/backoffice/ai-keys',
-        stats: '24 klucze',
         color: 'from-violet-500 to-fuchsia-600',
     },
     {
@@ -43,7 +42,6 @@ const adminModules = [
         description: 'Zasoby, prompty, agenci, skille i newslettery w jednym miejscu',
         icon: Library,
         href: '/resources',
-        stats: '47 zasobów',
         color: 'from-emerald-500 to-teal-600',
     },
     {
@@ -52,7 +50,6 @@ const adminModules = [
         description: 'Zarządzaj firmami, limitami i subskrypcjami',
         icon: Building2,
         href: '/backoffice/companies',
-        stats: '12 firm',
         color: 'from-sky-500 to-blue-600',
     },
     {
@@ -61,7 +58,6 @@ const adminModules = [
         description: 'Konta, role, uprawnienia na poziomie platformy',
         icon: Users,
         href: '/backoffice/users',
-        stats: '156 kont',
         color: 'from-amber-500 to-orange-600',
     },
     {
@@ -70,7 +66,6 @@ const adminModules = [
         description: 'Zdrowie serwisów, kolejki, metryki wydajności',
         icon: Activity,
         href: '/admin-panel/health',
-        stats: 'Healthy',
         color: 'from-green-500 to-emerald-600',
     },
     {
@@ -79,7 +74,6 @@ const adminModules = [
         description: 'Pełna historia zdarzeń i zmian na platformie',
         icon: FileText,
         href: '/admin-panel/audit',
-        stats: '2.4K events',
         color: 'from-rose-500 to-pink-600',
     },
     {
@@ -88,7 +82,6 @@ const adminModules = [
         description: 'Bannery, alerty i push notifications dla firm',
         icon: Bell,
         href: '/admin-panel/notifications',
-        stats: '2 aktywne',
         color: 'from-indigo-500 to-violet-600',
     },
     {
@@ -97,7 +90,6 @@ const adminModules = [
         description: 'Heatmapy, predykcje użytkowników i nagrania sesji',
         icon: Activity,
         href: '/admin-panel/ux-analysis',
-        stats: 'Beta',
         color: 'from-pink-500 to-rose-600',
     },
 ];
@@ -226,9 +218,6 @@ export default function AdminPanelPage() {
                                                 <p className="font-medium text-neutral-900 dark:text-white">
                                                     {module.title}
                                                 </p>
-                                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                                    {module.stats}
-                                                </Badge>
                                             </div>
                                             <p className="text-sm text-neutral-500 dark:text-neutral-400 truncate">
                                                 {module.description}

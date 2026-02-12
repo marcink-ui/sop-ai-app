@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Settings2,
@@ -32,7 +32,6 @@ const backofficeModules = [
         description: 'Edytuj prompty AI dla różnych kontekstów i ról',
         icon: FileCode2,
         href: '/backoffice/prompts',
-        stats: '4 prompty',
         color: 'from-violet-500 to-purple-600',
         available: true,
     },
@@ -42,7 +41,6 @@ const backofficeModules = [
         description: 'Konfiguracja providerów i routingu modeli',
         icon: Cpu,
         href: '/backoffice/ai-models',
-        stats: 'Routing AI',
         color: 'from-indigo-500 to-violet-600',
         available: true,
     },
@@ -52,7 +50,6 @@ const backofficeModules = [
         description: 'Przydzielaj klucze AI klientom i monitoruj zużycie',
         icon: Key,
         href: '/backoffice/ai-keys',
-        stats: 'Meta Admin',
         color: 'from-violet-500 to-fuchsia-600',
         available: true,
     },
@@ -62,7 +59,6 @@ const backofficeModules = [
         description: 'AI ekstrakcja SOPs, Ról i Value Chains z transkrypcji',
         icon: FileCode2,
         href: '/backoffice/transcript-processor',
-        stats: 'Nowe!',
         color: 'from-fuchsia-500 to-pink-600',
         available: true,
     },
@@ -72,20 +68,36 @@ const backofficeModules = [
         description: 'Zarządzaj kontami i rolami użytkowników',
         icon: Users,
         href: '/backoffice/users',
-        stats: '12 użytkowników',
         color: 'from-emerald-500 to-teal-600',
         available: true,
     },
 ];
 
-const systemStats = [
-    { label: 'SOPs', value: '17', change: '+3 ten tydzień', color: 'text-violet-500' },
-    { label: 'Aktywne sesje', value: '8', change: 'teraz', color: 'text-emerald-500' },
-    { label: 'Tokeny AI (dziś)', value: '45K', change: '$0.12', color: 'text-blue-500' },
-    { label: 'Wnioski Rady', value: '4', change: '1 oczekujący', color: 'text-amber-500' },
+const defaultStats = [
+    { label: 'SOPs', value: '—', change: '', color: 'text-violet-500', key: 'sops' },
+    { label: 'Aktywne sesje', value: '—', change: '', color: 'text-emerald-500', key: 'activeSessions' },
+    { label: 'Użytkownicy', value: '—', change: '', color: 'text-blue-500', key: 'users' },
+    { label: 'Wnioski Rady', value: '—', change: '', color: 'text-amber-500', key: 'councilPending' },
 ];
 
 export default function BackofficePage() {
+    const [systemStats, setSystemStats] = useState(defaultStats);
+
+    useEffect(() => {
+        fetch('/api/backoffice/stats')
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data) {
+                    setSystemStats([
+                        { label: 'SOPs', value: String(data.sops), change: 'procedur', color: 'text-violet-500', key: 'sops' },
+                        { label: 'Aktywne sesje', value: String(data.activeSessions), change: 'ostatnie 24h', color: 'text-emerald-500', key: 'activeSessions' },
+                        { label: 'Użytkownicy', value: String(data.users), change: 'w organizacji', color: 'text-blue-500', key: 'users' },
+                        { label: 'Wnioski Rady', value: String(data.councilPending), change: 'oczekujących', color: 'text-amber-500', key: 'councilPending' },
+                    ]);
+                }
+            })
+            .catch(() => { });
+    }, []);
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -170,9 +182,6 @@ export default function BackofficePage() {
                                                 <p className="font-medium text-neutral-900 dark:text-white">
                                                     {module.title}
                                                 </p>
-                                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                                    {module.stats}
-                                                </Badge>
                                             </div>
                                             <p className="text-sm text-neutral-500 dark:text-neutral-400 truncate">
                                                 {module.description}

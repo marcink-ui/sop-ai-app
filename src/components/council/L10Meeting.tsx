@@ -91,39 +91,22 @@ export function L10Meeting() {
     const [segueNotes, setSegueNotes] = useState('');
 
     // Scorecard
-    const [scorecards, setScorecards] = useState<ScorecardItem[]>([
-        { id: uid(), metric: 'Pipeline nowych leadów', owner: 'Marketing', goal: '50', actual: '47', onTrack: true },
-        { id: uid(), metric: 'Konwersja demo→klient', owner: 'Sprzedaż', goal: '25%', actual: '18%', onTrack: false },
-        { id: uid(), metric: 'NPS klientów', owner: 'Support', goal: '65', actual: '72', onTrack: true },
-    ]);
+    const [scorecards, setScorecards] = useState<ScorecardItem[]>([]);
 
     // Rocks
-    const [rocks, setRocks] = useState<RockItem[]>([
-        { id: uid(), title: 'Wdrożyć system CRM', owner: 'Tomek K.', status: 'on-track' },
-        { id: uid(), title: 'Onboarding nowego zespołu', owner: 'Anna M.', status: 'off-track' },
-        { id: uid(), title: 'Launch kampanii Q1', owner: 'Paweł Z.', status: 'done' },
-    ]);
+    const [rocks, setRocks] = useState<RockItem[]>([]);
 
     // Headlines
-    const [headlines, setHeadlines] = useState<HeadlineItem[]>([
-        { id: uid(), text: 'Wygrany przetarg na projekt Enterprise', type: 'good' },
-        { id: uid(), text: 'Opóźnienie w dostawie serwera', type: 'bad' },
-    ]);
+    const [headlines, setHeadlines] = useState<HeadlineItem[]>([]);
 
     // To-Do
-    const [todos, setTodos] = useState<TodoItem[]>([
-        { id: uid(), text: 'Przygotować prezentację Q1', owner: 'Kasia L.', dueDate: '2026-02-18', done: false },
-        { id: uid(), text: 'Wysłać raport do zarządu', owner: 'Marek W.', dueDate: '2026-02-14', done: true },
-    ]);
+    const [todos, setTodos] = useState<TodoItem[]>([]);
 
     // IDS
-    const [issues, setIssues] = useState<IssueItem[]>([
-        { id: uid(), text: 'Brak spójności w procesie onboardingu klienta', priority: 'high', resolved: false },
-        { id: uid(), text: 'Niski response time supportu w piątki', priority: 'medium', resolved: false },
-    ]);
+    const [issues, setIssues] = useState<IssueItem[]>([]);
 
     // Conclude
-    const [rating, setRating] = useState(8);
+    const [rating, setRating] = useState(0);
     const [concludeNotes, setConcludeNotes] = useState('');
 
     const toggleSection = (id: string) => {
@@ -443,8 +426,8 @@ export function L10Meeting() {
                                                                 setIssues(issues.map(i => i.id === issue.id ? { ...i, priority: next } : i));
                                                             }}
                                                             className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${issue.priority === 'high' ? 'bg-red-500/20 text-red-600' :
-                                                                    issue.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-600' :
-                                                                        'bg-gray-500/20 text-gray-600'
+                                                                issue.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-600' :
+                                                                    'bg-gray-500/20 text-gray-600'
                                                                 }`}
                                                         >
                                                             {issue.priority === 'high' ? 'Wysoki' : issue.priority === 'medium' ? 'Średni' : 'Niski'}
@@ -471,10 +454,10 @@ export function L10Meeting() {
                                                                 key={n}
                                                                 onClick={() => setRating(n)}
                                                                 className={`h-9 w-9 rounded-lg text-sm font-bold transition-all ${n <= rating
-                                                                        ? n <= 3 ? 'bg-red-500/20 text-red-600'
-                                                                            : n <= 6 ? 'bg-yellow-500/20 text-yellow-600'
-                                                                                : 'bg-green-500/20 text-green-600'
-                                                                        : 'bg-muted/30 text-muted-foreground'
+                                                                    ? n <= 3 ? 'bg-red-500/20 text-red-600'
+                                                                        : n <= 6 ? 'bg-yellow-500/20 text-yellow-600'
+                                                                            : 'bg-green-500/20 text-green-600'
+                                                                    : 'bg-muted/30 text-muted-foreground'
                                                                     }`}
                                                             >
                                                                 {n}
