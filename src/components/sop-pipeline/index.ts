@@ -5,3 +5,7 @@ export type { SOPStep } from './SOPStepsTable';
 export { MUDACards } from './MUDACards';
 export type { MUDAFinding } from './MUDACards';
 export { StepOutputViewer } from './StepOutputViewer';
+export { AgentSpecCard } from './AgentSpecCard';
+export { ValueChainAnchor } from './ValueChainAnchor';
+export { SidePanel } from './SidePanel';
+export { SOPCoverageWidget } from './SOPCoverageWidget';

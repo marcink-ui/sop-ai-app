@@ -3,8 +3,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import { useSession } from '@/lib/auth-client';
-import { redirect } from 'next/navigation';
+import { redirect, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { SOPCoverageWidget } from '@/components/sop-pipeline/SOPCoverageWidget';
 import { Node, Edge } from 'reactflow';
 import {
     GitBranch,
@@ -66,6 +67,7 @@ const EMPTY_STATS: MapStats = { stages: 0, processes: 0, agents: 0, automation: 
 
 export default function ValueChainPage() {
     const { data: session, isPending } = useSession();
+    const router = useRouter();
     const [view, setView] = useState<'whiteboard' | 'list'>('whiteboard');
     const [libraryOpen, setLibraryOpen] = useState(true);
 
@@ -436,6 +438,16 @@ export default function ValueChainPage() {
                         <p className="mt-2 text-2xl font-bold text-indigo-400">{currentStats.areas}</p>
                     </div>
                 </motion.div>
+            )}
+
+            {/* SOP Coverage Widget */}
+            {!isFullscreen && selectedMapId && (
+                <SOPCoverageWidget
+                    mapId={selectedMapId}
+                    onCreateSOP={(nodeId, label) => {
+                        router.push(`/sops/process?nodeId=${nodeId}&label=${encodeURIComponent(label)}`);
+                    }}
+                />
             )}
 
             {/* Content */}
