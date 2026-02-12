@@ -55,6 +55,10 @@ model Organization {
   transcripts         Transcript[]
   canvases            Canvas[]
   
+  // Company context & AI Canvas (SOP Pipeline)
+  companyContext      Json?    // { valueChainDraft, workshopNotes, importedDocs[] }
+  canvasData          Json?    // Wypełniony AI Canvas per dział (from backoffice)
+  
   @@index([slug])
 }
 
@@ -377,6 +381,10 @@ model SOP {
   steps       Json?     // Array of procedure steps
   kpis        Json?     // KPI definitions
   
+  // Pipeline process state
+  processData        Json?     // { currentStep, completedSteps[], stepOutputs: { step1: {...}, step2: {...} }, comments[] }
+  sourceTranscriptId String?   // Link to source transcript
+  
   // Metadata
   owner       String?
   reviewer    String?
@@ -406,6 +414,8 @@ model SOP {
   versions       SOPVersion[]
   agents         AgentSOPConnection[]
   valueChainNodes ValueChainNode[]
+  mudaReports    MUDAReport[]
+  processLogs    SOPProcessLog[]
   attachments    Attachment[]
   comments       Comment[]
   tags           Tag[]                    @relation("SOPTags")
@@ -420,7 +430,9 @@ model SOP {
 
 enum SOPStatus {
   DRAFT
-  IN_REVIEW
+  IN_PROGRESS    // Worker actively going through pipeline (step N of 5)
+  IN_REVIEW      // Sent to Council for approval
+  RETURNED       // Council returned with comments for rework
   APPROVED
   DEPRECATED
   ARCHIVED
@@ -438,6 +450,26 @@ model SOPVersion {
   createdAt DateTime @default(now())
   
   @@index([sopId])
+}
+
+model SOPProcessLog {
+  id          String   @id @default(cuid())
+  
+  sopId       String
+  sop         SOP      @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  
+  step        Int      // 1-5 (pipeline step number)
+  stepName    String   // "sop_generator", "muda_auditor", "ai_architect", "ai_generator", "prompt_judge"
+  input       Json?    // What AI received as context
+  output      Json?    // What AI returned
+  userEdits   Json?    // What the user changed after AI output
+  status      String   @default("pending") // "pending", "completed", "skipped"
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([sopId])
+  @@index([step])
 }
 
 // ============================================================================
@@ -588,11 +620,19 @@ model MUDAReport {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
+  // SOP connection
+  sopId          String?
+  sop            SOP?    @relation(fields: [sopId], references: [id])
+  
+  // Value Chain context
+  valueChainNodeId String?
+  
   // Relations
   attachments Attachment[]
   
   @@index([organizationId])
   @@index([status])
+  @@index([sopId])
 }
 
 enum MUDAStatus {
