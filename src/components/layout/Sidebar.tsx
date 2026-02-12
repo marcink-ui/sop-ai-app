@@ -107,6 +107,7 @@ const SIDEBAR_CATEGORIES = {
         defaultOpen: false,
         items: [
             { name: 'SOP', href: '/sops', icon: FileText, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-500/20', minRole: 'CITIZEN_DEV' },
+            { name: 'Proces SOP', href: '/sops/process', icon: Rocket, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Agenci AI', href: '/agents', icon: Bot, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Raporty MUDA', href: '/muda', icon: Search, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-500/20', minRole: 'CITIZEN_DEV' },
             { name: 'Słownik', href: '/ontology', icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20', minRole: 'CITIZEN_DEV' },
