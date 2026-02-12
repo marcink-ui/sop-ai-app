@@ -7,9 +7,10 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 function DropdownMenu({
+  children,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+}: React.PropsWithChildren<React.ComponentProps<typeof DropdownMenuPrimitive.Root>>) {
+  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props}>{children}</DropdownMenuPrimitive.Root>
 }
 
 function DropdownMenuPortal({
@@ -21,21 +22,25 @@ function DropdownMenuPortal({
 }
 
 function DropdownMenuTrigger({
+  children,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+}: React.PropsWithChildren<React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>>) {
   return (
     <DropdownMenuPrimitive.Trigger
       data-slot="dropdown-menu-trigger"
       {...props}
-    />
+    >
+      {children}
+    </DropdownMenuPrimitive.Trigger>
   )
 }
 
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  children,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+}: React.PropsWithChildren<React.ComponentProps<typeof DropdownMenuPrimitive.Content>>) {
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -46,16 +51,19 @@ function DropdownMenuContent({
           className
         )}
         {...props}
-      />
+      >
+        {children}
+      </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   )
 }
 
 function DropdownMenuGroup({
+  children,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
+}: React.PropsWithChildren<React.ComponentProps<typeof DropdownMenuPrimitive.Group>>) {
   return (
-    <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
+    <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props}>{children}</DropdownMenuPrimitive.Group>
   )
 }
 
@@ -63,11 +71,12 @@ function DropdownMenuItem({
   className,
   inset,
   variant = "default",
+  children,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
+}: React.PropsWithChildren<React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
   inset?: boolean
   variant?: "default" | "destructive"
-}) {
+}>) {
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
@@ -78,7 +87,9 @@ function DropdownMenuItem({
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </DropdownMenuPrimitive.Item>
   )
 }
 
