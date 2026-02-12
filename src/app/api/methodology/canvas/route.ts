@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
 /**
  * GET /api/methodology/canvas
@@ -27,6 +29,19 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const departmentId = searchParams.get('departmentId');
         const format = searchParams.get('format'); // 'agent' | null
+        const include = searchParams.get('include'); // 'instructions' | null
+
+        // Load methodology instructions if requested
+        let methodologyInstructions: string | null = null;
+        if (include === 'instructions') {
+            const instructionsPath = join(process.cwd(), '..', '..', 'methodology', 'ai-canvas-instructions.md');
+            if (existsSync(instructionsPath)) {
+                const raw = readFileSync(instructionsPath, 'utf-8');
+                // Extract key sections (condensed for agent context - first 2000 chars covers structure)
+                const sections = raw.split(/^## /m).slice(0, 6);
+                methodologyInstructions = sections.map(s => `## ${s.trim()}`).join('\n\n').slice(0, 4000);
+            }
+        }
 
         // Fetch canvases
         const canvases = await prisma.canvas.findMany({
@@ -129,6 +144,7 @@ export async function GET(request: Request) {
                 canvasCount: canvases.length,
                 hasCompanyContext: !!ctx,
                 hasCanvasData: !!canvasDataRaw,
+                ...(methodologyInstructions ? { methodologyInstructions } : {}),
             });
         }
 
@@ -147,6 +163,7 @@ export async function GET(request: Request) {
             companyContext: org?.companyContext || null,
             canvasData: org?.canvasData || null,
             organizationName: org?.name,
+            ...(methodologyInstructions ? { methodologyInstructions } : {}),
         });
 
     } catch (error) {

@@ -55,6 +55,9 @@ model Organization {
   transcripts         Transcript[]
   canvases            Canvas[]
   
+  // Notifications
+  notifications       Notification[]
+  
   // Company context & AI Canvas (SOP Pipeline)
   companyContext      Json?    // { valueChainDraft, workshopNotes, importedDocs[] }
   canvasData          Json?    // Wypełniony AI Canvas per dział (from backoffice)
@@ -135,6 +138,9 @@ model User {
   // Transcripts & Canvas (Sprint 22)
   uploadedTranscripts      Transcript[]
   createdCanvases          Canvas[]
+  
+  // Notifications
+  notifications            Notification[]
   
   @@index([organizationId])
   @@index([email])
@@ -1634,3 +1640,53 @@ model Canvas {
   @@index([departmentId])
   @@index([status])
 }
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+enum NotificationType {
+  PIPELINE_STEP    // SOP pipeline step completed/approved
+  COUNCIL_REQUEST  // Council review requested (for reviewers)
+  COUNCIL_DECISION // Council approved/rejected SOP
+  SOP_UPDATE       // SOP was updated
+  KNOWLEDGE_UPDATE // New resource, agent, or wiki entry
+  SYSTEM           // System-wide announcements
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  
+  type        NotificationType
+  title       String
+  description String?          @db.Text
+  
+  // Read state (per-user)
+  read        Boolean          @default(false)
+  readAt      DateTime?
+  
+  // Navigation link
+  link        String?          // e.g. "/sops/abc123", "/council"
+  
+  // Optional references for context
+  sopId       String?
+  agentId     String?
+  
+  // Flexible metadata (pipeline step info, council decision details, etc.)
+  metadata    Json?
+  
+  // Multi-tenant + user scoping
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime         @default(now())
+  
+  @@index([userId, read])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@index([type])
+}
+

@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
+import { pipelineNotifications } from '@/lib/notifications';
 
 // ============================================================================
 // POST /api/sops/process/[id]/council — Submit SOP to Council for approval
@@ -57,6 +58,14 @@ export async function POST(
                 reviewer: session.user.name || session.user.id,
             },
         });
+
+        // Notify organization users
+        await pipelineNotifications.sentToCouncil(
+            id,
+            sop.title,
+            session.user.id,
+            session.user.organizationId,
+        ).catch(err => console.error('[SOP Council] Notification error:', err));
 
         return NextResponse.json({
             success: true,
