@@ -3,7 +3,11 @@ import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let _openai: OpenAI | null = null;
+function getOpenAI() {
+    if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    return _openai;
+}
 
 async function getLevel10Prompt(fallback: string): Promise<string> {
     try {
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
 
         const systemPrompt = await getLevel10Prompt(DEFAULT_PROMPT);
 
-        const completion = await openai.chat.completions.create({
+        const completion = await getOpenAI().chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
                 { role: 'system', content: systemPrompt },
