@@ -53,3 +53,55 @@ export async function GET() {
         );
     }
 }
+
+export async function POST(request: Request) {
+    try {
+        const session = await getSession();
+        if (!session?.user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Only META_ADMIN can create companies
+        if (session.user.role !== 'META_ADMIN') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const body = await request.json();
+        const { name, slug } = body;
+
+        if (!name?.trim()) {
+            return NextResponse.json({ error: 'Nazwa firmy jest wymagana' }, { status: 400 });
+        }
+
+        const finalSlug = slug?.trim() || name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+        // Check if slug already exists
+        const existing = await prisma.organization.findUnique({
+            where: { slug: finalSlug },
+        });
+
+        if (existing) {
+            return NextResponse.json({ error: 'Firma z takim slugiem już istnieje' }, { status: 409 });
+        }
+
+        const org = await prisma.organization.create({
+            data: {
+                name: name.trim(),
+                slug: finalSlug,
+            },
+        });
+
+        return NextResponse.json({
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            createdAt: org.createdAt.toISOString(),
+        }, { status: 201 });
+    } catch (error) {
+        console.error('Failed to create company:', error);
+        return NextResponse.json(
+            { error: 'Failed to create company' },
+            { status: 500 }
+        );
+    }
+}

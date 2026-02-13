@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         });
 
         return NextResponse.json({
-            valueChains: chainsWithStats,
+            maps: chainsWithStats,
             total: chainsWithStats.length,
         });
 

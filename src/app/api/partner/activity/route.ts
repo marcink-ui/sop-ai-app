@@ -120,10 +120,9 @@ export async function GET(request: NextRequest) {
         interface Activity {
             id: string;
             type: string;
-            title: string;
-            detail: string | null;
-            orgId: string;
-            orgName: string;
+            description: string;
+            organizationName: string;
+            organizationSlug: string;
             actor: string | null;
             timestamp: Date;
         }
@@ -131,31 +130,28 @@ export async function GET(request: NextRequest) {
         const activities: Activity[] = [
             ...recentSOPs.map(s => ({
                 id: `sop-${s.id}`,
-                type: 'sop_update' as const,
-                title: s.title,
-                detail: `Status: ${s.status}`,
-                orgId: s.organization?.id || '',
-                orgName: s.organization?.name || 'Unknown',
+                type: 'sop_updated' as const,
+                description: `SOP: ${s.title} — Status: ${s.status}`,
+                organizationName: s.organization?.name || 'Unknown',
+                organizationSlug: s.organization?.id || '',
                 actor: s.createdBy?.name || null,
                 timestamp: s.updatedAt,
             })),
             ...recentUsers.map(u => ({
                 id: `user-${u.id}`,
-                type: 'new_user' as const,
-                title: `Nowy użytkownik: ${u.name}`,
-                detail: `Rola: ${u.role}`,
-                orgId: u.organization?.id || '',
-                orgName: u.organization?.name || 'Unknown',
+                type: 'user_joined' as const,
+                description: `Nowy użytkownik: ${u.name} (${u.role})`,
+                organizationName: u.organization?.name || 'Unknown',
+                organizationSlug: u.organization?.id || '',
                 actor: null,
                 timestamp: u.createdAt,
             })),
             ...recentChats.map(c => ({
                 id: `chat-${c.id}`,
-                type: 'ai_chat' as const,
-                title: c.title || 'AI Chat',
-                detail: null,
-                orgId: c.user?.organization?.id || '',
-                orgName: c.user?.organization?.name || 'Unknown',
+                type: 'chat_session' as const,
+                description: `AI Chat: ${c.title || 'Sesja AI'}`,
+                organizationName: c.user?.organization?.name || 'Unknown',
+                organizationSlug: c.user?.organization?.id || '',
                 actor: c.user?.name || null,
                 timestamp: c.createdAt,
             })),
