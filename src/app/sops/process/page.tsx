@@ -50,17 +50,20 @@ interface PipelineSOP {
         title: string;
         sourceType: string;
         sourceContent: string;
+        sourceInput?: { transcriptText?: string; valueChainNodeId?: string };
         stepOutputs: Record<string, unknown>;
         comments: Record<string, string>;
     };
     processLogs: Array<{
         id: string;
-        stepNumber: number;
+        step: number;
         stepName: string;
-        input: string;
-        output: string;
-        userEdits: string;
+        input: unknown;
+        output: unknown;
+        userEdits: unknown;
         status: string;
+        createdAt: string;
+        updatedAt: string;
     }>;
     createdAt: string;
     updatedAt: string;
@@ -147,8 +150,7 @@ export default function SOPProcessPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: newTitle.trim(),
-                    sourceType,
-                    sourceContent: newTranscript.trim(),
+                    transcriptText: newTranscript.trim(),
                     valueChainNodeId,
                 }),
             });
@@ -292,7 +294,7 @@ export default function SOPProcessPage() {
     // ============================================================
     const completedSteps = activeSOP?.processLogs
         ?.filter(l => l.status === 'completed')
-        .map(l => l.stepNumber) || [];
+        .map(l => l.step) || [];
 
     const stepStatuses: Record<number, StepStatus> = {};
     PIPELINE_STEPS.forEach(s => {
@@ -307,12 +309,12 @@ export default function SOPProcessPage() {
 
     const progress = (completedSteps.length / 5) * 100;
 
-    const currentStepLog = activeSOP?.processLogs?.find(l => l.stepNumber === currentStep);
+    const currentStepLog = activeSOP?.processLogs?.find(l => l.step === currentStep);
     const currentOutput = currentStepLog?.output ? {
-        raw: currentStepLog.output,
-        parsed: (() => {
-            try { return JSON.parse(currentStepLog.output); } catch { return undefined; }
-        })(),
+        raw: typeof currentStepLog.output === 'string' ? currentStepLog.output : JSON.stringify(currentStepLog.output, null, 2),
+        parsed: typeof currentStepLog.output === 'string'
+            ? (() => { try { return JSON.parse(currentStepLog.output as string); } catch { return undefined; } })()
+            : currentStepLog.output as Record<string, unknown>,
     } : null;
 
     // ============================================================
@@ -444,7 +446,7 @@ export default function SOPProcessPage() {
                     <div className="grid gap-4">
                         {pipelines.map((sop) => {
                             const sopProgress = sop.processLogs
-                                ? (sop.processLogs.filter(l => l.status === 'completed').length / 5) * 100
+                                ? (sop.processLogs.filter((l: { status: string }) => l.status === 'completed').length / 5) * 100
                                 : 0;
 
                             return (
