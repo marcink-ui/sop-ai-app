@@ -382,7 +382,7 @@ export async function POST(
             const context = await buildStepContext(id, step, session.user.organizationId);
 
             // Resolve AI API key
-            const apiKeyResult = await resolveApiKey(session.user.organizationId);
+            const apiKeyResult = resolveApiKey({ userRole: session.user.role ?? 'EXPLORER', organizationId: session.user.organizationId });
 
             if (!isRealAIAvailable(apiKeyResult)) {
                 // Fallback: return mock output for demo
