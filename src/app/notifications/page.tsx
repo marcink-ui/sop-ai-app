@@ -6,17 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bell, ListTodo, BookOpen, AlertCircle, CheckCheck, ChevronDown } from 'lucide-react';
+import { Bell, ListTodo, BookOpen, AlertCircle, CheckCheck, ChevronDown, Bot, FileText } from 'lucide-react';
 import Link from 'next/link';
 
 interface Notification {
     id: string;
-    type: 'task' | 'knowledge' | 'alert' | 'panda';
+    type: string;
     title: string;
-    description: string;
-    time: string;
+    description: string | null;
     read: boolean;
-    link?: string;
+    link: string | null;
+    createdAt: string;
+    virtual?: boolean;
 }
 
 const ITEMS_PER_PAGE = 5;
@@ -26,6 +27,7 @@ export default function NotificationsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'unread'>('all');
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
         const fetchNotifications = async () => {
@@ -33,6 +35,7 @@ export default function NotificationsPage() {
                 const res = await fetch('/api/notifications');
                 const data = await res.json();
                 setNotifications(data.notifications || []);
+                setUnreadCount(data.unreadCount || 0);
             } catch (error) {
                 console.error('Failed to fetch notifications:', error);
             } finally {
@@ -42,18 +45,48 @@ export default function NotificationsPage() {
         fetchNotifications();
     }, []);
 
-    const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const markAllAsRead = async () => {
+        try {
+            await fetch('/api/notifications', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ all: true }),
+            });
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Failed to mark all as read:', error);
+        }
     };
 
-    const markAsRead = (id: string) => {
+    const markAsRead = async (id: string) => {
+        // Skip API call for virtual notifications
+        const notif = notifications.find(n => n.id === id);
+        if (!notif?.virtual) {
+            try {
+                await fetch('/api/notifications', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: [id] }),
+                });
+            } catch (error) {
+                console.error('Failed to mark as read:', error);
+            }
+        }
         setNotifications(prev =>
             prev.map(n => (n.id === id ? { ...n, read: true } : n))
         );
+        setUnreadCount(prev => Math.max(0, prev - 1));
     };
 
     const getNotificationIcon = (type: string) => {
         switch (type) {
+            case 'COUNCIL_REQUEST': return <ListTodo className="h-5 w-5 text-blue-500" />;
+            case 'SOP_UPDATE':
+            case 'PIPELINE_STEP': return <FileText className="h-5 w-5 text-emerald-500" />;
+            case 'KNOWLEDGE_UPDATE': return <Bot className="h-5 w-5 text-purple-500" />;
+            case 'SYSTEM_ALERT': return <AlertCircle className="h-5 w-5 text-amber-500" />;
+            // legacy types
             case 'task': return <ListTodo className="h-5 w-5 text-blue-500" />;
             case 'knowledge': return <BookOpen className="h-5 w-5 text-emerald-500" />;
             case 'alert': return <AlertCircle className="h-5 w-5 text-amber-500" />;
@@ -64,6 +97,11 @@ export default function NotificationsPage() {
 
     const getTypeLabel = (type: string) => {
         switch (type) {
+            case 'COUNCIL_REQUEST': return 'Rada';
+            case 'SOP_UPDATE': return 'SOP';
+            case 'PIPELINE_STEP': return 'Pipeline';
+            case 'KNOWLEDGE_UPDATE': return 'Agent AI';
+            case 'SYSTEM_ALERT': return 'System';
             case 'task': return 'Zadanie';
             case 'knowledge': return 'Wiedza';
             case 'alert': return 'Alert';
@@ -72,13 +110,27 @@ export default function NotificationsPage() {
         }
     };
 
+    const formatTimeAgo = (isoString: string) => {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMin = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMin / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMin < 1) return 'teraz';
+        if (diffMin < 60) return `${diffMin} min temu`;
+        if (diffHours < 24) return `${diffHours}h temu`;
+        if (diffDays < 7) return `${diffDays}d temu`;
+        return date.toLocaleDateString('pl-PL');
+    };
+
     const filteredNotifications = filter === 'unread'
         ? notifications.filter(n => !n.read)
         : notifications;
 
     const visibleNotifications = filteredNotifications.slice(0, visibleCount);
     const hasMore = visibleCount < filteredNotifications.length;
-    const unreadCount = notifications.filter(n => !n.read).length;
 
     if (isLoading) {
         return (
@@ -138,7 +190,7 @@ export default function NotificationsPage() {
                         <div className="flex items-center gap-2">
                             <ListTodo className="h-4 w-4 text-blue-500" />
                             <span className="text-2xl font-bold">
-                                {notifications.filter(n => n.type === 'task').length}
+                                {notifications.filter(n => n.type === 'COUNCIL_REQUEST' || n.type === 'task').length}
                             </span>
                         </div>
                         <p className="text-xs text-muted-foreground">Zadania</p>
@@ -147,9 +199,9 @@ export default function NotificationsPage() {
                 <Card>
                     <CardContent className="pt-4">
                         <div className="flex items-center gap-2">
-                            <BookOpen className="h-4 w-4 text-emerald-500" />
+                            <FileText className="h-4 w-4 text-emerald-500" />
                             <span className="text-2xl font-bold">
-                                {notifications.filter(n => n.type === 'knowledge').length}
+                                {notifications.filter(n => n.type === 'SOP_UPDATE' || n.type === 'PIPELINE_STEP' || n.type === 'knowledge').length}
                             </span>
                         </div>
                         <p className="text-xs text-muted-foreground">Aktualizacje</p>
@@ -214,7 +266,7 @@ export default function NotificationsPage() {
                                                     <Badge variant="outline" className="text-xs">
                                                         {getTypeLabel(notification.type)}
                                                     </Badge>
-                                                    <span>{notification.time}</span>
+                                                    <span>{formatTimeAgo(notification.createdAt)}</span>
                                                 </div>
                                             </div>
                                         </motion.div>

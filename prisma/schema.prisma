@@ -58,6 +58,14 @@ model Organization {
   // Notifications
   notifications       Notification[]
   
+  // Gamification
+  pandaTransactions   PandaTransaction[]
+  
+  // Knowledge & Resources
+  resources           Resource[]
+  courses             Course[]
+  newsletters         Newsletter[]
+  
   // Company context & AI Canvas (SOP Pipeline)
   companyContext      Json?    // { valueChainDraft, workshopNotes, importedDocs[] }
   canvasData          Json?    // Wypełniony AI Canvas per dział (from backoffice)
@@ -632,6 +640,7 @@ model MUDAReport {
   
   // Value Chain context
   valueChainNodeId String?
+  valueChainNode   ValueChainNode? @relation(fields: [valueChainNodeId], references: [id])
   
   // Relations
   attachments Attachment[]
@@ -768,6 +777,7 @@ model ValueChainNode {
   // Edges
   sourceEdges ValueChainEdge[] @relation("SourceNode")
   targetEdges ValueChainEdge[] @relation("TargetNode")
+  mudaReports MUDAReport[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1096,6 +1106,7 @@ model PandaTransaction {
   toUser      User          @relation("PandaReceived", fields: [toUserId], references: [id], onDelete: Cascade)
   
   organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   
   createdAt   DateTime      @default(now())
   
@@ -1203,6 +1214,7 @@ model Resource {
   author      User             @relation("ResourceAuthor", fields: [authorId], references: [id])
   
   organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   
   viewCount   Int              @default(0)
   createdAt   DateTime         @default(now())
@@ -1224,6 +1236,7 @@ model Course {
   externalUrl String?
   
   organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt   DateTime    @default(now())
   
   @@index([organizationId])
@@ -1240,6 +1253,7 @@ model Newsletter {
   author      User      @relation("NewsletterAuthor", fields: [authorId], references: [id])
   
   organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   
   @@index([organizationId])
@@ -1688,5 +1702,27 @@ model Notification {
   @@index([organizationId])
   @@index([createdAt])
   @@index([type])
+}
+
+// ============================================================================
+// SYSTEM PROMPTS (Meta Admin managed, single source of truth)
+// ============================================================================
+
+model SystemPrompt {
+  id          String   @id @default(cuid())
+  slug        String   @unique    // e.g. "sop-consultant", "chat-system", "value-chain-ai"
+  name        String              // Display name, e.g. "Konsultant SOP"
+  category    String              // "sop-process" | "chat" | "value-chain" | "level10" | "canvas" | "communication"
+  content     String   @db.Text   // The actual prompt text
+  description String?  @db.Text   // Admin-facing description of what this prompt does
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@index([isActive])
 }
 

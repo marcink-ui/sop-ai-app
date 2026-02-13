@@ -541,6 +541,7 @@ export default function ValueChainPage() {
                                 initialEdges={currentEdges}
                                 onSave={handleWhiteboardChange}
                                 onOpenOptimization={() => setOptimizationOpen(!optimizationOpen)}
+                                selectedAreaId={selectedAreaId}
                             />
                         )}
                     </div>

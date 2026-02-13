@@ -37,7 +37,8 @@ import {
     ArrowRightLeft,
     UserPlus,
     BarChart3,
-    Target
+    Target,
+    GitCompare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { nodeTypes } from './nodes';
@@ -47,6 +48,14 @@ import { ElementPicker } from './element-picker';
 import { DelegationModal } from './delegation-modal';
 import { ElementDetailsPanel } from './element-details-panel';
 import { SimulationPanel } from './simulation-panel';
+import { ComparisonView } from './comparison-view';
+
+interface WorkflowSnapshot {
+    id: string;
+    name: string;
+    nodes: Node[];
+    createdAt: Date;
+}
 
 interface WhiteboardProps {
     mapId?: string;
@@ -55,6 +64,7 @@ interface WhiteboardProps {
     onSave?: (nodes: Node[], edges: Edge[]) => void;
     readOnly?: boolean;
     onOpenOptimization?: () => void;
+    selectedAreaId?: string | null;
 }
 
 // ── Default Edge Options ───────────────────────────
@@ -66,18 +76,6 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
     markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#94a3b8' },
 };
 
-// ── Edge Label Base ────────────────────────────────
-
-const edgeLabelStyle: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 600,
-    padding: '2px 8px',
-    borderRadius: 6,
-    background: 'var(--background, #fff)',
-    border: '1px solid var(--border, #e5e7eb)',
-    color: 'var(--foreground, #111)',
-};
-
 // ── Empty defaults (data comes from DB via props) ──
 
 const emptyNodes: Node[] = [];
@@ -85,18 +83,71 @@ const emptyEdges: Edge[] = [];
 
 // REMOVED: hardcoded defaultNodes and defaultEdges — now loaded from DB
 
-export function ValueChainWhiteboard({
+// ── Inner component (must be inside ReactFlowProvider) ──
+
+function WhiteboardInner({
     mapId,
     initialNodes = emptyNodes,
     initialEdges = emptyEdges,
     onSave,
     readOnly = false,
     onOpenOptimization,
+    selectedAreaId,
 }: WhiteboardProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+    const reactFlowInstance = useReactFlow();
 
-    // Report changes to parent for auto-save
+    // ── Undo / Redo history ─────────────────────────
+    const undoStackRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
+    const redoStackRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
+    const isUndoRedoRef = useRef(false);
+
+    // Save snapshot before every user change (debounced)
+    const lastSnapshotRef = useRef<string>('');
+    const pushUndoSnapshot = useCallback(() => {
+        if (isUndoRedoRef.current) return;
+        const key = JSON.stringify({ n: nodes.map(n => ({ id: n.id, p: n.position })), e: edges.map(e => e.id) });
+        if (key === lastSnapshotRef.current) return;
+        lastSnapshotRef.current = key;
+        undoStackRef.current.push({ nodes: nodes.map(n => ({ ...n })), edges: edges.map(e => ({ ...e })) });
+        if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+        redoStackRef.current = [];
+    }, [nodes, edges]);
+
+    // Push snapshot on changes
+    const snapshotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current);
+        snapshotTimeoutRef.current = setTimeout(() => {
+            pushUndoSnapshot();
+        }, 300);
+        return () => { if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current); };
+    }, [nodes, edges, pushUndoSnapshot]);
+
+    const handleUndo = useCallback(() => {
+        if (undoStackRef.current.length === 0) return;
+        isUndoRedoRef.current = true;
+        const prev = undoStackRef.current.pop()!;
+        redoStackRef.current.push({ nodes: nodes.map(n => ({ ...n })), edges: edges.map(e => ({ ...e })) });
+        setNodes(prev.nodes);
+        setEdges(prev.edges);
+        lastSnapshotRef.current = '';
+        setTimeout(() => { isUndoRedoRef.current = false; }, 50);
+    }, [nodes, edges, setNodes, setEdges]);
+
+    const handleRedo = useCallback(() => {
+        if (redoStackRef.current.length === 0) return;
+        isUndoRedoRef.current = true;
+        const next = redoStackRef.current.pop()!;
+        undoStackRef.current.push({ nodes: nodes.map(n => ({ ...n })), edges: edges.map(e => ({ ...e })) });
+        setNodes(next.nodes);
+        setEdges(next.edges);
+        lastSnapshotRef.current = '';
+        setTimeout(() => { isUndoRedoRef.current = false; }, 50);
+    }, [nodes, edges, setNodes, setEdges]);
+
+    // Report changes to parent for auto-save (B6: include onSave in deps)
     const changeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (changeTimeoutRef.current) clearTimeout(changeTimeoutRef.current);
@@ -104,7 +155,8 @@ export function ValueChainWhiteboard({
             onSave?.(nodes, edges);
         }, 500);
         return () => { if (changeTimeoutRef.current) clearTimeout(changeTimeoutRef.current); };
-    }, [nodes, edges]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [nodes, edges, onSave]);
+
     const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
     const { resolvedTheme } = useTheme();
     const { data: session } = useSession();
@@ -129,6 +181,13 @@ export function ValueChainWhiteboard({
 
     // Simulation panel state
     const [simulationOpen, setSimulationOpen] = useState(false);
+
+    // Comparison view state
+    const [comparisonOpen, setComparisonOpen] = useState(false);
+    const [snapshots, setSnapshots] = useState<WorkflowSnapshot[]>([]);
+    const [comparisonA, setComparisonA] = useState<WorkflowSnapshot | null>(null);
+    const [comparisonB, setComparisonB] = useState<WorkflowSnapshot | null>(null);
+    const [selectingSlot, setSelectingSlot] = useState<'A' | 'B' | null>(null);
 
     // Ref for export functionality  
     const flowRef = useRef<HTMLDivElement>(null);
@@ -177,16 +236,17 @@ export function ValueChainWhiteboard({
         event.dataTransfer.dropEffect = 'move';
     }, []);
 
+    // B1 fix: use screenToFlowPosition() for accurate drop placement
     const onDrop = useCallback(
         (event: React.DragEvent) => {
             event.preventDefault();
             const type = event.dataTransfer.getData('application/reactflow');
             if (!type) return;
 
-            const position = {
-                x: event.clientX - 100,
-                y: event.clientY - 50,
-            };
+            const position = reactFlowInstance.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
 
             const newNode: Node = {
                 id: `${Date.now()}`,
@@ -200,7 +260,7 @@ export function ValueChainWhiteboard({
 
             setNodes((nds: Node[]) => nds.concat(newNode));
         },
-        [setNodes]
+        [setNodes, reactFlowInstance]
     );
 
     const handleSave = useCallback(() => {
@@ -276,6 +336,42 @@ export function ValueChainWhiteboard({
         setDetailsOpen(true);
     }, []);
 
+    // B4: Delete selected nodes/edges with Delete or Backspace
+    const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+        if (readOnly) return;
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+            const selectedNodes = nodes.filter(n => n.selected);
+            const selectedEdges = edges.filter(e => e.selected);
+            if (selectedNodes.length === 0 && selectedEdges.length === 0) return;
+
+            // Don't delete if user is typing in an input
+            const target = event.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+            event.preventDefault();
+            const selectedNodeIds = new Set(selectedNodes.map(n => n.id));
+            const selectedEdgeIds = new Set(selectedEdges.map(e => e.id));
+
+            // Remove selected nodes and any edges connected to them
+            setNodes(nds => nds.filter(n => !selectedNodeIds.has(n.id)));
+            setEdges(eds => eds.filter(e =>
+                !selectedEdgeIds.has(e.id) &&
+                !selectedNodeIds.has(e.source) &&
+                !selectedNodeIds.has(e.target)
+            ));
+        }
+
+        // Ctrl+Z / Cmd+Z for undo, Ctrl+Shift+Z / Cmd+Shift+Z for redo
+        if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+            event.preventDefault();
+            if (event.shiftKey) {
+                handleRedo();
+            } else {
+                handleUndo();
+            }
+        }
+    }, [readOnly, nodes, edges, setNodes, setEdges, handleUndo, handleRedo]);
+
     const nodeTypeOptions = useMemo(() => [
         { type: 'process', label: 'Process', icon: Cog, color: 'blue' },
         { type: 'sop', label: 'SOP', icon: FileText, color: 'emerald' },
@@ -290,15 +386,59 @@ export function ValueChainWhiteboard({
         setSelectedNodeType(nodeType);
     };
 
+    // Area-filtered nodes — highlight nodes belonging to selected area
+    const displayNodes = useMemo(() => {
+        if (!selectedAreaId) return nodes;
+        return nodes.map(n => ({
+            ...n,
+            style: {
+                ...n.style,
+                opacity: n.data?.areaId === selectedAreaId ? 1 : 0.3,
+            },
+        }));
+    }, [nodes, selectedAreaId]);
+
+    // Snapshot for comparison
+    const handleTakeSnapshot = useCallback(() => {
+        const snapshot: WorkflowSnapshot = {
+            id: `snap-${Date.now()}`,
+            name: `Snapshot ${new Date().toLocaleString('pl-PL')}`,
+            nodes: [...nodes],
+            createdAt: new Date(),
+        };
+        setSnapshots(prev => [...prev, snapshot]);
+
+        if (!comparisonA) {
+            setComparisonA(snapshot);
+        } else if (!comparisonB) {
+            setComparisonB(snapshot);
+        }
+    }, [nodes, comparisonA, comparisonB]);
+
+    const handleSelectWorkflow = useCallback((slot: 'A' | 'B') => {
+        setSelectingSlot(slot);
+        // If we have snapshots, use the latest; otherwise take a new one
+        if (snapshots.length > 0) {
+            const latest = snapshots[snapshots.length - 1];
+            if (slot === 'A') setComparisonA(latest);
+            else setComparisonB(latest);
+        } else {
+            handleTakeSnapshot();
+        }
+        setSelectingSlot(null);
+    }, [snapshots, handleTakeSnapshot]);
+
     return (
         <motion.div
             ref={flowRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="relative h-[calc(100vh-200px)] min-h-[600px] rounded-xl border border-border overflow-hidden bg-white dark:bg-card/50"
+            onKeyDown={handleKeyDown}
+            tabIndex={0}
         >
             <ReactFlow
-                nodes={nodes}
+                nodes={displayNodes}
                 edges={edges}
                 onNodesChange={readOnly ? undefined : onNodesChange}
                 onEdgesChange={readOnly ? undefined : onEdgesChange}
@@ -316,6 +456,7 @@ export function ValueChainWhiteboard({
                 snapGrid={[20, 20]}
                 minZoom={0.2}
                 maxZoom={2}
+                deleteKeyCode={null}
                 className="bg-neutral-50 dark:bg-neutral-950"
             >
                 <Background
@@ -360,10 +501,20 @@ export function ValueChainWhiteboard({
                                     Save
                                 </Button>
                                 <div className="w-px h-6 bg-border" />
-                                <Button variant="ghost" size="sm">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleUndo}
+                                    title="Cofnij (Ctrl+Z)"
+                                >
                                     <Undo className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleRedo}
+                                    title="Ponów (Ctrl+Shift+Z)"
+                                >
                                     <Redo className="h-4 w-4" />
                                 </Button>
                                 <div className="w-px h-6 bg-border" />
@@ -399,6 +550,19 @@ export function ValueChainWhiteboard({
                         >
                             <BarChart3 className="h-4 w-4 mr-1" />
                             Symulacja
+                        </Button>
+                        <Button
+                            variant={comparisonOpen ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => {
+                                if (!comparisonOpen) {
+                                    handleTakeSnapshot();
+                                }
+                                setComparisonOpen(!comparisonOpen);
+                            }}
+                        >
+                            <GitCompare className="h-4 w-4 mr-1" />
+                            Porównaj
                         </Button>
                         {onOpenOptimization && (
                             <Button
@@ -444,6 +608,26 @@ export function ValueChainWhiteboard({
                 isOpen={simulationOpen}
                 onToggle={() => setSimulationOpen(!simulationOpen)}
             />
+
+            {/* Comparison View */}
+            {comparisonOpen && (
+                <ComparisonView
+                    workflowA={comparisonA}
+                    workflowB={comparisonB}
+                    onSelectWorkflow={handleSelectWorkflow}
+                    onClose={() => setComparisonOpen(false)}
+                />
+            )}
         </motion.div>
+    );
+}
+
+// ── Exported wrapper with ReactFlowProvider (B5) ──
+
+export function ValueChainWhiteboard(props: WhiteboardProps) {
+    return (
+        <ReactFlowProvider>
+            <WhiteboardInner {...props} />
+        </ReactFlowProvider>
     );
 }

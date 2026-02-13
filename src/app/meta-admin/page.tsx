@@ -47,7 +47,7 @@ const adminModules = [
         title: 'Wszyscy Użytkownicy',
         description: 'Globalne zarządzanie kontami',
         icon: Users,
-        href: '/meta-admin/users',
+        href: '/admin-panel/users',
         stats: '156 kont',
         color: 'from-emerald-500 to-teal-600',
     },

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,13 +20,10 @@ import {
     Star,
     Copy,
     Check,
-    ExternalLink,
-    Zap,
-    Brain,
-    Target,
     ArrowRight,
     Globe,
-    X,
+    Brain,
+    Inbox,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,29 +39,11 @@ interface SystemPrompt {
     name: string;
     category: string;
     description: string;
-    prompt: string;
-    rating: number;
-    uses: number;
-    isGlobal: boolean;
-}
-
-interface AppItem {
-    id: string;
-    name: string;
-    description: string;
-    url?: string;
-    category: string;
-    icon: string;
-    isGlobal: boolean;
-}
-
-interface SkillItem {
-    id: string;
-    name: string;
-    description: string;
-    level: 'beginner' | 'intermediate' | 'advanced';
-    category: string;
-    isGlobal: boolean;
+    content?: string;
+    prompt?: string;
+    rating?: number;
+    uses?: number;
+    isGlobal?: boolean;
 }
 
 interface AgentItem {
@@ -74,7 +53,7 @@ interface AgentItem {
     type: 'ASSISTANT' | 'AGENT' | 'AUTOMATION';
     status: 'ACTIVE' | 'INACTIVE' | 'TESTING';
     model?: string;
-    isGlobal: boolean;
+    isGlobal?: boolean;
 }
 
 interface NewsletterItem {
@@ -86,79 +65,36 @@ interface NewsletterItem {
     author: { name: string | null };
 }
 
+interface ResourceItem {
+    id: string;
+    title: string;
+    slug: string;
+    content: string;
+    excerpt?: string;
+    category: string;
+    status: string;
+    featured: boolean;
+    viewCount: number;
+    author?: { name: string | null };
+}
+
 // ============================================================================
-// SAMPLE DATA
+// STATIC APPS & SKILLS (these are internal modules, not DB data)
 // ============================================================================
 
-const SAMPLE_PROMPTS: SystemPrompt[] = [
-    {
-        id: '1',
-        name: 'Asystent Sprzedaży B2B',
-        category: 'Sales',
-        description: 'Prompt do personalizowanych wiadomości sprzedażowych B2B',
-        prompt: 'Jesteś ekspertem w sprzedaży B2B dla firm MŚP...',
-        rating: 4.8,
-        uses: 234,
-        isGlobal: true,
-    },
-    {
-        id: '2',
-        name: 'Audytor MUDA / Lean',
-        category: 'Lean',
-        description: 'Identyfikacja 8 typów marnotrawstwa w procesach',
-        prompt: 'Przeanalizuj proces pod kątem 8 typów MUDA...',
-        rating: 4.9,
-        uses: 156,
-        isGlobal: true,
-    },
-    {
-        id: '3',
-        name: 'Kreator SOP',
-        category: 'Operations',
-        description: 'Tworzenie procedur operacyjnych krok po kroku',
-        prompt: 'Na podstawie opisu procesu, stwórz SOP...',
-        rating: 4.7,
-        uses: 189,
-        isGlobal: true,
-    },
-    {
-        id: '4',
-        name: 'Analityk ROI',
-        category: 'Finance',
-        description: 'Kalkulacja ROI transformacji cyfrowej',
-        prompt: 'Oblicz ROI wdrożenia AI na podstawie danych...',
-        rating: 4.6,
-        uses: 98,
-        isGlobal: false,
-    },
+const BUILT_IN_APPS = [
+    { id: 'canvas', name: 'VantageOS Canvas', description: 'Warsztaty strategiczne z AI', url: '/canvas', category: 'Strategy', icon: '🎯' },
+    { id: 'value-chain', name: 'Value Chain Mapper', description: 'Mapowanie łańcucha wartości', url: '/value-chain', category: 'Operations', icon: '🔗' },
+    { id: 'muda', name: 'MUDA Reporter', description: 'Identyfikacja marnotrawstwa', url: '/muda', category: 'Lean', icon: '🔍' },
+    { id: 'knowledge-graph', name: 'Knowledge Graph', description: 'Wizualizacja wiedzy firmy', url: '/knowledge-graph', category: 'Knowledge', icon: '🧠' },
+    { id: 'kaizen', name: 'Kaizen Board', description: 'System ciągłego doskonalenia', url: '/kaizen', category: 'Lean', icon: '⚡' },
 ];
 
-const SAMPLE_APPS: AppItem[] = [
-    { id: '1', name: 'VantageOS Canvas', description: 'Warsztaty strategiczne z AI', url: '/canvas', category: 'Strategy', icon: '🎯', isGlobal: true },
-    { id: '2', name: 'Value Chain Mapper', description: 'Mapowanie łańcucha wartości', url: '/value-chain', category: 'Operations', icon: '🔗', isGlobal: true },
-    { id: '3', name: 'MUDA Reporter', description: 'Identyfikacja marnotrawstwa', url: '/muda', category: 'Lean', icon: '🔍', isGlobal: true },
-    { id: '4', name: 'Knowledge Graph', description: 'Wizualizacja wiedzy firmy', url: '/knowledge-graph', category: 'Knowledge', icon: '🧠', isGlobal: true },
-    { id: '5', name: 'Kaizen Board', description: 'System ciągłego doskonalenia', url: '/kaizen', category: 'Lean', icon: '⚡', isGlobal: true },
-];
-
-const SAMPLE_SKILLS: SkillItem[] = [
-    { id: '1', name: 'Gemba Walk Digital', description: 'Zdalna obserwacja procesów z analizą AI', level: 'intermediate', category: 'Lean', isGlobal: true },
-    { id: '2', name: 'SOP Writing', description: 'Tworzenie skutecznych procedur operacyjnych', level: 'beginner', category: 'Operations', isGlobal: true },
-    { id: '3', name: 'AI Prompt Engineering', description: 'Projektowanie promptów dla agentów AI', level: 'advanced', category: 'AI', isGlobal: true },
-    { id: '4', name: 'Process Mining', description: 'Odkrywanie wzorców w procesach biznesowych', level: 'advanced', category: 'Analytics', isGlobal: false },
-];
-
-const SAMPLE_AGENTS: AgentItem[] = [
-    { id: '1', name: 'SOP Asystent', description: 'Dobrze ustrukturyzowany prompt + baza wiedzy SOPów', type: 'ASSISTANT', status: 'ACTIVE', model: 'GPT-4o', isGlobal: true },
-    { id: '2', name: 'MUDA Agent', description: 'Automatycznie analizuje procesy i tworzy raporty MUDA', type: 'AGENT', status: 'ACTIVE', model: 'Claude 3.5', isGlobal: true },
-    { id: '3', name: 'Newsletter Generator', description: 'Zbiera informacje i generuje newsletter firmowy', type: 'AGENT', status: 'TESTING', model: 'GPT-4o', isGlobal: false },
-    { id: '4', name: 'KPI Calculator', description: 'Algorytmiczne wyliczenie KPI z danych wejściowych', type: 'AUTOMATION', status: 'ACTIVE', isGlobal: true },
-    { id: '5', name: 'SOP Validator', description: 'Sprawdza kompletność SOP wg checklisty', type: 'AUTOMATION', status: 'ACTIVE', isGlobal: true },
-];
-
-const SAMPLE_NEWSLETTERS: NewsletterItem[] = [
-    { id: '1', title: 'VantageOS 2.0 — nowy Knowledge Graph i Value Chain', content: 'Wprowadziliśmy nowy moduł...', publishedAt: '2025-02-08', isPinned: true, author: { name: 'Admin' } },
-    { id: '2', title: 'Jak AI zmieniło procesy w firmie X', content: 'Case study...', publishedAt: '2025-02-05', isPinned: false, author: { name: 'Marcin' } },
+const BUILT_IN_SKILLS = [
+    { id: 'gemba', name: 'Gemba Walk Digital', description: 'Zdalna obserwacja procesów z analizą AI', level: 'intermediate' as const, category: 'Lean' },
+    { id: 'sop-writing', name: 'SOP Writing', description: 'Tworzenie skutecznych procedur operacyjnych', level: 'beginner' as const, category: 'Operations' },
+    { id: 'prompt-eng', name: 'AI Prompt Engineering', description: 'Projektowanie promptów dla agentów AI', level: 'advanced' as const, category: 'AI' },
+    { id: 'process-mining', name: 'Process Mining', description: 'Odkrywanie wzorców w procesach biznesowych', level: 'advanced' as const, category: 'Analytics' },
 ];
 
 // ============================================================================
@@ -177,6 +113,15 @@ const LEVEL_CONFIG = {
     advanced: { label: 'Zaawansowany', color: 'bg-red-500/10 text-red-600 border-red-500/20' },
 };
 
+function EmptyState({ message }: { message: string }) {
+    return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Inbox className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
+    );
+}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -189,50 +134,104 @@ export default function ResourcesPage() {
     const [newResource, setNewResource] = useState({ name: '', category: '', description: '', prompt: '' });
     const [saving, setSaving] = useState(false);
 
+    // --- Data from APIs ---
+    const [prompts, setPrompts] = useState<SystemPrompt[]>([]);
+    const [agents, setAgents] = useState<AgentItem[]>([]);
+    const [newsletters, setNewsletters] = useState<NewsletterItem[]>([]);
+    const [resources, setResources] = useState<ResourceItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // --- Fetch all data on mount ---
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [promptsRes, agentsRes, newslettersRes, resourcesRes] = await Promise.allSettled([
+                fetch('/api/prompts').then(r => r.ok ? r.json() : []),
+                fetch('/api/agents').then(r => r.ok ? r.json() : []),
+                fetch('/api/newsletters').then(r => r.ok ? r.json() : []),
+                fetch('/api/resources').then(r => r.ok ? r.json() : []),
+            ]);
+
+            if (promptsRes.status === 'fulfilled') setPrompts(Array.isArray(promptsRes.value) ? promptsRes.value : []);
+            if (agentsRes.status === 'fulfilled') setAgents(Array.isArray(agentsRes.value) ? agentsRes.value : []);
+            if (newslettersRes.status === 'fulfilled') setNewsletters(Array.isArray(newslettersRes.value) ? newslettersRes.value : []);
+            if (resourcesRes.status === 'fulfilled') setResources(Array.isArray(resourcesRes.value) ? resourcesRes.value : []);
+        } catch (err) {
+            console.error('Failed to fetch resources:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchData(); }, [fetchData]);
+
     const handleAddResource = async () => {
         if (!newResource.name.trim()) { toast.error('Podaj nazwę zasobu'); return; }
         setSaving(true);
         try {
             if (activeTab === 'prompts') {
-                // Try API first, fall back to localStorage
-                try {
-                    const res = await fetch('/api/prompts', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            name: newResource.name,
-                            category: newResource.category || 'General',
-                            description: newResource.description,
-                            content: newResource.prompt,
-                        }),
-                    });
-                    if (res.ok) {
-                        toast.success(`Prompt "${newResource.name}" zapisany`);
-                        setNewResource({ name: '', category: '', description: '', prompt: '' });
-                        setAddOpen(false);
-                        return;
-                    }
-                } catch { /* API unavailable */ }
-                // Fallback: localStorage
-                const stored = JSON.parse(localStorage.getItem('vos-custom-prompts') || '[]');
-                stored.push({ id: `custom-${Date.now()}`, ...newResource, rating: 0, uses: 0, isGlobal: false });
-                localStorage.setItem('vos-custom-prompts', JSON.stringify(stored));
-                toast.success(`Prompt "${newResource.name}" zapisany lokalnie`);
+                const res = await fetch('/api/prompts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: newResource.name,
+                        category: newResource.category || 'General',
+                        description: newResource.description,
+                        content: newResource.prompt,
+                    }),
+                });
+                if (res.ok) {
+                    toast.success(`Prompt "${newResource.name}" zapisany`);
+                    fetchData(); // refresh
+                } else {
+                    toast.error('Błąd zapisu promptu');
+                }
+            } else if (activeTab === 'newsletter') {
+                const res = await fetch('/api/newsletters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: newResource.name,
+                        content: newResource.description || newResource.prompt || 'Nowy newsletter',
+                        publish: true,
+                    }),
+                });
+                if (res.ok) {
+                    toast.success(`Newsletter "${newResource.name}" opublikowany`);
+                    fetchData();
+                } else {
+                    toast.error('Błąd zapisu newslettera');
+                }
             } else {
-                const stored = JSON.parse(localStorage.getItem(`vos-custom-${activeTab}`) || '[]');
-                stored.push({ id: `custom-${Date.now()}`, name: newResource.name, description: newResource.description, category: newResource.category || 'General', isGlobal: false });
-                localStorage.setItem(`vos-custom-${activeTab}`, JSON.stringify(stored));
-                toast.success(`Zasób "${newResource.name}" zapisany`);
+                // Resources (articles, etc.)
+                const res = await fetch('/api/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: newResource.name,
+                        content: newResource.prompt || newResource.description || 'Nowy zasób',
+                        category: (newResource.category || 'ARTICLE').toUpperCase(),
+                        status: 'PUBLISHED',
+                    }),
+                });
+                if (res.ok) {
+                    toast.success(`Zasób "${newResource.name}" zapisany`);
+                    fetchData();
+                } else {
+                    toast.error('Błąd zapisu zasobu');
+                }
             }
             setNewResource({ name: '', category: '', description: '', prompt: '' });
             setAddOpen(false);
+        } catch {
+            toast.error('Błąd połączenia z API');
         } finally {
             setSaving(false);
         }
     };
 
     const copyPrompt = (prompt: SystemPrompt) => {
-        navigator.clipboard.writeText(prompt.prompt);
+        navigator.clipboard.writeText(prompt.content || prompt.prompt || '');
         setCopiedId(prompt.id);
         toast.success(`Skopiowano: ${prompt.name}`);
         setTimeout(() => setCopiedId(null), 2000);
@@ -248,14 +247,25 @@ export default function ResourcesPage() {
         );
     };
 
+    const agentsOnly = agents.filter(a => a.type !== 'AUTOMATION');
+    const automationsOnly = agents.filter(a => a.type === 'AUTOMATION');
+
     const tabConfig = [
-        { value: 'prompts', label: 'Prompty', icon: Code2, count: SAMPLE_PROMPTS.length },
-        { value: 'apps', label: 'Aplikacje', icon: AppWindow, count: SAMPLE_APPS.length },
-        { value: 'skills', label: 'Skille', icon: Sparkles, count: SAMPLE_SKILLS.length },
-        { value: 'agents', label: 'Agenci', icon: Bot, count: SAMPLE_AGENTS.length },
-        { value: 'automations', label: 'Automatyzacje', icon: Cog, count: SAMPLE_AGENTS.filter(a => a.type === 'AUTOMATION').length },
-        { value: 'newsletter', label: 'Newsletter', icon: Newspaper, count: SAMPLE_NEWSLETTERS.length },
+        { value: 'prompts', label: 'Prompty', icon: Code2, count: prompts.length },
+        { value: 'apps', label: 'Aplikacje', icon: AppWindow, count: BUILT_IN_APPS.length },
+        { value: 'skills', label: 'Skille', icon: Sparkles, count: BUILT_IN_SKILLS.length },
+        { value: 'agents', label: 'Agenci', icon: Bot, count: agentsOnly.length },
+        { value: 'automations', label: 'Automatyzacje', icon: Cog, count: automationsOnly.length },
+        { value: 'newsletter', label: 'Newsletter', icon: Newspaper, count: newsletters.length },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -342,27 +352,29 @@ export default function ResourcesPage() {
 
                 {/* PROMPTS TAB */}
                 <TabsContent value="prompts" className="mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filterBySearch(SAMPLE_PROMPTS).map((prompt, idx) => (
-                            <motion.div
-                                key={prompt.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.05 }}
-                            >
-                                <Card className="group hover:shadow-lg hover:border-violet-500/30 transition-all duration-300 h-full">
-                                    <CardHeader className="pb-3">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
-                                                    <Code2 className="h-4 w-4 text-violet-500" />
+                    {filterBySearch(prompts).length === 0 ? (
+                        <EmptyState message="Brak promptów. Dodaj pierwszy prompt klikając przycisk 'Dodaj'." />
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filterBySearch(prompts).map((prompt, idx) => (
+                                <motion.div
+                                    key={prompt.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                >
+                                    <Card className="group hover:shadow-lg hover:border-violet-500/30 transition-all duration-300 h-full">
+                                        <CardHeader className="pb-3">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
+                                                        <Code2 className="h-4 w-4 text-violet-500" />
+                                                    </div>
+                                                    <div>
+                                                        <CardTitle className="text-sm">{prompt.name}</CardTitle>
+                                                        <Badge variant="outline" className="text-[10px] mt-1">{prompt.category}</Badge>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <CardTitle className="text-sm">{prompt.name}</CardTitle>
-                                                    <Badge variant="outline" className="text-[10px] mt-1">{prompt.category}</Badge>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1">
                                                 {prompt.isGlobal && (
                                                     <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
                                                         <Globe className="h-2.5 w-2.5 mr-0.5" />
@@ -370,42 +382,44 @@ export default function ResourcesPage() {
                                                     </Badge>
                                                 )}
                                             </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <CardDescription className="text-xs mb-3">{prompt.description}</CardDescription>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                                <span className="flex items-center gap-1">
-                                                    <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                                                    {prompt.rating}
-                                                </span>
-                                                <span>{prompt.uses} użyć</span>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <CardDescription className="text-xs mb-3">{prompt.description}</CardDescription>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                                    {prompt.rating && (
+                                                        <span className="flex items-center gap-1">
+                                                            <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                                            {prompt.rating}
+                                                        </span>
+                                                    )}
+                                                    {prompt.uses != null && <span>{prompt.uses} użyć</span>}
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => copyPrompt(prompt)}
+                                                >
+                                                    {copiedId === prompt.id ? (
+                                                        <><Check className="h-3 w-3 mr-1" /> Skopiowano</>
+                                                    ) : (
+                                                        <><Copy className="h-3 w-3 mr-1" /> Kopiuj</>
+                                                    )}
+                                                </Button>
                                             </div>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-7 text-xs"
-                                                onClick={() => copyPrompt(prompt)}
-                                            >
-                                                {copiedId === prompt.id ? (
-                                                    <><Check className="h-3 w-3 mr-1" /> Skopiowano</>
-                                                ) : (
-                                                    <><Copy className="h-3 w-3 mr-1" /> Kopiuj</>
-                                                )}
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </motion.div>
-                        ))}
-                    </div>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            ))}
+                        </div>
+                    )}
                 </TabsContent>
 
-                {/* APPS TAB */}
+                {/* APPS TAB (built-in modules) */}
                 <TabsContent value="apps" className="mt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filterBySearch(SAMPLE_APPS).map((app, idx) => (
+                        {filterBySearch(BUILT_IN_APPS).map((app, idx) => (
                             <motion.div
                                 key={app.id}
                                 initial={{ opacity: 0, y: 20 }}
@@ -425,14 +439,7 @@ export default function ResourcesPage() {
                                                     {app.name}
                                                 </h3>
                                                 <p className="text-xs text-muted-foreground mt-0.5">{app.description}</p>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <Badge variant="outline" className="text-[10px]">{app.category}</Badge>
-                                                    {app.isGlobal && (
-                                                        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                                            Global
-                                                        </Badge>
-                                                    )}
-                                                </div>
+                                                <Badge variant="outline" className="text-[10px] mt-2">{app.category}</Badge>
                                             </div>
                                             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-blue-500 group-hover:translate-x-1 transition-all shrink-0 ml-auto" />
                                         </div>
@@ -443,10 +450,10 @@ export default function ResourcesPage() {
                     </div>
                 </TabsContent>
 
-                {/* SKILLS TAB */}
+                {/* SKILLS TAB (built-in knowledge areas) */}
                 <TabsContent value="skills" className="mt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filterBySearch(SAMPLE_SKILLS).map((skill, idx) => {
+                        {filterBySearch(BUILT_IN_SKILLS).map((skill, idx) => {
                             const levelCfg = LEVEL_CONFIG[skill.level];
                             return (
                                 <motion.div
@@ -482,53 +489,57 @@ export default function ResourcesPage() {
 
                 {/* AGENTS TAB */}
                 <TabsContent value="agents" className="mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filterBySearch(SAMPLE_AGENTS).filter(a => a.type !== 'AUTOMATION').map((agent, idx) => {
-                            const typeCfg = TYPE_CONFIG[agent.type];
-                            const TypeIcon = typeCfg.icon;
-                            return (
-                                <motion.div
-                                    key={agent.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: idx * 0.05 }}
-                                >
-                                    <Card className={`group hover:shadow-lg hover:${typeCfg.border} transition-all duration-300 h-full`}>
-                                        <CardContent className="p-5">
-                                            <div className="flex items-start gap-3">
-                                                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${typeCfg.bg} shrink-0`}>
-                                                    <TypeIcon className={`h-5 w-5 ${typeCfg.color}`} />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="text-sm font-semibold text-foreground">{agent.name}</h3>
-                                                        <Badge variant="outline" className={`text-[10px] ${typeCfg.bg} ${typeCfg.color} ${typeCfg.border}`}>
-                                                            {typeCfg.label}
-                                                        </Badge>
+                    {filterBySearch(agentsOnly).length === 0 ? (
+                        <EmptyState message="Brak agentów AI. Utwórz agenta w sekcji Agenci." />
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filterBySearch(agentsOnly).map((agent, idx) => {
+                                const typeCfg = TYPE_CONFIG[agent.type] || TYPE_CONFIG.AGENT;
+                                const TypeIcon = typeCfg.icon;
+                                return (
+                                    <motion.div
+                                        key={agent.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                    >
+                                        <Card className={`group hover:shadow-lg hover:${typeCfg.border} transition-all duration-300 h-full`}>
+                                            <CardContent className="p-5">
+                                                <div className="flex items-start gap-3">
+                                                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${typeCfg.bg} shrink-0`}>
+                                                        <TypeIcon className={`h-5 w-5 ${typeCfg.color}`} />
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground mt-0.5">{agent.description}</p>
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={`text-[10px] ${agent.status === 'ACTIVE' ? 'bg-green-500/10 text-green-600 border-green-500/20' :
-                                                                agent.status === 'TESTING' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                                                                    'bg-gray-500/10 text-gray-500 border-gray-500/20'
-                                                                }`}
-                                                        >
-                                                            {agent.status === 'ACTIVE' ? '● Aktywny' : agent.status === 'TESTING' ? '◐ Testowy' : '○ Nieaktywny'}
-                                                        </Badge>
-                                                        {agent.model && (
-                                                            <span className="text-[10px] text-muted-foreground">{agent.model}</span>
-                                                        )}
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <h3 className="text-sm font-semibold text-foreground">{agent.name}</h3>
+                                                            <Badge variant="outline" className={`text-[10px] ${typeCfg.bg} ${typeCfg.color} ${typeCfg.border}`}>
+                                                                {typeCfg.label}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">{agent.description}</p>
+                                                        <div className="flex items-center gap-2 mt-2">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={`text-[10px] ${agent.status === 'ACTIVE' ? 'bg-green-500/10 text-green-600 border-green-500/20' :
+                                                                    agent.status === 'TESTING' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                                        'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                                                                    }`}
+                                                            >
+                                                                {agent.status === 'ACTIVE' ? '● Aktywny' : agent.status === 'TESTING' ? '◐ Testowy' : '○ Nieaktywny'}
+                                                            </Badge>
+                                                            {agent.model && (
+                                                                <span className="text-[10px] text-muted-foreground">{agent.model}</span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
+                                            </CardContent>
+                                        </Card>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </TabsContent>
 
                 {/* AUTOMATIONS TAB */}
@@ -540,13 +551,13 @@ export default function ResourcesPage() {
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Deterministyczna logika algorytmiczna — skrypty, wyliczenia, funkcje. Każda automatyzacja daje 100% pewny wynik (brak AI).
-                            Inspirowane bibliotekami Zapier, Make.com, N8N — ale zbudowane wewnętrznie.
                         </p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filterBySearch(SAMPLE_AGENTS).filter(a => a.type === 'AUTOMATION').map((agent, idx) => {
-                            const typeCfg = TYPE_CONFIG.AUTOMATION;
-                            return (
+                    {filterBySearch(automationsOnly).length === 0 ? (
+                        <EmptyState message="Brak automatyzacji. Utwórz automatyzację w sekcji Agenci z typem AUTOMATION." />
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filterBySearch(automationsOnly).map((agent, idx) => (
                                 <motion.div
                                     key={agent.id}
                                     initial={{ opacity: 0, y: 20 }}
@@ -578,50 +589,54 @@ export default function ResourcesPage() {
                                         </CardContent>
                                     </Card>
                                 </motion.div>
-                            );
-                        })}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </TabsContent>
 
                 {/* NEWSLETTER TAB */}
                 <TabsContent value="newsletter" className="mt-6">
-                    <div className="space-y-3">
-                        {filterBySearch(SAMPLE_NEWSLETTERS).map((item, idx) => (
-                            <motion.div
-                                key={item.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.05 }}
-                            >
-                                <Card className={`hover:shadow-lg transition-all duration-300 ${item.isPinned ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
-                                    <CardContent className="p-5">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-start gap-3">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 shrink-0">
-                                                    <Newspaper className="h-5 w-5 text-orange-500" />
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-                                                        {item.isPinned && (
-                                                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                                                📌 Przypięty
-                                                            </Badge>
-                                                        )}
+                    {filterBySearch(newsletters).length === 0 ? (
+                        <EmptyState message="Brak newsletterów. Dodaj pierwszy newsletter." />
+                    ) : (
+                        <div className="space-y-3">
+                            {filterBySearch(newsletters).map((item, idx) => (
+                                <motion.div
+                                    key={item.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                >
+                                    <Card className={`hover:shadow-lg transition-all duration-300 ${item.isPinned ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
+                                        <CardContent className="p-5">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 shrink-0">
+                                                        <Newspaper className="h-5 w-5 text-orange-500" />
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.content}</p>
-                                                    <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
-                                                        <span>{item.author.name}</span>
-                                                        {item.publishedAt && <span>{new Date(item.publishedAt).toLocaleDateString('pl-PL')}</span>}
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
+                                                            {item.isPinned && (
+                                                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                                                    📌 Przypięty
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.content}</p>
+                                                        <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
+                                                            <span>{item.author?.name || 'Autor'}</span>
+                                                            {item.publishedAt && <span>{new Date(item.publishedAt).toLocaleDateString('pl-PL')}</span>}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </motion.div>
-                        ))}
-                    </div>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            ))}
+                        </div>
+                    )}
                 </TabsContent>
             </Tabs>
         </div>

@@ -27,8 +27,16 @@ export async function GET(request: Request) {
             whereClause.status = status.toUpperCase() as SOPStatus;
         }
 
+        // Auto-filter by department for lower roles
+        const highRoles = ['META_ADMIN', 'PARTNER', 'SPONSOR', 'PILOT'];
+        const userRole = session.user.role || 'CITIZEN_DEV';
+
         if (departmentId) {
+            // Explicit filter always respected
             whereClause.departmentId = departmentId;
+        } else if (!highRoles.includes(userRole) && session.user.departmentId) {
+            // MANAGER, EXPERT, CITIZEN_DEV → auto-filter to own department
+            whereClause.departmentId = session.user.departmentId;
         }
 
         if (search) {

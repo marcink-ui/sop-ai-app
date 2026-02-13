@@ -202,11 +202,11 @@ export default function SOPsPage() {
                         <FileText className="h-6 w-6 text-white" />
                     </motion.div>
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground">Procedury SOP</h1>
+                        <h1 className="text-2xl font-bold text-foreground">Baza SOP</h1>
                         <p className="text-sm text-muted-foreground">{sops.length} procedur łącznie</p>
                     </div>
                 </div>
-                <Link href="/sops/new">
+                <Link href="/sops/process">
                     <Button className="btn-primary">
                         <Plus className="mr-2 h-4 w-4" />
                         Nowy SOP

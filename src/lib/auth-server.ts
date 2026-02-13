@@ -132,3 +132,32 @@ export async function getSession(): Promise<AppSession | null> {
     const result = await auth.api.getSession({ headers: h });
     return result as AppSession | null;
 }
+
+/**
+ * Get the effective organization ID, accounting for Partner/Meta Admin context switching.
+ * 
+ * For PARTNER/META_ADMIN roles: checks for a `vos-active-org` cookie override.
+ * For all other roles: returns the user's own organizationId.
+ * 
+ * Use this in ALL API routes instead of `session.user.organizationId` directly.
+ */
+export async function getEffectiveOrganizationId(session: AppSession): Promise<string> {
+    const role = session.user.role;
+
+    // Only PARTNER and META_ADMIN can switch context
+    if (role === 'PARTNER' || role === 'META_ADMIN') {
+        try {
+            const { cookies } = await import('next/headers');
+            const cookieStore = await cookies();
+            const override = cookieStore.get('vos-active-org')?.value;
+            if (override) {
+                return override;
+            }
+        } catch {
+            // Cookie read failed (e.g. in some edge runtime contexts), fall through
+        }
+    }
+
+    return session.user.organizationId;
+}
+

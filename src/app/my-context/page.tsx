@@ -101,7 +101,15 @@ const ENNEAGRAM_TYPES = [
     'Type 4 — Individualist', 'Type 5 — Investigator', 'Type 6 — Loyalist',
     'Type 7 — Enthusiast', 'Type 8 — Challenger', 'Type 9 — Peacemaker',
 ];
-const COMM_STYLES = ['direct', 'analytical', 'expressive', 'amiable'];
+const COMM_STYLES = [
+    { id: 'direct', label: 'Bezpośredni', desc: 'Szybko do sedna, konkretnie' },
+    { id: 'analytical', label: 'Analityczny', desc: 'Dane, fakty, logika' },
+    { id: 'relational', label: 'Relacyjny', desc: 'Empatia, harmonia, współpraca' },
+    { id: 'expressive', label: 'Ekspresywny', desc: 'Entuzjazm, wizja, energia' },
+    { id: 'structural', label: 'Strukturalny', desc: 'Porządek, procedury, dokumentacja' },
+    { id: 'coaching', label: 'Coachingowy', desc: 'Pytania, rozwój, motywacja' },
+    { id: 'strategic', label: 'Strategiczny', desc: 'Duży obraz, długi horyzont' },
+];
 
 const TABS: { id: TabId; label: string; icon: typeof LayoutDashboard; description: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Profil i statystyki' },
@@ -599,19 +607,41 @@ function PersonalityTab({ context, updateField, handleSave, saving }: {
                             </select>
                         </FieldGroup>
 
-                        <FieldGroup label="Styl komunikacji" icon={<MessageSquare className="h-4 w-4" />}>
-                            <select
-                                value={context.communicationStyle}
-                                onChange={(e) => updateField('communicationStyle', e.target.value)}
-                                className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
-                            >
-                                <option value="">Wybierz styl...</option>
-                                {COMM_STYLES.map(s => (
-                                    <option key={s} value={s}>
-                                        {s === 'direct' ? 'Bezpośredni' : s === 'analytical' ? 'Analityczny' : s === 'expressive' ? 'Ekspresyjny' : 'Przyjazny'}
-                                    </option>
-                                ))}
-                            </select>
+                        <FieldGroup label="Style komunikacji (wybierz 2-3)" icon={<MessageSquare className="h-4 w-4" />}>
+                            <div className="grid grid-cols-1 gap-2">
+                                {COMM_STYLES.map(s => {
+                                    const selected = (context.communicationStyle || '').split(',').filter(Boolean);
+                                    const isSelected = selected.includes(s.id);
+                                    return (
+                                        <button
+                                            key={s.id}
+                                            onClick={() => {
+                                                let next: string[];
+                                                if (isSelected) {
+                                                    next = selected.filter(x => x !== s.id);
+                                                } else {
+                                                    if (selected.length >= 3) return; // max 3
+                                                    next = [...selected, s.id];
+                                                }
+                                                updateField('communicationStyle', next.join(','));
+                                            }}
+                                            className={`flex items-center gap-3 p-2.5 rounded-lg border text-left text-sm transition-colors ${isSelected
+                                                ? 'border-violet-500 bg-violet-50 dark:bg-violet-500/10 dark:border-violet-500/50'
+                                                : 'border-border hover:bg-accent/50'
+                                                } ${selected.length >= 3 && !isSelected ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        >
+                                            <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-violet-500 bg-violet-500' : 'border-muted-foreground/40'
+                                                }`}>
+                                                {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                                            </div>
+                                            <div>
+                                                <span className="font-medium">{s.label}</span>
+                                                <span className="text-muted-foreground ml-2">{s.desc}</span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </FieldGroup>
                     </div>
 
@@ -625,13 +655,34 @@ function PersonalityTab({ context, updateField, handleSave, saving }: {
                         />
                     </FieldGroup>
 
-                    <FieldGroup label="Inne testy / notatki" icon={<PenSquare className="h-4 w-4" />}>
+                    <FieldGroup label="Inne testy (Belbin, FRIS, Struktogram, Gallup...)" icon={<PenSquare className="h-4 w-4" />}>
                         <textarea
                             value={context.personalityNotes}
                             onChange={(e) => updateField('personalityNotes', e.target.value)}
                             rows={3}
                             className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-violet-500"
-                            placeholder="Inne wyniki testów, obserwacje, preferencje..."
+                            placeholder="Np. Belbin: Kreator/Poszukiwacz Źródeł, FRIS: Badacz, Struktogram: Zielono-Niebieskie, Gallup Q12: 4.5/5..."
+                        />
+                    </FieldGroup>
+                </div>
+            </div>
+
+            {/* Certifications */}
+            <div className="rounded-2xl border bg-card">
+                <div className="flex items-center gap-2 px-6 py-4 border-b">
+                    <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-500/20">
+                        <Star className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <h2 className="font-semibold text-sm">Certyfikaty i kwalifikacje</h2>
+                </div>
+                <div className="p-6">
+                    <FieldGroup label="Certyfikaty" icon={<Star className="h-4 w-4" />}>
+                        <textarea
+                            value={context.certifications}
+                            onChange={(e) => updateField('certifications', e.target.value)}
+                            rows={3}
+                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-amber-500"
+                            placeholder="Np. PMP, Scrum Master PSM I, AWS Solutions Architect, Google Analytics, Lean Six Sigma Green Belt..."
                         />
                     </FieldGroup>
                 </div>
@@ -658,11 +709,17 @@ function PersonalityTab({ context, updateField, handleSave, saving }: {
                                     {context.enneagram}
                                 </Badge>
                             )}
-                            {context.communicationStyle && (
-                                <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 text-sm px-3 py-1">
-                                    Styl: {context.communicationStyle === 'direct' ? 'Bezpośredni' :
-                                        context.communicationStyle === 'analytical' ? 'Analityczny' :
-                                            context.communicationStyle === 'expressive' ? 'Ekspresyjny' : 'Przyjazny'}
+                            {context.communicationStyle && context.communicationStyle.split(',').filter(Boolean).map(styleId => {
+                                const style = COMM_STYLES.find(s => s.id === styleId);
+                                return style ? (
+                                    <Badge key={styleId} className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 text-sm px-3 py-1">
+                                        Styl: {style.label}
+                                    </Badge>
+                                ) : null;
+                            })}
+                            {context.certifications && (
+                                <Badge className="bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 text-sm px-3 py-1">
+                                    📜 {context.certifications.split(',').length} certyfikat(ów)
                                 </Badge>
                             )}
                         </div>

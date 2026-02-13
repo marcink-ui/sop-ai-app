@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     FileCode2,
     Save,
     Play,
     RefreshCw,
-    History,
     Copy,
     Check,
     ChevronLeft,
@@ -15,340 +14,434 @@ import {
     MessageSquare,
     Briefcase,
     Lightbulb,
-    BookOpen,
-    Target,
+    Activity,
+    Plus,
+    Trash2,
+    ToggleLeft,
+    ToggleRight,
+    Loader2,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import Link from 'next/link';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
-// System prompts - in production these would come from database
-const systemPrompts = [
-    {
-        id: 'sop-consultant',
-        name: 'SOP Consultant',
-        description: 'Asystent do tworzenia i analizy procedur',
-        icon: BookOpen,
-        color: 'text-blue-500',
-        prompt: `Jesteś ekspertem ds. procedur operacyjnych (SOP) w firmie.
+// Category icon mapping
+const categoryIcons: Record<string, typeof Bot> = {
+    'sop-process': FileCode2,
+    'chat': MessageSquare,
+    'value-chain': Activity,
+    'level10': Briefcase,
+    'canvas': Lightbulb,
+    'communication': Bot,
+};
 
-Twoje zadania:
-1. Pomagaj tworzyć nowe SOP na podstawie opisu procesu
-2. Analizuj istniejące SOP pod kątem kompletności
-3. Proponuj ulepszenia i automatyzacje
-4. Wskazuj powiązania z innymi procedurami
-
-Zawsze odpowiadaj w języku polskim.
-Używaj struktury: cel → kroki → odpowiedzialność → metryki.`,
-    },
-    {
-        id: 'value-chain-advisor',
-        name: 'Value Chain Advisor',
-        description: 'Analiza łańcucha wartości i procesów',
-        icon: Briefcase,
-        color: 'text-emerald-500',
-        prompt: `Jesteś analitykiem procesów biznesowych specjalizującym się w mapowaniu łańcucha wartości.
-
-Twoje kompetencje:
-1. Identyfikacja marnotrawstwa (MUDA)
-2. Analiza przepływu wartości (Value Stream)
-3. Propozycje automatyzacji z wykorzystaniem AI
-4. Obliczanie ROI dla usprawnień
-
-Bazuj na metodologii Lean i Six Sigma.`,
-    },
-    {
-        id: 'innovation-coach',
-        name: 'Innovation Coach',
-        description: 'Wspieranie innowacji i pomysłów',
-        icon: Lightbulb,
-        color: 'text-amber-500',
-        prompt: `Jesteś coachem innowacji wspierającym zespół w generowaniu pomysłów.
-
-Twój styl:
-1. Zadawaj pytania prowokujące myślenie
-2. Stosuj techniki kreatywnego myślenia (SCAMPER, 6 kapeluszy)
-3. Pomagaj priorytetyzować pomysły
-4. Łącz koncepcje z możliwościami AI
-
-Bądź entuzjastyczny, ale realistyczny.`,
-    },
-    {
-        id: 'chat-general',
-        name: 'General Assistant',
-        description: 'Ogólny asystent czatu',
-        icon: MessageSquare,
-        color: 'text-violet-500',
-        prompt: `Jesteś pomocnym asystentem AI w systemie VantageOS.
-
-Zasady:
-1. Odpowiadaj zwięźle i na temat
-2. Jeśli nie znasz odpowiedzi, przyznaj to
-3. Proponuj powiązane funkcje systemu
-4. Używaj polskiego języka
-
-Kontekst: VantageOS to system transformacji cyfrowej oparty na metodologii Manifest 3.3.`,
-    },
-    {
-        id: 'gem-canvas',
-        name: 'GEM Canvas',
-        description: 'GEM - Twórz strategię z pomocą AI',
-        icon: Target,
-        color: 'text-purple-500',
-        prompt: `Jesteś GEM (GTM Expert Model) – elitarnym architektem strategii biznesowej i konsultantem Go-To-Market.
-
-**Twoja rola:** Prowadzisz managera przez proces tworzenia Canvas krok po kroku.
-
-**Zasady pracy:**
-1. Pracuj nad jedną sekcją na raz - nie przechodź dalej bez akceptacji
-2. Zasada Złotego Konsultanta: Nigdy nie zostawiaj managera z pustą kartką - proponuj drafty
-3. Weryfikuj ryzykowne tezy - proś o dane jeśli założenia są zbyt śmiałe
-4. Po zakończeniu sekcji zapisz ją do Canvas
-
-**8 Sekcji Canvas (w kolejności):**
-1. Definicja Problemu (Niche Matrix) - Ból → Przyczyna → Symptom → Implikacja
-2. Idealny Profil Klienta (ICP) - Firmografika, Sygnały Discovery, Wykluczenia, Triggery
-3. Persony Zakupowe - Rola, Cele, Wyzwania, Real Quotes, Moment "Aha!"
-4. Elevator Pitch - Kontekst → Ból → Rozwiązanie → Mierzalny Wynik
-5. Propozycja Wartości - 3 Korzyści + 1 USP (usuń ból, nie dodawaj przyjemności)
-6. Metryki Sukcesu - 3-5 mierzalnych KPI
-7. Obiekcje i Riposty - Typowe lęki + One-liner odpowiedzi
-8. Priorytety Funkcji - MUST-HAVE vs NICE-TO-HAVE
-
-**Styl:** Ekspercki, strategiczny, zero lania wody. Język polski.`,
-    },
-];
+interface SystemPrompt {
+    id: string;
+    slug: string;
+    name: string;
+    category: string;
+    content: string;
+    description: string | null;
+    version: number;
+    isActive: boolean;
+    updatedAt: string;
+    updatedBy: string | null;
+}
 
 export default function PromptsPage() {
-    const [selectedPrompt, setSelectedPrompt] = useState(systemPrompts[0]);
-    const [editedPrompt, setEditedPrompt] = useState(selectedPrompt.prompt);
-    const [testInput, setTestInput] = useState('');
+    const [prompts, setPrompts] = useState<SystemPrompt[]>([]);
+    const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
+    const [editedContent, setEditedContent] = useState('');
+    const [editedName, setEditedName] = useState('');
+    const [editedDescription, setEditedDescription] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [testing, setTesting] = useState(false);
     const [testOutput, setTestOutput] = useState('');
-    const [isTesting, setIsTesting] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [newSlug, setNewSlug] = useState('');
+    const [newName, setNewName] = useState('');
+    const [newCategory, setNewCategory] = useState('chat');
+    const [newContent, setNewContent] = useState('');
+    const [newDescription, setNewDescription] = useState('');
 
-    const handlePromptSelect = (promptId: string) => {
-        const prompt = systemPrompts.find(p => p.id === promptId);
-        if (prompt) {
-            setSelectedPrompt(prompt);
-            setEditedPrompt(prompt.prompt);
-            setTestOutput('');
+    const fetchPrompts = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/prompts');
+            if (res.ok) {
+                const data = await res.json();
+                setPrompts(data.prompts || []);
+                if (!selectedPromptId && data.prompts?.length > 0) {
+                    handleSelect(data.prompts[0]);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch prompts:', err);
+        } finally {
+            setLoading(false);
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const handleSave = async () => {
-        setIsSaving(true);
-        // In production, this would save to database
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        toast.success('Prompt zapisany pomyślnie');
-        setIsSaving(false);
-    };
+    useEffect(() => {
+        fetchPrompts();
+    }, [fetchPrompts]);
 
-    const handleTest = async () => {
-        if (!testInput.trim()) {
-            toast.error('Wprowadź testowe zapytanie');
+    function handleSelect(prompt: SystemPrompt) {
+        setSelectedPromptId(prompt.id);
+        setEditedContent(prompt.content);
+        setEditedName(prompt.name);
+        setEditedDescription(prompt.description || '');
+        setTestOutput('');
+    }
+
+    async function handleSave() {
+        if (!selectedPromptId) return;
+        setSaving(true);
+        try {
+            const res = await fetch('/api/admin/prompts', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: selectedPromptId,
+                    name: editedName,
+                    content: editedContent,
+                    description: editedDescription,
+                }),
+            });
+            if (res.ok) {
+                toast.success('Prompt zapisany');
+                fetchPrompts();
+            } else {
+                const err = await res.json();
+                toast.error(err.error || 'Błąd zapisu');
+            }
+        } catch {
+            toast.error('Błąd połączenia');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function handleToggleActive(prompt: SystemPrompt) {
+        try {
+            const res = await fetch('/api/admin/prompts', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: prompt.id, isActive: !prompt.isActive }),
+            });
+            if (res.ok) {
+                toast.success(prompt.isActive ? 'Prompt dezaktywowany' : 'Prompt aktywowany');
+                fetchPrompts();
+            }
+        } catch {
+            toast.error('Błąd');
+        }
+    }
+
+    async function handleDelete(promptId: string) {
+        if (!confirm('Usunąć ten prompt? Tej akcji nie można cofnąć.')) return;
+        try {
+            const res = await fetch(`/api/admin/prompts?id=${promptId}`, { method: 'DELETE' });
+            if (res.ok) {
+                toast.success('Prompt usunięty');
+                if (selectedPromptId === promptId) setSelectedPromptId(null);
+                fetchPrompts();
+            }
+        } catch {
+            toast.error('Błąd usuwania');
+        }
+    }
+
+    async function handleCreate() {
+        if (!newSlug || !newName || !newCategory || !newContent) {
+            toast.error('Wypełnij wszystkie wymagane pola');
             return;
         }
-
-        setIsTesting(true);
-        setTestOutput('');
-
         try {
-            const response = await fetch('/api/chat', {
+            const res = await fetch('/api/admin/prompts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: testInput,
-                    context: { testMode: true },
-                    systemPromptOverride: editedPrompt,
+                    slug: newSlug,
+                    name: newName,
+                    category: newCategory,
+                    content: newContent,
+                    description: newDescription,
                 }),
             });
+            if (res.ok) {
+                toast.success('Prompt dodany');
+                setShowCreateForm(false);
+                setNewSlug(''); setNewName(''); setNewContent(''); setNewDescription('');
+                fetchPrompts();
+            } else {
+                const err = await res.json();
+                toast.error(err.error || 'Błąd');
+            }
+        } catch {
+            toast.error('Błąd');
+        }
+    }
 
-            if (response.ok) {
-                const reader = response.body?.getReader();
+    async function handleTest() {
+        if (!editedContent.trim()) return;
+        setTesting(true);
+        setTestOutput('');
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: editedContent },
+                        { role: 'user', content: 'Pokaż krótki przykład działania tego promptu.' },
+                    ],
+                }),
+            });
+            if (res.ok) {
+                const reader = res.body?.getReader();
                 const decoder = new TextDecoder();
                 let result = '';
-
-                while (reader) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    result += decoder.decode(value);
-                    setTestOutput(result);
+                if (reader) {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        result += decoder.decode(value, { stream: true });
+                        setTestOutput(result);
+                    }
                 }
             } else {
-                throw new Error('API error');
+                setTestOutput('Błąd testu: ' + res.statusText);
             }
-        } catch (error) {
-            setTestOutput('Błąd podczas testowania promptu. Sprawdź konfigurację API.');
+        } catch {
+            setTestOutput('Błąd połączenia z AI.');
+        } finally {
+            setTesting(false);
         }
+    }
 
-        setIsTesting(false);
-    };
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(editedPrompt);
+    function handleCopy() {
+        navigator.clipboard.writeText(editedContent);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-    };
+    }
+
+    const selectedPrompt = prompts.find(p => p.id === selectedPromptId);
+    const categories = [...new Set(prompts.map(p => p.category))];
 
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Link href="/backoffice">
+                <Link href="/admin-panel">
                     <Button variant="ghost" size="icon">
                         <ChevronLeft className="h-5 w-5" />
                     </Button>
                 </Link>
-                <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                        <FileCode2 className="h-5 w-5 text-white" />
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                    <FileCode2 className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">System Prompts</h1>
+                    <p className="text-sm text-neutral-500">Edytuj prompty systemowe AI z bazy danych</p>
+                </div>
+                <Button onClick={() => setShowCreateForm(!showCreateForm)} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Nowy prompt
+                </Button>
+                <Button variant="outline" onClick={fetchPrompts} className="gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {/* Create form */}
+            {showCreateForm && (
+                <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Nowy System Prompt</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="grid grid-cols-3 gap-3">
+                            <Input placeholder="slug (np. sop-consultant)" value={newSlug} onChange={e => setNewSlug(e.target.value)} />
+                            <Input placeholder="Nazwa wyświetlana" value={newName} onChange={e => setNewName(e.target.value)} />
+                            <select
+                                className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm"
+                                value={newCategory}
+                                onChange={e => setNewCategory(e.target.value)}
+                            >
+                                <option value="sop-process">SOP Process</option>
+                                <option value="chat">Chat</option>
+                                <option value="value-chain">Value Chain</option>
+                                <option value="level10">Level 10</option>
+                                <option value="canvas">Canvas</option>
+                                <option value="communication">Communication</option>
+                            </select>
+                        </div>
+                        <Input placeholder="Opis (opcjonalny)" value={newDescription} onChange={e => setNewDescription(e.target.value)} />
+                        <Textarea placeholder="Treść promptu..." value={newContent} onChange={e => setNewContent(e.target.value)} rows={6} />
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setShowCreateForm(false)}>Anuluj</Button>
+                            <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700 text-white">Utwórz</Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Content */}
+            {loading ? (
+                <div className="flex items-center justify-center py-20">
+                    <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                </div>
+            ) : (
+                <div className="grid grid-cols-12 gap-6">
+                    {/* Left sidebar — prompt list */}
+                    <div className="col-span-4 space-y-4">
+                        {categories.map(cat => {
+                            const catPrompts = prompts.filter(p => p.category === cat);
+                            const Icon = categoryIcons[cat] || Bot;
+                            return (
+                                <div key={cat} className="space-y-2">
+                                    <div className="flex items-center gap-2 text-sm font-semibold text-neutral-500 uppercase tracking-wider">
+                                        <Icon className="h-3.5 w-3.5" />
+                                        {cat}
+                                    </div>
+                                    {catPrompts.map(prompt => (
+                                        <motion.div
+                                            key={prompt.id}
+                                            whileHover={{ scale: 1.01 }}
+                                            onClick={() => handleSelect(prompt)}
+                                            className={`cursor-pointer rounded-lg border p-3 transition-all ${selectedPromptId === prompt.id
+                                                    ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-sm'
+                                                    : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'
+                                                }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium text-sm text-neutral-900 dark:text-white">
+                                                    {prompt.name}
+                                                </span>
+                                                <div className="flex items-center gap-1">
+                                                    <Badge variant="outline" className="text-[10px]">
+                                                        v{prompt.version}
+                                                    </Badge>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleToggleActive(prompt); }}>
+                                                        {prompt.isActive
+                                                            ? <ToggleRight className="h-4 w-4 text-emerald-500" />
+                                                            : <ToggleLeft className="h-4 w-4 text-neutral-400" />
+                                                        }
+                                                    </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(prompt.id); }}>
+                                                        <Trash2 className="h-3.5 w-3.5 text-neutral-400 hover:text-red-500 transition-colors" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-neutral-500 mt-1 truncate">
+                                                {prompt.description || prompt.slug}
+                                            </p>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            );
+                        })}
+                        {prompts.length === 0 && (
+                            <div className="text-center py-12 text-neutral-400">
+                                <Bot className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                                <p className="text-sm">Brak promptów. Utwórz nowy lub uruchom seed.</p>
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold">System Prompts</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Edytuj i testuj prompty systemowe AI
-                        </p>
+
+                    {/* Right panel — editor */}
+                    <div className="col-span-8 space-y-4">
+                        {selectedPrompt ? (
+                            <>
+                                {/* Title + meta */}
+                                <Card>
+                                    <CardContent className="p-4 space-y-3">
+                                        <Input
+                                            value={editedName}
+                                            onChange={e => setEditedName(e.target.value)}
+                                            className="text-lg font-semibold"
+                                            placeholder="Nazwa promptu"
+                                        />
+                                        <Input
+                                            value={editedDescription}
+                                            onChange={e => setEditedDescription(e.target.value)}
+                                            className="text-sm"
+                                            placeholder="Opis (widoczny tylko w adminie)"
+                                        />
+                                        <div className="flex items-center gap-3 text-xs text-neutral-400">
+                                            <span>slug: <code className="text-neutral-600 dark:text-neutral-300">{selectedPrompt.slug}</code></span>
+                                            <span>•</span>
+                                            <span>Wersja {selectedPrompt.version}</span>
+                                            <span>•</span>
+                                            <span>{new Date(selectedPrompt.updatedAt).toLocaleString('pl-PL')}</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Editor */}
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-base">Treść promptu</CardTitle>
+                                            <div className="flex items-center gap-2">
+                                                <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1">
+                                                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                                                    {copied ? 'Skopiowano' : 'Kopiuj'}
+                                                </Button>
+                                                <Button variant="outline" size="sm" onClick={handleTest} disabled={testing} className="gap-1">
+                                                    <Play className="h-3.5 w-3.5" />
+                                                    {testing ? 'Testuje...' : 'Testuj'}
+                                                </Button>
+                                                <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                                                    <Save className="h-3.5 w-3.5" />
+                                                    {saving ? 'Zapisuję...' : 'Zapisz'}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Textarea
+                                            value={editedContent}
+                                            onChange={e => setEditedContent(e.target.value)}
+                                            rows={16}
+                                            className="font-mono text-sm leading-relaxed"
+                                            placeholder="Wpisz treść promptu..."
+                                        />
+                                    </CardContent>
+                                </Card>
+
+                                {/* Test output */}
+                                {testOutput && (
+                                    <Card className="border-emerald-200 dark:border-emerald-800">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-base">Wynik testu</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="bg-neutral-50 dark:bg-neutral-900 rounded-lg p-4 text-sm font-mono whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+                                                {testOutput}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </>
+                        ) : (
+                            <div className="flex items-center justify-center py-20 text-neutral-400">
+                                <div className="text-center">
+                                    <FileCode2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                                    <p>Wybierz prompt z listy po lewej stronie</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Prompt List */}
-                <Card className="lg:col-span-1">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Prompty</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        {systemPrompts.map((prompt) => (
-                            <motion.button
-                                key={prompt.id}
-                                onClick={() => handlePromptSelect(prompt.id)}
-                                className={`w-full p-3 rounded-lg text-left transition-all ${selectedPrompt.id === prompt.id
-                                    ? 'bg-primary/10 border border-primary/50'
-                                    : 'bg-muted/50 hover:bg-muted'
-                                    }`}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <prompt.icon className={`h-5 w-5 ${prompt.color}`} />
-                                    <div>
-                                        <div className="font-medium text-sm">{prompt.name}</div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {prompt.description}
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.button>
-                        ))}
-                    </CardContent>
-                </Card>
-
-                {/* Editor */}
-                <Card className="lg:col-span-3">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <selectedPrompt.icon className={`h-6 w-6 ${selectedPrompt.color}`} />
-                                <div>
-                                    <CardTitle>{selectedPrompt.name}</CardTitle>
-                                    <CardDescription>{selectedPrompt.description}</CardDescription>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm" onClick={handleCopy}>
-                                    {copied ? (
-                                        <Check className="h-4 w-4 text-green-500" />
-                                    ) : (
-                                        <Copy className="h-4 w-4" />
-                                    )}
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                    <History className="h-4 w-4 mr-2" />
-                                    Historia
-                                </Button>
-                                <Button onClick={handleSave} disabled={isSaving}>
-                                    {isSaving ? (
-                                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <Save className="h-4 w-4 mr-2" />
-                                    )}
-                                    Zapisz
-                                </Button>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Tabs defaultValue="edit">
-                            <TabsList className="mb-4">
-                                <TabsTrigger value="edit">Edycja</TabsTrigger>
-                                <TabsTrigger value="test">Test</TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="edit" className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Prompt systemowy</Label>
-                                    <Textarea
-                                        value={editedPrompt}
-                                        onChange={(e) => setEditedPrompt(e.target.value)}
-                                        className="min-h-[400px] font-mono text-sm"
-                                        placeholder="Wprowadź prompt systemowy..."
-                                    />
-                                </div>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                    <span>{editedPrompt.length} znaków</span>
-                                    <span>~{Math.ceil(editedPrompt.length / 4)} tokenów</span>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="test" className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Testowe zapytanie</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            value={testInput}
-                                            onChange={(e) => setTestInput(e.target.value)}
-                                            placeholder="Wpisz zapytanie do przetestowania..."
-                                            onKeyDown={(e) => e.key === 'Enter' && handleTest()}
-                                        />
-                                        <Button onClick={handleTest} disabled={isTesting}>
-                                            {isTesting ? (
-                                                <RefreshCw className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <Play className="h-4 w-4" />
-                                            )}
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {testOutput && (
-                                    <div className="space-y-2">
-                                        <Label>Odpowiedź AI</Label>
-                                        <div className="p-4 rounded-lg bg-muted/50 min-h-[200px] whitespace-pre-wrap text-sm">
-                                            {testOutput}
-                                        </div>
-                                    </div>
-                                )}
-                            </TabsContent>
-                        </Tabs>
-                    </CardContent>
-                </Card>
-            </div>
+            )}
         </div>
     );
 }

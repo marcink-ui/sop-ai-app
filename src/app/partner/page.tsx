@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
     Building2,
@@ -12,12 +13,14 @@ import {
     BarChart3,
     Clock,
     Sparkles,
+    Activity,
+    Bot,
+    MessageSquare,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 interface Organization {
@@ -34,6 +37,16 @@ interface Organization {
     };
 }
 
+interface ActivityItem {
+    id: string;
+    type: string;
+    description: string;
+    organizationName: string;
+    organizationSlug: string;
+    timestamp: string;
+    metadata?: Record<string, string>;
+}
+
 const partnerRoleLabels: Record<string, { label: string; color: string }> = {
     CONSULTANT: { label: 'Konsultant', color: 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400' },
     FACILITATOR: { label: 'Facylitator', color: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' },
@@ -41,9 +54,33 @@ const partnerRoleLabels: Record<string, { label: string; color: string }> = {
 };
 
 export default function PartnerDashboard() {
+    const router = useRouter();
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [switching, setSwitching] = useState<string | null>(null);
+    const [activities, setActivities] = useState<ActivityItem[]>([]);
+    const [activitiesLoading, setActivitiesLoading] = useState(true);
+
+    const handleEnterCompany = useCallback(async (org: Organization) => {
+        setSwitching(org.id);
+        try {
+            const res = await fetch('/api/context/switch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId: org.id }),
+            });
+            if (res.ok) {
+                router.push(`/partner/company/${org.slug}`);
+            } else {
+                console.error('Failed to switch context');
+                setSwitching(null);
+            }
+        } catch (error) {
+            console.error('Context switch error:', error);
+            setSwitching(null);
+        }
+    }, [router]);
 
     useEffect(() => {
         async function fetchOrganizations() {
@@ -60,6 +97,24 @@ export default function PartnerDashboard() {
             }
         }
         fetchOrganizations();
+    }, []);
+
+    // Fetch activity feed
+    useEffect(() => {
+        async function fetchActivities() {
+            try {
+                const res = await fetch('/api/partner/activity?limit=10');
+                if (res.ok) {
+                    const data = await res.json();
+                    setActivities(data.activities || []);
+                }
+            } catch (err) {
+                console.error('Failed to fetch activities:', err);
+            } finally {
+                setActivitiesLoading(false);
+            }
+        }
+        fetchActivities();
     }, []);
 
     const filteredOrganizations = organizations.filter((org) =>
@@ -229,12 +284,20 @@ export default function PartnerDashboard() {
                                     </div>
 
                                     <div className="mt-4">
-                                        <Link href={`/partner/company/${org.slug}`}>
-                                            <Button className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white group">
-                                                <span>Wejdź do firmy</span>
-                                                <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                                            </Button>
-                                        </Link>
+                                        <Button
+                                            className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white group"
+                                            onClick={() => handleEnterCompany(org)}
+                                            disabled={switching === org.id}
+                                        >
+                                            {switching === org.id ? (
+                                                <span>Przełączanie...</span>
+                                            ) : (
+                                                <>
+                                                    <span>Wejdź do firmy</span>
+                                                    <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                                                </>
+                                            )}
+                                        </Button>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -254,6 +317,73 @@ export default function PartnerDashboard() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* Activity Feed */}
+            <div className="mt-8">
+                <div className="flex items-center gap-2 mb-4">
+                    <Activity className="h-5 w-5 text-violet-500" />
+                    <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                        Ostatnia aktywność
+                    </h2>
+                </div>
+                {activitiesLoading ? (
+                    <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-16 rounded-lg bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+                        ))}
+                    </div>
+                ) : activities.length > 0 ? (
+                    <Card className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                        {activities.map((act) => {
+                            const iconMap: Record<string, React.ElementType> = {
+                                sop_created: FileText,
+                                sop_updated: FileText,
+                                agent_created: Bot,
+                                chat_session: MessageSquare,
+                                user_joined: Users,
+                            };
+                            const ActIcon = iconMap[act.type] || Activity;
+                            const timeAgo = formatTimeAgo(act.timestamp);
+                            return (
+                                <div key={act.id} className="flex items-center gap-3 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                                    <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-500/20">
+                                        <ActIcon className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm text-neutral-900 dark:text-white truncate">
+                                            {act.description}
+                                        </p>
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                            {act.organizationName} &middot; {timeAgo}
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </Card>
+                ) : (
+                    <Card className="bg-neutral-50 dark:bg-neutral-900/30 border-dashed">
+                        <CardContent className="py-8 text-center">
+                            <Activity className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                Brak aktywności do wyświetlenia
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
         </div>
     );
+}
+
+function formatTimeAgo(timestamp: string): string {
+    const diff = Date.now() - new Date(timestamp).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'przed chwilą';
+    if (mins < 60) return `${mins} min temu`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} godz. temu`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} dn. temu`;
+    return new Date(timestamp).toLocaleDateString('pl-PL');
 }

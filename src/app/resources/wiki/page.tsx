@@ -18,7 +18,7 @@ interface WikiArticle {
     tags: string[];
 }
 
-const SAMPLE_ARTICLES: WikiArticle[] = [
+const WIKI_ARTICLES: WikiArticle[] = [
     // ==================== FUNDAMENTY ====================
     {
         id: 'soul',
@@ -223,7 +223,7 @@ export default function WikiPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('Wszystkie');
 
-    const filteredArticles = SAMPLE_ARTICLES.filter(article => {
+    const filteredArticles = WIKI_ARTICLES.filter(article => {
         const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = selectedCategory === 'Wszystkie' || article.category === selectedCategory;

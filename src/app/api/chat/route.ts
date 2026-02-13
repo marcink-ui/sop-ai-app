@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth-server';
 import { searchWiki, buildWikiContext } from '@/lib/ai/wiki-knowledge';
 import { resolveApiKey, getTierLabel, isRealAIAvailable } from '@/lib/ai/api-key-resolver';
 
-// ── Organization-scoped knowledge fetcher ──
+// ── Organization-scoped knowledge fetcher (role-aware) ──
 async function buildOrganizationContext(userId: string, organizationId: string | null): Promise<string> {
     const parts: string[] = [];
 
@@ -14,59 +14,84 @@ async function buildOrganizationContext(userId: string, organizationId: string |
             where: { id: userId },
             include: {
                 organization: { select: { name: true } },
-                department: { select: { name: true } },
+                department: { select: { id: true, name: true } },
             },
         });
 
-        if (user) {
-            // Cast to any — profile fields exist in Prisma schema but local client types may be stale
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const u = user as any;
-            parts.push(`\n## Profil użytkownika`);
-            parts.push(`Imię: ${u.name || 'Nie podano'}`);
-            parts.push(`Rola: ${u.role}`);
-            if (u.organization?.name) parts.push(`Organizacja: ${u.organization.name}`);
-            if (u.department?.name) parts.push(`Dział: ${u.department.name}`);
-            if (u.bio) parts.push(`Bio: ${u.bio}`);
-            if (u.skills) parts.push(`Umiejętności: ${u.skills}`);
-            if (u.goals) parts.push(`Cele: ${u.goals}`);
-            if (u.mbti) parts.push(`MBTI: ${u.mbti}`);
-            if (u.disc) parts.push(`DISC: ${u.disc}`);
-            if (u.strengthsFinder) parts.push(`StrengthsFinder: ${u.strengthsFinder}`);
-            if (u.enneagram) parts.push(`Enneagram: ${u.enneagram}`);
-            if (u.personalityNotes) parts.push(`Notatki osobowości: ${u.personalityNotes}`);
-            if (u.communicationStyle) parts.push(`Styl komunikacji: ${u.communicationStyle}`);
-            if (u.preferredLanguage) parts.push(`Preferowany język: ${u.preferredLanguage}`);
-            if (u.certifications) parts.push(`Certyfikaty: ${u.certifications}`);
-            if (u.interests) parts.push(`Zainteresowania: ${u.interests}`);
-            if (u.values) parts.push(`Wartości: ${u.values}`);
-            if (u.cv) parts.push(`CV / Doświadczenie: ${u.cv}`);
-        }
+        if (!user) return '';
+
+        // Cast to any — profile fields exist in Prisma schema but local client types may be stale
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const u = user as any;
+        const userRole = u.role as string;
+        const userDeptId = u.departmentId as string | null;
+
+        parts.push(`\n## Profil użytkownika`);
+        parts.push(`Imię: ${u.name || 'Nie podano'}`);
+        parts.push(`Rola: ${u.role}`);
+        if (u.organization?.name) parts.push(`Organizacja: ${u.organization.name}`);
+        if (u.department?.name) parts.push(`Dział: ${u.department.name}`);
+        if (u.bio) parts.push(`Bio: ${u.bio}`);
+        if (u.skills) parts.push(`Umiejętności: ${u.skills}`);
+        if (u.goals) parts.push(`Cele: ${u.goals}`);
+        if (u.mbti) parts.push(`MBTI: ${u.mbti}`);
+        if (u.disc) parts.push(`DISC: ${u.disc}`);
+        if (u.strengthsFinder) parts.push(`StrengthsFinder: ${u.strengthsFinder}`);
+        if (u.enneagram) parts.push(`Enneagram: ${u.enneagram}`);
+        if (u.personalityNotes) parts.push(`Notatki osobowości: ${u.personalityNotes}`);
+        if (u.communicationStyle) parts.push(`Styl komunikacji: ${u.communicationStyle}`);
+        if (u.preferredLanguage) parts.push(`Preferowany język: ${u.preferredLanguage}`);
+        if (u.certifications) parts.push(`Certyfikaty: ${u.certifications}`);
+        if (u.interests) parts.push(`Zainteresowania: ${u.interests}`);
+        if (u.values) parts.push(`Wartości: ${u.values}`);
+        if (u.cv) parts.push(`CV / Doświadczenie: ${u.cv}`);
 
         if (!organizationId) return parts.join('\n');
 
-        // 2. SOPs (org-scoped) — titles and purposes for context
+        // 2. Role-based access levels
+        //    CITIZEN_DEV:  only PUBLISHED SOPs, no agents
+        //    EXPERT:       all SOPs visible to them, agents read-only
+        //    MANAGER:      own department SOPs + resources + agents
+        //    PILOT/SPONSOR/META_ADMIN/PARTNER: full org access
+        const isFullAccess = ['PILOT', 'SPONSOR', 'META_ADMIN', 'PARTNER'].includes(userRole);
+        const isManager = userRole === 'MANAGER';
+        const isCitizenDev = userRole === 'CITIZEN_DEV';
+
+        // 3. SOPs (org-scoped, role-filtered) — titles and purposes for context
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sopWhere: any = { organizationId };
+        if (isCitizenDev) {
+            sopWhere.status = 'PUBLISHED';
+        } else if (isManager && userDeptId) {
+            sopWhere.departmentId = userDeptId;
+        }
+
         const sops = await prisma.sOP.findMany({
-            where: { organizationId },
+            where: sopWhere,
             select: { id: true, title: true, code: true, status: true, purpose: true },
             take: 30,
             orderBy: { updatedAt: 'desc' },
         });
 
         if (sops.length > 0) {
-            parts.push(`\n## Procedury SOP w organizacji (${sops.length})`);
+            parts.push(`\n## Procedury SOP ${isManager && userDeptId ? '(Twój dział)' : 'w organizacji'} (${sops.length})`);
             parts.push(`(Użyj linków: [Nazwa SOPu](/sops/{id}))`);
             sops.forEach(s => {
                 parts.push(`- id:${s.id} | ${s.code ? s.code + ' — ' : ''}${s.title} (${s.status})${s.purpose ? ': ' + s.purpose.slice(0, 100) : ''}`);
             });
         }
 
-        // 3. Tasks — skipped (no Task model in current Prisma schema)
-        // TODO: Add task context when Task model is added
+        // 4. Tasks — skipped (no Task model in current Prisma schema)
 
-        // 4. Resources (org-scoped)
+        // 5. Resources (org-scoped, dept-filtered for MANAGER)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const resourceWhere: any = { organizationId };
+        if (isManager && userDeptId) {
+            resourceWhere.departmentId = userDeptId;
+        }
+
         const resources = await prisma.resource.findMany({
-            where: { organizationId },
+            where: resourceWhere,
             select: { id: true, title: true, category: true, status: true },
             take: 20,
             orderBy: { updatedAt: 'desc' },
@@ -80,20 +105,33 @@ async function buildOrganizationContext(userId: string, organizationId: string |
             });
         }
 
-        // 5. Agents (org-scoped)
-        const agents = await prisma.agent.findMany({
-            where: { organizationId },
-            select: { id: true, name: true, type: true, status: true, description: true },
-            take: 15,
-            orderBy: { updatedAt: 'desc' },
-        });
-
-        if (agents.length > 0) {
-            parts.push(`\n## Agenci AI (${agents.length})`);
-            parts.push(`(Użyj linków: [Nazwa agenta](/agents/{id}))`);
-            agents.forEach(a => {
-                parts.push(`- id:${a.id} | ${a.name} (${a.type}, ${a.status})${a.description ? ': ' + a.description.slice(0, 80) : ''}`);
+        // 6. Agents (org-scoped) — hide from CITIZEN_DEV
+        if (!isCitizenDev) {
+            const agents = await prisma.agent.findMany({
+                where: { organizationId },
+                select: { id: true, name: true, type: true, status: true, description: true },
+                take: 15,
+                orderBy: { updatedAt: 'desc' },
             });
+
+            if (agents.length > 0) {
+                parts.push(`\n## Agenci AI (${agents.length})`);
+                parts.push(`(Użyj linków: [Nazwa agenta](/agents/{id}))`);
+                agents.forEach(a => {
+                    parts.push(`- id:${a.id} | ${a.name} (${a.type}, ${a.status})${a.description ? ': ' + a.description.slice(0, 80) : ''}`);
+                });
+            }
+        }
+
+        // 7. Role-based guardrail
+        parts.push(`\n## Uprawnienia użytkownika`);
+        parts.push(`Rola: ${userRole}`);
+        if (isCitizenDev) {
+            parts.push(`Dostęp: Tylko opublikowane SOPy. Brak dostępu do agentów AI i zasobów wewnętrznych.`);
+        } else if (isManager) {
+            parts.push(`Dostęp: SOPy i zasoby z własnego działu${u.department?.name ? ' (' + u.department.name + ')' : ''}. Pełny dostęp do agentów.`);
+        } else if (isFullAccess) {
+            parts.push(`Dostęp: Pełny dostęp do wszystkich danych organizacji.`);
         }
 
     } catch (err) {
@@ -103,8 +141,8 @@ async function buildOrganizationContext(userId: string, organizationId: string |
     return parts.join('\n');
 }
 
-// VantageOS System Context - injected into every conversation
-const VANTAGEOS_CONTEXT = `
+// VantageOS System Context - DEFAULT fallback (overridden by DB prompt slug: chat-system)
+const DEFAULT_CHAT_CONTEXT = `
 Jesteś VantageOS AI Assistant - ekspertem w metodologii Lean AI i transformacji cyfrowej.
 
 ## Twoja wiedza obejmuje:
@@ -216,8 +254,9 @@ export async function POST(request: NextRequest) {
         // 5b. Build organization-scoped knowledge context (SOPs, Tasks, Resources, User Profile)
         const orgContext = await buildOrganizationContext(user.id, user.organizationId);
 
-        // 6. Build full context string
-        let contextString = VANTAGEOS_CONTEXT;
+        // 6. Build full context string — load from DB with fallback to hardcoded
+        const { getSystemPrompt } = await import('@/lib/system-prompts');
+        let contextString = await getSystemPrompt('chat-system', DEFAULT_CHAT_CONTEXT);
 
         // Inject organization knowledge
         if (orgContext) {

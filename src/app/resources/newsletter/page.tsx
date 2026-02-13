@@ -1,66 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Newspaper, Globe, Building2, Calendar, ExternalLink, BookmarkPlus } from 'lucide-react';
+import { Newspaper, Globe, Building2, Calendar, ExternalLink, BookmarkPlus, Loader2 } from 'lucide-react';
 
 interface NewsItem {
     id: string;
     title: string;
-    source: string;
-    summary: string;
-    category: 'internal' | 'external';
-    date: string;
-    readTime: string;
+    source?: string;
+    summary?: string;
+    content?: string;
+    category?: string;
+    status?: string;
+    publishedAt?: string;
+    createdAt?: string;
     link?: string;
 }
 
-const SAMPLE_NEWS: NewsItem[] = [
-    {
-        id: '1',
-        title: 'Nowa wersja VantageOS 2.0 już dostępna',
-        source: 'VantageOS Team',
-        summary: 'Wprowadziliśmy nowy moduł Graf Wiedzy oraz ulepszoną integrację z Prisma dla szybszych zapytań do bazy danych.',
-        category: 'internal',
-        date: '2024-02-05',
-        readTime: '3 min',
-    },
-    {
-        id: '2',
-        title: 'OpenAI GPT-4 Turbo - co nowego?',
-        source: 'AI Weekly',
-        summary: 'Najnowszy model GPT-4 Turbo oferuje 128k context window i znacznie niższe koszty. Sprawdź jak wykorzystać go w automatyzacji.',
-        category: 'external',
-        date: '2024-02-03',
-        readTime: '5 min',
-        link: 'https://openai.com/gpt-4-turbo',
-    },
-    {
-        id: '3',
-        title: 'Szkolenie: Lean w praktyce AI',
-        source: 'HR Department',
-        summary: 'Zapisz się na warsztaty łączące metodologię Lean z narzędziami AI. Termin: 15 lutego 2024.',
-        category: 'internal',
-        date: '2024-02-01',
-        readTime: '2 min',
-    },
-    {
-        id: '4',
-        title: 'Anthropic Claude 3 - nowy gracz na rynku',
-        source: 'TechCrunch',
-        summary: 'Claude 3 Opus przewyższa GPT-4 w benchmarkach. Co to oznacza dla firm wdrażających AI?',
-        category: 'external',
-        date: '2024-01-28',
-        readTime: '4 min',
-        link: 'https://anthropic.com',
-    },
-];
-
 export default function NewsletterPage() {
+    const [news, setNews] = useState<NewsItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [savedItems, setSavedItems] = useState<string[]>([]);
+
+    useEffect(() => {
+        async function fetchNews() {
+            try {
+                const res = await fetch('/api/newsletters');
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                setNews(Array.isArray(data) ? data : data.newsletters || []);
+            } catch (err) {
+                console.error('Failed to load newsletters:', err);
+                setError('Nie udało się załadować newsletterów');
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchNews();
+    }, []);
 
     const toggleSave = (id: string) => {
         setSavedItems(prev =>
@@ -68,8 +49,34 @@ export default function NewsletterPage() {
         );
     };
 
-    const internalNews = SAMPLE_NEWS.filter(n => n.category === 'internal');
-    const externalNews = SAMPLE_NEWS.filter(n => n.category === 'external');
+    const getCategory = (item: NewsItem): 'internal' | 'external' => {
+        if (item.category === 'external' || item.link) return 'external';
+        return 'internal';
+    };
+
+    const internalNews = news.filter(n => getCategory(n) === 'internal');
+    const externalNews = news.filter(n => getCategory(n) === 'external');
+
+    if (loading) {
+        return (
+            <div className="container mx-auto px-4 py-6">
+                <div className="flex items-center justify-center min-h-[300px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="container mx-auto px-4 py-6">
+                <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
+                    <Newspaper className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">{error}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto px-4 py-6">
@@ -100,43 +107,59 @@ export default function NewsletterPage() {
                 </TabsList>
 
                 <TabsContent value="all" className="space-y-4">
-                    {SAMPLE_NEWS.map(item => (
-                        <NewsCard
-                            key={item.id}
-                            item={item}
-                            saved={savedItems.includes(item.id)}
-                            onToggleSave={() => toggleSave(item.id)}
-                        />
-                    ))}
+                    {news.length === 0 ? (
+                        <EmptyState />
+                    ) : (
+                        news.map(item => (
+                            <NewsCard
+                                key={item.id}
+                                item={item}
+                                category={getCategory(item)}
+                                saved={savedItems.includes(item.id)}
+                                onToggleSave={() => toggleSave(item.id)}
+                            />
+                        ))
+                    )}
                 </TabsContent>
 
                 <TabsContent value="internal" className="space-y-4">
-                    {internalNews.map(item => (
-                        <NewsCard
-                            key={item.id}
-                            item={item}
-                            saved={savedItems.includes(item.id)}
-                            onToggleSave={() => toggleSave(item.id)}
-                        />
-                    ))}
+                    {internalNews.length === 0 ? (
+                        <EmptyState />
+                    ) : (
+                        internalNews.map(item => (
+                            <NewsCard
+                                key={item.id}
+                                item={item}
+                                category="internal"
+                                saved={savedItems.includes(item.id)}
+                                onToggleSave={() => toggleSave(item.id)}
+                            />
+                        ))
+                    )}
                 </TabsContent>
 
                 <TabsContent value="external" className="space-y-4">
-                    {externalNews.map(item => (
-                        <NewsCard
-                            key={item.id}
-                            item={item}
-                            saved={savedItems.includes(item.id)}
-                            onToggleSave={() => toggleSave(item.id)}
-                        />
-                    ))}
+                    {externalNews.length === 0 ? (
+                        <EmptyState />
+                    ) : (
+                        externalNews.map(item => (
+                            <NewsCard
+                                key={item.id}
+                                item={item}
+                                category="external"
+                                saved={savedItems.includes(item.id)}
+                                onToggleSave={() => toggleSave(item.id)}
+                            />
+                        ))
+                    )}
                 </TabsContent>
 
                 <TabsContent value="saved" className="space-y-4">
-                    {SAMPLE_NEWS.filter(n => savedItems.includes(n.id)).map(item => (
+                    {news.filter(n => savedItems.includes(n.id)).map(item => (
                         <NewsCard
                             key={item.id}
                             item={item}
+                            category={getCategory(item)}
                             saved={true}
                             onToggleSave={() => toggleSave(item.id)}
                         />
@@ -153,13 +176,35 @@ export default function NewsletterPage() {
     );
 }
 
-function NewsCard({ item, saved, onToggleSave }: { item: NewsItem; saved: boolean; onToggleSave: () => void }) {
+function EmptyState() {
+    return (
+        <div className="text-center py-12 text-muted-foreground">
+            <Newspaper className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Brak newsletterów</p>
+        </div>
+    );
+}
+
+function NewsCard({
+    item,
+    category,
+    saved,
+    onToggleSave,
+}: {
+    item: NewsItem;
+    category: 'internal' | 'external';
+    saved: boolean;
+    onToggleSave: () => void;
+}) {
+    const dateStr = item.publishedAt || item.createdAt || '';
+    const displayDate = dateStr ? new Date(dateStr).toLocaleDateString('pl-PL') : '';
+
     return (
         <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
-                        {item.category === 'internal' ? (
+                        {category === 'internal' ? (
                             <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400">
                                 <Building2 className="h-3 w-3 mr-1" />
                                 Firmowe
@@ -170,19 +215,23 @@ function NewsCard({ item, saved, onToggleSave }: { item: NewsItem; saved: boolea
                                 Globalne
                             </Badge>
                         )}
-                        <span className="text-xs text-muted-foreground">{item.source}</span>
+                        {item.source && (
+                            <span className="text-xs text-muted-foreground">{item.source}</span>
+                        )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        {item.date}
-                        <span>•</span>
-                        {item.readTime}
-                    </div>
+                    {displayDate && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {displayDate}
+                        </div>
+                    )}
                 </div>
                 <CardTitle className="text-lg mt-2">{item.title}</CardTitle>
             </CardHeader>
             <CardContent>
-                <CardDescription className="mb-4">{item.summary}</CardDescription>
+                <CardDescription className="mb-4">
+                    {item.summary || item.content?.substring(0, 200) || 'Brak opisu'}
+                </CardDescription>
                 <div className="flex items-center gap-2">
                     <Button
                         variant={saved ? "default" : "outline"}

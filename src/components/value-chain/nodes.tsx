@@ -9,6 +9,53 @@ import { Badge } from '@/components/ui/badge';
 
 const handleBase = '!w-3.5 !h-3.5 !border-2 !border-white dark:!border-neutral-900 !shadow-sm';
 
+// Static color map — Tailwind JIT requires full class names at build time;
+// dynamic interpolation like `bg-${color}-500` won't work.
+const colorStyles = {
+    blue: {
+        border: 'border-blue-500',
+        bgSelected: 'bg-blue-50/80 dark:bg-blue-500/10',
+        shadow: 'shadow-lg shadow-blue-500/20 ring-2 ring-blue-500/30',
+        glow: 'after:absolute after:inset-0 after:rounded-xl after:bg-blue-500/5 after:animate-pulse after:pointer-events-none',
+        iconBg: 'bg-blue-500/15 ring-1 ring-blue-500/20',
+        iconText: 'text-blue-500',
+    },
+    emerald: {
+        border: 'border-emerald-500',
+        bgSelected: 'bg-emerald-50/80 dark:bg-emerald-500/10',
+        shadow: 'shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/30',
+        glow: 'after:absolute after:inset-0 after:rounded-xl after:bg-emerald-500/5 after:animate-pulse after:pointer-events-none',
+        iconBg: 'bg-emerald-500/15 ring-1 ring-emerald-500/20',
+        iconText: 'text-emerald-500',
+    },
+    purple: {
+        border: 'border-purple-500',
+        bgSelected: 'bg-purple-50/80 dark:bg-purple-500/10',
+        shadow: 'shadow-lg shadow-purple-500/20 ring-2 ring-purple-500/30',
+        glow: 'after:absolute after:inset-0 after:rounded-xl after:bg-purple-500/5 after:animate-pulse after:pointer-events-none',
+        iconBg: 'bg-purple-500/15 ring-1 ring-purple-500/20',
+        iconText: 'text-purple-500',
+    },
+    amber: {
+        border: 'border-amber-500',
+        bgSelected: 'bg-amber-50/80 dark:bg-amber-500/10',
+        shadow: 'shadow-lg shadow-amber-500/20 ring-2 ring-amber-500/30',
+        glow: 'after:absolute after:inset-0 after:rounded-xl after:bg-amber-500/5 after:animate-pulse after:pointer-events-none',
+        iconBg: 'bg-amber-500/15 ring-1 ring-amber-500/20',
+        iconText: 'text-amber-500',
+    },
+    cyan: {
+        border: 'border-cyan-500',
+        bgSelected: 'bg-cyan-50/80 dark:bg-cyan-500/10',
+        shadow: 'shadow-lg shadow-cyan-500/20 ring-2 ring-cyan-500/30',
+        glow: 'after:absolute after:inset-0 after:rounded-xl after:bg-cyan-500/5 after:animate-pulse after:pointer-events-none',
+        iconBg: 'bg-cyan-500/15 ring-1 ring-cyan-500/20',
+        iconText: 'text-cyan-500',
+    },
+} as const;
+
+type NodeColor = keyof typeof colorStyles;
+
 function NodeShell({
     children,
     selected,
@@ -17,19 +64,14 @@ function NodeShell({
 }: {
     children: React.ReactNode;
     selected: boolean;
-    color: string; // tailwind color name e.g. "blue"
+    color: NodeColor;
     glow?: boolean;
 }) {
-    const borderColor = selected ? `border-${color}-500` : 'border-border/60';
-    const bg = selected
-        ? `bg-${color}-50/80 dark:bg-${color}-500/10`
-        : 'bg-white/95 dark:bg-card/95';
-    const shadow = selected
-        ? `shadow-lg shadow-${color}-500/20 ring-2 ring-${color}-500/30`
-        : 'shadow-md hover:shadow-lg';
-    const glowStyle = glow
-        ? `after:absolute after:inset-0 after:rounded-xl after:bg-${color}-500/5 after:animate-pulse after:pointer-events-none`
-        : '';
+    const c = colorStyles[color];
+    const borderColor = selected ? c.border : 'border-border/60';
+    const bg = selected ? c.bgSelected : 'bg-white/95 dark:bg-card/95';
+    const shadow = selected ? c.shadow : 'shadow-md hover:shadow-lg';
+    const glowStyle = glow ? c.glow : '';
 
     return (
         <div
@@ -52,13 +94,14 @@ function NodeHeader({
 }: {
     icon: typeof Cog;
     label: string;
-    color: string;
+    color: NodeColor;
     badge?: React.ReactNode;
 }) {
+    const c = colorStyles[color];
     return (
         <div className="flex items-center gap-2.5 mb-1.5">
-            <div className={`p-1.5 rounded-lg bg-${color}-500/15 ring-1 ring-${color}-500/20`}>
-                <Icon className={`h-4 w-4 text-${color}-500`} />
+            <div className={`p-1.5 rounded-lg ${c.iconBg}`}>
+                <Icon className={`h-4 w-4 ${c.iconText}`} />
             </div>
             <span className="font-semibold text-foreground text-[13px] leading-tight flex-1 truncate">
                 {label}
@@ -109,10 +152,10 @@ export const SOPNode = memo(({ data, selected }: NodeProps) => (
                     <Badge
                         variant="outline"
                         className={`text-[10px] px-1.5 py-0 h-5 font-medium ${data.status === 'approved'
-                                ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
-                                : data.status === 'draft'
-                                    ? 'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10'
-                                    : 'border-border text-muted-foreground'
+                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+                            : data.status === 'draft'
+                                ? 'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                                : 'border-border text-muted-foreground'
                             }`}
                     >
                         {data.status === 'approved' ? '✓ ' : ''}{data.status}

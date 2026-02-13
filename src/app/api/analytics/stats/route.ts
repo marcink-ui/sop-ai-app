@@ -63,6 +63,35 @@ export async function GET() {
             })
         ]);
 
+        // Previous-period counts for trend calculation (compare 7d vs prior 7d)
+        const prevPeriodStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+        const prevPeriodEnd = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const todayStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const yesterdayStart = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+        const [prevSOPs, prevMessages] = await Promise.all([
+            prisma.sOP.count({
+                where: {
+                    organizationId,
+                    createdAt: { gte: prevPeriodStart, lt: prevPeriodEnd }
+                }
+            }),
+            prisma.chatMessage.count({
+                where: {
+                    role: 'assistant',
+                    createdAt: { gte: yesterdayStart, lt: todayStart }
+                }
+            }),
+        ]);
+
+        // Calculate real % changes
+        const calcChange = (current: number, previous: number): string => {
+            if (previous === 0 && current === 0) return '0%';
+            if (previous === 0) return current > 0 ? '+100%' : '0%';
+            const pct = Math.round(((current - previous) / previous) * 100);
+            return pct >= 0 ? `+${pct}%` : `${pct}%`;
+        };
+
         // Engagement metrics
         const engagementScore = calculateEngagementScore({
             activeUsers,
@@ -81,9 +110,9 @@ export async function GET() {
                 sopsThisWeek: recentSOPs
             },
             trends: {
-                usersChange: activeUsers > 0 ? '+12%' : '0%',
-                aiCallsChange: totalMessages > 0 ? '+24%' : '0%',
-                sopsChange: recentSOPs > 0 ? `+${recentSOPs}` : '0'
+                usersChange: calcChange(activeUsers, activeUsers), // active sessions = hard to compare, keep stable
+                aiCallsChange: calcChange(totalMessages, prevMessages),
+                sopsChange: calcChange(recentSOPs, prevSOPs),
             },
             engagement: {
                 score: engagementScore,

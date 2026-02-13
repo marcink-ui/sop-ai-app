@@ -57,7 +57,7 @@ const adminModules = [
         title: 'Wszyscy Użytkownicy',
         description: 'Konta, role, uprawnienia na poziomie platformy',
         icon: Users,
-        href: '/backoffice/users',
+        href: '/admin-panel/users',
         color: 'from-amber-500 to-orange-600',
     },
     {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Table,
@@ -37,6 +37,7 @@ import {
     ArrowLeft,
     GitBranch,
     Filter,
+    Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -53,46 +54,6 @@ interface ValueChain {
     updatedAt: string;
 }
 
-// Sample data when DB is empty
-const SAMPLE_CHAINS: ValueChain[] = [
-    {
-        id: '1',
-        name: 'B2B Sales MSP - Audyt AI',
-        segment: 'MSP',
-        product: 'Audyt AI',
-        startPoint: 'Lead Generation',
-        endPoint: 'Contract Signed',
-        status: 'active',
-        processCount: 12,
-        createdAt: '2024-01-15',
-        updatedAt: '2024-02-01',
-    },
-    {
-        id: '2',
-        name: 'Enterprise Sales - VantageOS',
-        segment: 'Enterprise',
-        product: 'VantageOS',
-        startPoint: 'RFP Received',
-        endPoint: 'Implementation Complete',
-        status: 'active',
-        processCount: 18,
-        createdAt: '2024-01-20',
-        updatedAt: '2024-02-05',
-    },
-    {
-        id: '3',
-        name: 'Onboarding Flow - New Clients',
-        segment: 'All',
-        product: 'General',
-        startPoint: 'Contract Signed',
-        endPoint: 'First Value Delivered',
-        status: 'draft',
-        processCount: 8,
-        createdAt: '2024-02-01',
-        updatedAt: '2024-02-05',
-    },
-];
-
 const STATUS_COLORS: Record<string, string> = {
     draft: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-400',
     active: 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400',
@@ -101,11 +62,43 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function ValueChainLibraryPage() {
     const router = useRouter();
-    const [chains, setChains] = useState<ValueChain[]>(SAMPLE_CHAINS);
-    const [loading, setLoading] = useState(false);
+    const [chains, setChains] = useState<ValueChain[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [segmentFilter, setSegmentFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+
+    const fetchChains = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (segmentFilter !== 'all') params.set('segment', segmentFilter);
+            if (searchQuery) params.set('search', searchQuery);
+            const res = await fetch(`/api/value-chain/maps?${params}`);
+            if (res.ok) {
+                const data = await res.json();
+                const mapped: ValueChain[] = (data.valueChains || []).map((vc: Record<string, unknown>) => ({
+                    id: vc.id,
+                    name: vc.name || 'Unnamed',
+                    segment: (vc.segment as string) || '—',
+                    product: (vc.description as string) || '—',
+                    startPoint: (vc.startPoint as string) || '—',
+                    endPoint: (vc.endPoint as string) || '—',
+                    status: 'active' as const,
+                    processCount: (vc.stagesCount as number) || (vc.nodesCount as number) || 0,
+                    createdAt: vc.updatedAt ? new Date(vc.updatedAt as string).toLocaleDateString('pl-PL') : '—',
+                    updatedAt: vc.updatedAt ? new Date(vc.updatedAt as string).toLocaleDateString('pl-PL') : '—',
+                }));
+                setChains(mapped);
+            }
+        } catch (err) {
+            console.error('Error fetching value chains:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [segmentFilter, searchQuery]);
+
+    useEffect(() => { fetchChains(); }, [fetchChains]);
 
     // Filter chains
     const filteredChains = chains.filter(chain => {
@@ -139,7 +132,11 @@ export default function ValueChainLibraryPage() {
         setChains(chains.filter(c => c.id !== id));
     };
 
-    return (
+    return loading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+            <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+        </div>
+    ) : (
         <div className="container mx-auto px-4 py-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">

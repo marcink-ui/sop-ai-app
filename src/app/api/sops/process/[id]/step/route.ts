@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { resolveApiKey, isRealAIAvailable } from '@/lib/ai/api-key-resolver';
+import { getSystemPrompt } from '@/lib/system-prompts';
 
 // ============================================================================
 // Pipeline Step Names & Prompts (5 agents from methodology)
@@ -400,9 +401,14 @@ export async function POST(
                 return NextResponse.json({ success: true, output: mockOutput, mock: true });
             }
 
+            // Load prompt from DB (fallback to hardcoded STEP_CONFIG)
+            const slugMap: Record<number, string> = { 1: 'sop-step-1', 2: 'sop-step-2', 3: 'sop-step-3', 4: 'sop-step-4', 5: 'sop-step-5' };
+            const promptSlug = slugMap[step] || `sop-step-${step}`;
+            const systemPromptContent = await getSystemPrompt(promptSlug, stepConfig.systemPrompt);
+
             // Call OpenAI
             const messages = [
-                { role: 'system' as const, content: stepConfig.systemPrompt },
+                { role: 'system' as const, content: systemPromptContent },
                 { role: 'user' as const, content: context },
             ];
 

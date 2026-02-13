@@ -252,74 +252,74 @@ export default function CompanyDashboard() {
     const [teamDeptFilter, setTeamDeptFilter] = useState('ALL');
     const [teamSort, setTeamSort] = useState<'name' | 'role' | 'department' | 'aiUsage'>('name');
 
-    // Load data: try real API first, fall back to demo data
+    // Load data from API, fill fields API doesn't provide yet with demo placeholders
     useEffect(() => {
         async function loadCompanyData() {
+            const demo = generateDemoData(slug);
             try {
-                // Try real API first
                 const res = await fetch(`/api/partner/company/${slug}`);
                 if (res.ok) {
                     const apiData = await res.json();
-                    // Merge real data into CompanyData shape (fill gaps with demo)
-                    if (apiData.team && apiData.team.length > 0) {
-                        const demo = generateDemoData(slug);
-                        const merged: CompanyData = {
-                            ...demo,
-                            id: apiData.id || demo.id,
-                            name: apiData.name || demo.name,
-                            slug: apiData.slug || demo.slug,
-                            stats: {
-                                ...demo.stats,
-                                totalSOPs: apiData.stats?.totalSOPs ?? demo.stats.totalSOPs,
-                                aiAgents: apiData.stats?.totalAgents ?? demo.stats.aiAgents,
-                            },
-                            team: apiData.team.map((u: { id: string; name: string; role: string; department: string; avatar: string | null; aiUsage: number }) => ({
-                                id: u.id,
-                                name: u.name,
-                                role: u.role,
-                                department: u.department || '—',
-                                avatar: u.avatar || u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-                                sopCount: 0,
-                                aiUsage: u.aiUsage || 0,
-                            })),
-                            sops: apiData.sops?.length > 0 ? apiData.sops.map((s: { id: string; name: string; code: string; status: string; version: string; lastUpdated: string; department: string }) => ({
-                                ...s,
-                                aiEnhanced: false,
-                                steps: 0,
-                            })) : demo.sops,
-                            agents: apiData.agents?.length > 0 ? apiData.agents.map((a: { id: string; name: string; type: string; status: string }) => ({
-                                ...a,
-                                sopsUsed: 0,
-                                interactions: 0,
-                                satisfaction: 0,
-                            })) : demo.agents,
-                        };
-                        setCompany(merged);
-                        setLoading(false);
-                        return;
-                    }
+                    const phase = apiData.transformationPhase;
+                    const merged: CompanyData = {
+                        id: apiData.id || demo.id,
+                        name: apiData.name || demo.name,
+                        slug: apiData.slug || demo.slug,
+                        industry: demo.industry, // API doesn't return yet
+                        employees: apiData.stats?.totalUsers ?? demo.employees,
+                        transformationPhase: phase?.number ?? demo.transformationPhase,
+                        transformationPhaseName: phase?.name ?? demo.transformationPhaseName,
+                        startDate: demo.startDate, // API doesn't return yet
+                        partnerRole: demo.partnerRole,
+                        stats: {
+                            totalSOPs: apiData.stats?.totalSOPs ?? 0,
+                            digitizedSOPs: apiData.sops?.filter((s: { status: string }) => s.status === 'ACTIVE').length ?? 0,
+                            aiAgents: apiData.stats?.totalAgents ?? 0,
+                            mudaReports: demo.stats.mudaReports, // API doesn't track yet
+                            kaizenIdeas: demo.stats.kaizenIdeas, // API doesn't track yet
+                            roiSaved: demo.stats.roiSaved, // API doesn't track yet
+                        },
+                        team: (apiData.team || []).map((u: { id: string; name: string; role: string; department: string; avatar: string | null; aiUsage: number }) => ({
+                            id: u.id,
+                            name: u.name,
+                            role: u.role,
+                            department: u.department || '—',
+                            avatar: u.avatar || u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+                            sopCount: 0,
+                            aiUsage: u.aiUsage || 0,
+                        })),
+                        sops: (apiData.sops || []).map((s: { id: string; name: string; code: string; status: string; version: string; lastUpdated: string; department: string }) => ({
+                            id: s.id,
+                            name: s.name,
+                            department: s.department || '—',
+                            status: s.status as SOPItem['status'],
+                            version: s.version,
+                            lastUpdated: s.lastUpdated ? new Date(s.lastUpdated).toLocaleDateString('pl-PL') : '—',
+                            aiEnhanced: false,
+                            steps: 0,
+                        })),
+                        agents: (apiData.agents || []).map((a: { id: string; name: string; type: string; status: string; description?: string }) => ({
+                            id: a.id,
+                            name: a.name,
+                            type: a.type || 'Asystent',
+                            sopsUsed: 0,
+                            interactions: 0,
+                            satisfaction: 0,
+                            status: (a.status || 'ACTIVE') as AgentItem['status'],
+                        })),
+                        mudaReports: demo.mudaReports, // API doesn't track yet
+                        timeline: demo.timeline, // API doesn't track yet
+                        canvasData: {},
+                    };
+                    setCompany(merged);
+                    setLoading(false);
+                    return;
                 }
             } catch (err) {
                 console.warn('[CompanyDashboard] API unavailable, using demo data:', err);
             }
-
-            // Fallback to demo data
-            const storageKey = `vos_company_${slug}`;
-            const saved = localStorage.getItem(storageKey);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    setCompany(parsed);
-                    setNotes(parsed._partnerNotes || '');
-                } catch {
-                    const demo = generateDemoData(slug);
-                    setCompany(demo);
-                }
-            } else {
-                const demo = generateDemoData(slug);
-                setCompany(demo);
-                localStorage.setItem(storageKey, JSON.stringify(demo));
-            }
+            // Full fallback to demo data
+            setCompany(demo);
             setLoading(false);
         }
         loadCompanyData();
