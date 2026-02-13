@@ -123,7 +123,7 @@ export function SidePanel({ ontology, valueChainLinks, canvasPreview, notes, onN
                                         {Array.isArray(val)
                                             ? val.slice(0, 3).map((item, i) => (
                                                 <div key={i} className="truncate">
-                                                    • {typeof item === 'string' ? item : (item as Record<string, unknown>).name || (item as Record<string, unknown>).goal || JSON.stringify(item).slice(0, 80)}
+                                                    • {typeof item === 'string' ? item : String((item as Record<string, unknown>).name || (item as Record<string, unknown>).goal || JSON.stringify(item).slice(0, 80))}
                                                 </div>
                                             ))
                                             : typeof val === 'string'
