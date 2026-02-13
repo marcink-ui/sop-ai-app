@@ -168,7 +168,7 @@ export async function POST(request: Request) {
                 data: {
                     title: title || `Analiza: ${companyName || 'Transkrypcja'} — ${new Date().toISOString().slice(0, 10)}`,
                     source: 'UPLOAD',
-                    status: 'PROCESSED',
+                    status: 'DONE',
                     rawContent: transcript,
                     processedData: {
                         summary: result.summary,
