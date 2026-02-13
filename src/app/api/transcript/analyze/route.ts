@@ -222,7 +222,8 @@ export async function POST(request: Request) {
                             },
                         ],
                         lastAnalyzedAt: new Date().toISOString(),
-                    } as Record<string, unknown>,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    } as any,
                 },
             });
         }

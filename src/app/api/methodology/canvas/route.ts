@@ -215,6 +215,7 @@ export async function POST(request: Request) {
         await prisma.organization.update({
             where: { id: organizationId },
             data: {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 canvasData: {
                     ...existing,
                     [departmentKey]: {
@@ -222,7 +223,7 @@ export async function POST(request: Request) {
                         updatedAt: new Date().toISOString(),
                         updatedBy: session.user.id,
                     },
-                } as Record<string, unknown>,
+                } as any,
             },
         });
 
