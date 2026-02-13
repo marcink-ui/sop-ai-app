@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         });
 
         // Fetch organization context (companyContext + canvasData)
-        const org = await prisma.organization.findUnique({
+        const org = await (prisma.organization as any).findUnique({
             where: { id: organizationId },
             select: {
                 name: true,

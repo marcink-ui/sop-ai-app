@@ -185,7 +185,7 @@ async function buildStepContext(
     if (!sop) return '';
 
     // 2. Get organization context (Canvas AI, company context)
-    const org = await prisma.organization.findUnique({
+    const org = await (prisma.organization as any).findUnique({
         where: { id: organizationId },
         select: { name: true, canvasData: true, companyContext: true },
     });

@@ -163,8 +163,8 @@ export async function POST(request: Request) {
         let transcriptId: string | null = null;
 
         if (organizationId) {
-            // 1. Save Transcript record
-            const saved = await prisma.transcript.create({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const saved = await (prisma as any).transcript.create({
                 data: {
                     title: title || `Analiza: ${companyName || 'Transkrypcja'} — ${new Date().toISOString().slice(0, 10)}`,
                     source: 'UPLOAD',
@@ -175,10 +175,10 @@ export async function POST(request: Request) {
                         confidence: result.confidence,
                         roles: result.roles,
                         ontology: result.ontology,
-                    },
-                    extractedSops: result.sops as unknown as Record<string, unknown>[],
-                    extractedMuda: null, // MUDA comes from pipeline step 2
-                    extractedAgents: null, // Agents come from pipeline step 3-4
+                    } as any,
+                    extractedSops: result.sops as any,
+                    extractedMuda: null,
+                    extractedAgents: null,
                     language: 'pl',
                     processedAt: new Date(),
                     organizationId,
@@ -188,7 +188,7 @@ export async function POST(request: Request) {
             transcriptId = saved.id;
 
             // 2. Merge into Organization.companyContext
-            const org = await prisma.organization.findUnique({
+            const org = await (prisma.organization as any).findUnique({
                 where: { id: organizationId },
                 select: { companyContext: true },
             });
@@ -197,7 +197,7 @@ export async function POST(request: Request) {
             const existingValueChains = (existing.valueChainDrafts as unknown[]) || [];
             const existingImportedDocs = (existing.importedDocs as unknown[]) || [];
 
-            await prisma.organization.update({
+            await (prisma.organization as any).update({
                 where: { id: organizationId },
                 data: {
                     companyContext: {
