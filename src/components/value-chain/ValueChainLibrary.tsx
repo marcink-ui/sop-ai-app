@@ -30,10 +30,10 @@ export function ValueChainLibrary({ selectedId, onSelect }: ValueChainLibraryPro
             try {
                 const res = await fetch('/api/value-chain/maps');
                 const data = await res.json();
-                setChains(data.valueChains || []);
+                setChains(data.maps || []);
 
                 // Auto-expand all segments initially
-                const segments = new Set((data.valueChains || []).map((c: ValueChain) => c.segment));
+                const segments = new Set((data.maps || []).map((c: ValueChain) => c.segment || 'Nieprzypisany'));
                 const expanded: Record<string, boolean> = {};
                 segments.forEach(s => expanded[s as string] = true);
                 setExpandedSegments(expanded);
@@ -49,12 +49,13 @@ export function ValueChainLibrary({ selectedId, onSelect }: ValueChainLibraryPro
     // Filter and group chains
     const filteredChains = chains.filter(c =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.segment.toLowerCase().includes(search.toLowerCase())
+        (c.segment || '').toLowerCase().includes(search.toLowerCase())
     );
 
     const groupedChains = filteredChains.reduce((acc, chain) => {
-        if (!acc[chain.segment]) acc[chain.segment] = [];
-        acc[chain.segment].push(chain);
+        const seg = chain.segment || 'Nieprzypisany';
+        if (!acc[seg]) acc[seg] = [];
+        acc[seg].push(chain);
         return acc;
     }, {} as Record<string, ValueChain[]>);
 
