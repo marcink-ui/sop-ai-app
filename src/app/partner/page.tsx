@@ -71,7 +71,9 @@ export default function PartnerDashboard() {
                 body: JSON.stringify({ organizationId: org.id }),
             });
             if (res.ok) {
-                router.push(`/partner/company/${org.slug}`);
+                // Use full-page navigation instead of router.push to avoid
+                // Next.js RSC prefetch issues that crash the client router
+                window.location.href = `/partner/company/${org.slug}`;
             } else {
                 console.error('Failed to switch context');
                 setSwitching(null);
@@ -80,7 +82,7 @@ export default function PartnerDashboard() {
             console.error('Context switch error:', error);
             setSwitching(null);
         }
-    }, [router]);
+    }, []);
 
     useEffect(() => {
         async function fetchOrganizations() {
