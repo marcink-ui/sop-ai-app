@@ -353,7 +353,9 @@ export default function CompanyDashboard() {
         );
     }
 
-    const digitizationPercent = Math.round((company.stats.digitizedSOPs / company.stats.totalSOPs) * 100);
+    const digitizationPercent = company.stats.totalSOPs > 0
+        ? Math.round((company.stats.digitizedSOPs / company.stats.totalSOPs) * 100)
+        : 0;
     const filteredSOPs = company.sops.filter(s => s.name.toLowerCase().includes(sopSearch.toLowerCase()));
 
     return (
