@@ -16,6 +16,7 @@ import {
     Activity,
     Bot,
     MessageSquare,
+    LogIn,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,27 @@ export default function PartnerDashboard() {
                 // Use full-page navigation instead of router.push to avoid
                 // Next.js RSC prefetch issues that crash the client router
                 window.location.href = `/partner/company/${org.slug}`;
+            } else {
+                console.error('Failed to switch context');
+                setSwitching(null);
+            }
+        } catch (error) {
+            console.error('Context switch error:', error);
+            setSwitching(null);
+        }
+    }, []);
+
+    const handleLoginAsClient = useCallback(async (org: Organization) => {
+        setSwitching(`login-${org.id}`);
+        try {
+            const res = await fetch('/api/context/switch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId: org.id }),
+            });
+            if (res.ok) {
+                // Full page navigation to the client's main dashboard
+                window.location.href = '/';
             } else {
                 console.error('Failed to switch context');
                 setSwitching(null);
@@ -210,7 +232,7 @@ export default function PartnerDashboard() {
 
             {/* Organizations Grid */}
             {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[1, 2, 3, 4].map((i) => (
                         <Card key={i} className="animate-pulse">
                             <CardContent className="p-5">
@@ -220,7 +242,7 @@ export default function PartnerDashboard() {
                     ))}
                 </div>
             ) : filteredOrganizations.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredOrganizations.map((org, index) => (
                         <motion.div
                             key={org.id}
@@ -285,9 +307,10 @@ export default function PartnerDashboard() {
                                         </div>
                                     </div>
 
-                                    <div className="mt-4">
+                                    <div className="mt-4 flex gap-2">
                                         <Button
-                                            className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white group"
+                                            variant="outline"
+                                            className="flex-1 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 group"
                                             onClick={() => handleEnterCompany(org)}
                                             disabled={switching === org.id}
                                         >
@@ -295,8 +318,22 @@ export default function PartnerDashboard() {
                                                 <span>Przełączanie...</span>
                                             ) : (
                                                 <>
-                                                    <span>Wejdź do firmy</span>
-                                                    <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                                                    <BarChart3 className="h-4 w-4 mr-2" />
+                                                    <span>Rada Transformacji</span>
+                                                </>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            className="flex-1 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white group"
+                                            onClick={() => handleLoginAsClient(org)}
+                                            disabled={switching === `login-${org.id}`}
+                                        >
+                                            {switching === `login-${org.id}` ? (
+                                                <span>Logowanie...</span>
+                                            ) : (
+                                                <>
+                                                    <LogIn className="h-4 w-4 mr-2" />
+                                                    <span>Zaloguj jako klient</span>
                                                 </>
                                             )}
                                         </Button>
