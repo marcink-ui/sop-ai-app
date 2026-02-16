@@ -206,31 +206,39 @@ function StatCard({ icon: Icon, label, value, color, subtext }: {
     );
 }
 
+const defaultSopStatus = { label: 'Nieznany', className: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-500/20 dark:text-neutral-400' };
 const sopStatusStyles: Record<string, { label: string; className: string }> = {
     ACTIVE: { label: 'Aktywny', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' },
     DRAFT: { label: 'Draft', className: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-500/20 dark:text-neutral-400' },
     IN_REVIEW: { label: 'W przeglądzie', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' },
     ARCHIVED: { label: 'Archiwum', className: 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' },
 };
+function getSopStatusStyle(status: string) { return sopStatusStyles[status] || defaultSopStatus; }
 
+const defaultSeverity = { className: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-500/20 dark:text-neutral-400' };
 const severityStyles: Record<string, { className: string }> = {
     HIGH: { className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' },
     MEDIUM: { className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' },
     LOW: { className: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' },
 };
+function getSeverityStyle(severity: string) { return severityStyles[severity] || defaultSeverity; }
 
+const defaultMudaStatus = { label: 'Nieznany', className: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-500/20 dark:text-neutral-400' };
 const mudaStatusStyles: Record<string, { label: string; className: string }> = {
     OPEN: { label: 'Otwarty', className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' },
     IN_PROGRESS: { label: 'W trakcie', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' },
     RESOLVED: { label: 'Rozwiązany', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' },
 };
+function getMudaStatusStyle(status: string) { return mudaStatusStyles[status] || defaultMudaStatus; }
 
+const defaultTimelineType = { icon: Activity, color: 'text-neutral-500 bg-neutral-100 dark:bg-neutral-500/20' };
 const timelineTypeStyles: Record<string, { icon: React.ElementType; color: string }> = {
     milestone: { icon: Target, color: 'text-violet-500 bg-violet-100 dark:bg-violet-500/20' },
     workshop: { icon: Brain, color: 'text-blue-500 bg-blue-100 dark:bg-blue-500/20' },
     deploy: { icon: Rocket, color: 'text-emerald-500 bg-emerald-100 dark:bg-emerald-500/20' },
     review: { icon: Eye, color: 'text-amber-500 bg-amber-100 dark:bg-amber-500/20' },
 };
+function getTimelineTypeStyle(type: string) { return timelineTypeStyles[type] || defaultTimelineType; }
 
 // ============================================================
 // MAIN COMPONENT
@@ -453,7 +461,7 @@ export default function CompanyDashboard() {
                                 <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-neutral-200 dark:bg-neutral-700" />
                                 <div className="space-y-4">
                                     {company.timeline.map((event) => {
-                                        const style = timelineTypeStyles[event.type];
+                                        const style = getTimelineTypeStyle(event.type);
                                         const EventIcon = style.icon;
                                         return (
                                             <motion.div
@@ -521,7 +529,7 @@ export default function CompanyDashboard() {
                                             <p className="text-xs text-neutral-500">{report.department}</p>
                                         </div>
                                         <div className="text-right">
-                                            <Badge className={cn('text-xs', severityStyles[report.severity].className)}>{report.severity}</Badge>
+                                            <Badge className={cn('text-xs', getSeverityStyle(report.severity).className)}>{report.severity}</Badge>
                                             <p className="text-xs text-emerald-600 mt-1">{(report.estimatedSaving / 1000).toFixed(0)}k PLN/rok</p>
                                         </div>
                                     </div>
@@ -561,8 +569,8 @@ export default function CompanyDashboard() {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {sop.aiEnhanced && <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 text-xs">AI</Badge>}
-                                                <Badge className={cn('text-xs', sopStatusStyles[sop.status].className)}>
-                                                    {sopStatusStyles[sop.status].label}
+                                                <Badge className={cn('text-xs', getSopStatusStyle(sop.status).className)}>
+                                                    {getSopStatusStyle(sop.status).label}
                                                 </Badge>
                                                 <span className="text-xs text-neutral-400">{sop.lastUpdated}</span>
                                             </div>
@@ -636,10 +644,10 @@ export default function CompanyDashboard() {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{(report.estimatedSaving / 1000).toFixed(0)}k PLN</span>
-                                                <Badge className={cn('text-xs', mudaStatusStyles[report.status].className)}>
-                                                    {mudaStatusStyles[report.status].label}
+                                                <Badge className={cn('text-xs', getMudaStatusStyle(report.status).className)}>
+                                                    {getMudaStatusStyle(report.status).label}
                                                 </Badge>
-                                                <Badge className={cn('text-xs', severityStyles[report.severity].className)}>
+                                                <Badge className={cn('text-xs', getSeverityStyle(report.severity).className)}>
                                                     {report.severity}
                                                 </Badge>
                                             </div>

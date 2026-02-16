@@ -296,10 +296,16 @@ export default function SOPProcessPage() {
         ?.filter(l => l.status === 'completed')
         .map(l => l.step) || [];
 
+    const generatedSteps = activeSOP?.processLogs
+        ?.filter(l => l.status === 'generated')
+        .map(l => l.step) || [];
+
     const stepStatuses: Record<number, StepStatus> = {};
     PIPELINE_STEPS.forEach(s => {
         if (completedSteps.includes(s.step)) {
             stepStatuses[s.step] = 'completed';
+        } else if (generatedSteps.includes(s.step)) {
+            stepStatuses[s.step] = 'active';
         } else if (s.step === currentStep) {
             stepStatuses[s.step] = isGenerating ? 'active' : 'pending';
         } else {
@@ -604,13 +610,13 @@ export default function SOPProcessPage() {
                                 </div>
                                 {/* Step actions */}
                                 <div className="flex items-center gap-2">
-                                    {currentStepLog?.status === 'completed' && (
+                                    {completedSteps.includes(currentStep) && (
                                         <Badge className="bg-green-500 text-white">
                                             <Check className="h-3 w-3 mr-1" />
                                             Zatwierdzony
                                         </Badge>
                                     )}
-                                    {currentOutput && currentStepLog?.status !== 'completed' && (
+                                    {currentOutput && !completedSteps.includes(currentStep) && (
                                         <Button
                                             size="sm"
                                             onClick={handleApproveStep}

@@ -395,7 +395,7 @@ export async function POST(
 
                 await prisma.sOPProcessLog.updateMany({
                     where: { sopId: id, step },
-                    data: { output: mockOutput, status: 'completed', input: { context: context.slice(0, 500) } },
+                    data: { output: mockOutput, status: 'generated', input: { context: context.slice(0, 500) } },
                 });
 
                 return NextResponse.json({ success: true, output: mockOutput, mock: true });
@@ -448,7 +448,7 @@ export async function POST(
                 data: {
                     input: { context: context.slice(0, 2000), tokenEstimate: context.length / 4 },
                     output,
-                    status: 'completed',
+                    status: 'generated',
                 },
             });
 
